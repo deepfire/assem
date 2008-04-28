@@ -161,6 +161,7 @@
    (iformat# :accessor isa-iformat# :initarg :iformat#))
   (:default-initargs
    :insn-defines-format-p nil
+   :final-discriminator #'values
    :paramtype# (make-hash-table :test #'eq)
    :insn# (make-hash-table :test #'equal)
    :iformat# (make-hash-table :test #'eq)))
@@ -249,7 +250,7 @@
         (collect (decode-insn-param isa (ash opcode (* -1 shift)) type))))
 
 (defun decode-insn (isa opcode)
-  (if-let ((ret (bitree-discriminate-value (isa-insn-root isa) opcode :test (or (isa-final-discriminator isa) #'values))))
+  (if-let ((ret (bitree-discriminate-value (isa-insn-root isa) opcode :test (isa-final-discriminator isa))))
           (destructuring-bind (insn-node iformat-node) ret
             (let ((insn (node-contribution insn-node))
                   (iformat (node-contribution iformat-node)))

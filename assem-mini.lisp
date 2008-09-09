@@ -53,7 +53,7 @@
   (ash (segment-current-index segment) -2))
 
 (defun extent-list-adjoin-segment (extent-list segment address)
-  (extent-list-adjoin extent-list (segment-active-vector segment) address))
+  (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
 (defmacro with-extent-list-segment (extent-list (segment address) &body body)
   `(let ((,segment (make-instance 'segment)))

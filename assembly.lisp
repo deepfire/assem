@@ -120,11 +120,11 @@
 (defun bitree-discriminate-value (node value &key (test nil testp))
   "Given a bitree NODE, yield the list of all contributing nodes down the discrimination path for VALUE."
   (declare (type function test))
-  (format t "discriminating ~X~%" value)
+;;;   (format t "discriminating ~X~%" value)
   (labels ((discriminate (node acc)
              (let ((acc (prepend node acc :test #'node-contribution)))
-               (when (node-contribution node)
-                 (format t "acc is now ~S~%" (mapcar (compose #'mnemonicable-mnemonics #'node-contribution) acc)))
+;;;                (when (node-contribution node)
+;;;                  (format t "acc is now ~S~%" (mapcar (compose #'mnemonicable-mnemonics #'node-contribution) acc)))
                (if (null (node-childs node))
                    acc
                    (let ((partial-matches (sort (copy-list (value-bitree-node-matches node value)) #'bitree-more-specific-p)))

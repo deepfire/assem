@@ -29,13 +29,6 @@
 ;;      where the dash-marks mean lack of specification.
 ;;      In fact the 32..infinity bits are unspecified just as well.
 ;;
-
-(defpackage assembly
-  (:nicknames :asm) 
-  (:use :common-lisp :alexandria :iterate :pergamum)
-  (:export
-   #:isa #:isa-final-discriminator #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat #:definsn))
-
 (in-package :assembly)
 
 (defstruct (node (:copier bitree-node-copy))

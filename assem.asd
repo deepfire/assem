@@ -6,7 +6,13 @@
 (defsystem :assem
   :depends-on (:alexandria :iterate :pergamum :custom-harness)
   :components
-  ((:file "assembly")
+  ((:file "package")
+   ;;;
+   (:file "assembly" :depends-on ("package"))
+   ;;;
+   (:file "unturing" :depends-on ("assembly"))
    (:file "mips-assembly" :depends-on ("assembly"))
    (:file "assem-mini" :depends-on ("assembly"))
-   (:file "assem-mini-mips" :depends-on ("mips-assembly" "assem-mini"))))
+   ;;;
+   (:file "assem-mini-mips" :depends-on ("mips-assembly" "assem-mini"))
+   (:file "unturing-mips" :depends-on ("unturing"))))

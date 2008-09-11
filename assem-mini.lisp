@@ -1,12 +1,3 @@
-(defpackage assem-mini
-  (:nicknames #:assem)
-  (:use :common-lisp :alexandria :pergamum :iterate)
-  (:export
-    #:segment #:emit #:emit-mips #:segment-active-vector #:segment-instruction-count
-    #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment
-    ;; assem-mini-mips.lisp
-    #:emit-nops #:emit-set-memory #:emit-get-memory #:emit-set-gpr #:emit-register-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
-
 (in-package :assem-mini)
 
 (defclass segment ()

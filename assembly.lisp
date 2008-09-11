@@ -146,6 +146,14 @@
   (width 0 :type integer)
   (node nil :type (or null node)))
 
+(defstruct (branch-insn (:include insn))
+  (dest-fn #'values :type (or null function)))
+
+(defstruct (cond-branch-insn (:include branch-insn)))
+(defstruct (abs-branch-insn (:include branch-insn)))
+(defstruct (rel-branch-insn (:include branch-insn)))
+(defstruct (exception-insn (:include branch-insn)))
+
 (defstruct (iformat (:include mnemocode))
   (width 0 :type integer)
   (node nil :type (or null node))
@@ -158,7 +166,8 @@
    (paramtype# :accessor isa-paramtype# :initarg :paramtype#)
    (insn# :accessor isa-insn# :initarg :insn#)
    (final-discriminator :accessor isa-final-discriminator :initarg :final-discriminator)
-   (iformat# :accessor isa-iformat# :initarg :iformat#))
+   (iformat# :accessor isa-iformat# :initarg :iformat#)
+   (delay-slots :accessor isa-delay-slots :initarg :delay-slots))
   (:default-initargs
    :insn-defines-format-p nil
    :final-discriminator #'values
@@ -194,8 +203,15 @@
 ;; opcode spec is a list of:
 ;;	either (PARENT-CONTEXT-VALUE CHILD-CONTEXT-SHIFT . CHILD-CONTEXT-MASK)
 ;;	or PARENT-CONTEXT-VALUE
-(defun define-insn (isa mnemonics spec &key format-name dont-coalesce)
-  (let* ((insn (make-insn :mnemonics mnemonics))
+(defun define-insn (isa type mnemonics spec &rest rest &key format-name dont-coalesce &allow-other-keys)
+  (let* ((insn (apply (case type
+                        (insn #'make-insn)
+                        (branch-insn (error "BRANCH-INSN is an intermediate type and should not be used"))
+                        (cond-branch-insn #'make-cond-branch-insn)
+                        (abs-branch-insn #'make-abs-branch-insn)
+                        (rel-branch-insn #'make-rel-branch-insn)
+                        (exception-insn #'make-exception-insn))
+                :mnemonics mnemonics (remove-from-plist rest :format-name :dont-coalesce)))
          (spec (append spec (list (make-node-spec :contribution insn))))
          (node (first (bitree-insert-spec (isa-insn-root isa) spec :dont-coalesce dont-coalesce)))
          (iformat (iformat isa format-name)))
@@ -223,8 +239,9 @@
                                                               (collect `(list ',type ,offt))))
                    ,@(when dont-coalesce `(:dont-coalesce ,dont-coalesce))))
 
-(defmacro definsn (isa mnemonics opcode-spec &key format-name)
-  `(define-insn ,isa ,mnemonics ,opcode-spec ,@(when format-name `(:format-name ,format-name))))
+;;; Bogus wrapper? Maybe not, futurewise.
+(defmacro definsn (isa type mnemonics opcode-spec &rest rest)
+  `(define-insn ,isa ,type ,mnemonics ,opcode-spec ,@rest))
 
 (defun encode-insn (isa id &rest params)
   (if-let* ((insn (insn isa id))

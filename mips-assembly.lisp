@@ -20,7 +20,7 @@
 (deftype im20 () '(unsigned-byte 20))
 (deftype im16 () '(unsigned-byte 16))
 (deftype im5 () '(unsigned-byte 5))
-(deftype mips-insn-param-type () '(member im26 im20 im16 im5 gpr cpsel))
+(deftype mips-insn-param-type () '(member im26 im20 im16 im5 c1cond gpr cpsel fpr))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
 (deftype gpr () '(or (unsigned-byte 5)
@@ -38,21 +38,36 @@
 		      (:r25 . 25) (:r26 . 26) (:r27 . 27) (:r28 . 28) (:r29 . 29)
 		      (:r30 . 30) (:r31 . 31)))
 
-(deftype cpsel () '(or (unsigned-byte 5)
-		    (member
-		     :prid :status :cause :epc :badvaddr
-		     :index :random :entrylo0 :entrylo1 :entryhi :context :pagemask :wired
-		     :count :compare :config :watchlo :watchhi
-		     :cacheerr :ecc :errorepc :taglo :taghi)))
+(deftype fpr () '(or (unsigned-byte 5)
+		  (member
+		   :f0 :f1 :f2 :f3 :f4 :f5 :f6 :f7 :f8 :f9
+		   :f10 :f11 :f12 :f13 :f14 :f15 :f16 :f17 :f18 :f19
+		   :f20 :f21 :f22 :f23 :f24 :f25 :f26 :f27 :f28 :f29
+		   :f30 :f31)))
 
+(defparameter *fpr* '((:f0 . 0) (:f1 . 1) (:f2 . 2) (:f3 . 3) (:f4 . 4)
+		      (:f5 . 5) (:f6 . 6) (:f7 . 7) (:f8 . 8) (:f9 . 9)
+		      (:f10 . 10) (:f11 . 11) (:f12 . 12) (:f13 . 13) (:f14 . 14)
+		      (:f15 . 15) (:f16 . 16) (:f17 . 17) (:f18 . 18) (:f19 . 19)
+		      (:f20 . 20) (:f21 . 21) (:f22 . 22) (:f23 . 23) (:f24 . 24)
+		      (:f25 . 25) (:f26 . 26) (:f27 . 27) (:f28 . 28) (:f29 . 29)
+		      (:f30 . 30) (:f31 . 31)))
+
+(deftype cpsel () '(or (unsigned-byte 5)
+                     (member
+                      :prid :status :cause :epc :badvaddr
+                      :index :random :entrylo0 :entrylo1 :entryhi :context :pagemask :wired
+                      :count :compare :config :watchlo :watchhi
+                      :cacheerr :ecc :errorepc :taglo :taghi)))
 
 (defparameter *cpsel* '((:prid . 15) (:status . 12) (:cause . 13) (:epc . 14) (:badvaddr . 8)
-			(:index . 0) (:random . 1) (:entrylo0 . 2) (:entrylo1 . 3)
-			(:entryhi . 10) (:context . 4) (:pagemask . 5) (:wired . 6)
-			(:count . 9) (:compare . 11) (:config . 16) (:watchlo . 18)
-			(:watchhi . 19) (:cacheerr . 27) (:ecc . 26) (:errorepc . 30)
-			(:taglo . 28) (:taghi . 29) (:lladdr . 17) (:debugepc . 24) (:perfcnt . 25) (:desave . 31))
+                         (:index . 0) (:random . 1) (:entrylo0 . 2) (:entrylo1 . 3)
+                         (:entryhi . 10) (:context . 4) (:pagemask . 5) (:wired . 6)
+                         (:count . 9) (:compare . 11) (:config . 16) (:watchlo . 18)
+                         (:watchhi . 19) (:cacheerr . 27) (:ecc . 26) (:errorepc . 30)
+                         (:taglo . 28) (:taghi . 29) (:lladdr . 17) (:debugepc . 24) (:perfcnt . 25) (:desave . 31))
   "cp0 registers are in see-mips-run order")
+
 
 (defclass mips-isa (isa)
   ()
@@ -80,8 +95,9 @@
 (defmethod encode-insn-param ((isa mips-isa) val type)
   (declare (ignore isa))
   (ecase type
-    ((im26 im16 im5) val)
+    ((im26 im16 im5 c1cond) val)
     (gpr (if (integerp val) val (cdr (assoc val *gpr*))))
+    (fpr (if (integerp val) val (cdr (assoc val *fpr*))))
     (cpsel (if (integerp val) val (cdr (assoc val *cpsel*))))))
 
 (defmethod decode-insn-param ((isa mips-isa) val type)
@@ -90,7 +106,9 @@
     (im26 (logand val #x3ffffff))
     (im16 (logand val #xffff))
     (im5 (logand val #x1f))
+    (c1cond (logand val #x7))
     (gpr (car (rassoc (logand val #x1f) *gpr*)))
+    (fpr (car (rassoc (logand val #x1f) *fpr*)))
     (cpsel (car (rassoc (logand val #x1f) *cpsel*)))))
 
 (defmacro defmipsparamtype (id spec)
@@ -112,7 +130,9 @@
   `(defformat *mips-isa* ,id () ,param-spec))
 
 (defmipsparamtype gpr 5)
+(defmipsparamtype fpr 5)
 (defmipsparamtype cpsel 5)
+(defmipsparamtype c1cond 3)
 (defmipsparamtype im5 5)
 (defmipsparamtype im16 16)
 (defmipsparamtype im20 20)
@@ -121,6 +141,8 @@
 (defmipsformat :empty)
 (defmipsformat :togpr-fromgpr-im5shift     (gpr 11) (gpr 16) (im5 6))
 (defmipsformat :togpr-fromgpr-shiftgpr     (gpr 11) (gpr 16) (gpr 21))
+(defmipsformat :tofpr-paramfpr-fromfpr     (gpr 11) (gpr 16) (gpr 21))
+(defmipsformat :tofpr-paramfpr		   (gpr 11) (gpr 16))
 (defmipsformat :togpr-xgpr-ygpr            (gpr 11) (gpr 21) (gpr 16))
 (defmipsformat :togpr-fromgpr-testgpr      (gpr 11) (gpr 21) (gpr 16))
 (defmipsformat :savegpr-addrgpr            (gpr 11) (gpr 21))
@@ -135,7 +157,9 @@
 (defmipsformat :testgpr-im16off            (gpr 21) (im16 0))
 (defmipsformat :togpr-im16                 (gpr 16) (im16 0))
 (defmipsformat :from/togpr-cpsel           (gpr 16) (cpsel 11))
+(defmipsformat :from/togpr-fpr             (gpr 16) (fpr 11))
 (defmipsformat :from/togpr-im16off-basegpr (gpr 16) (im16 0) (gpr 21))
+(defmipsformat :c1cond-im16                (c1cond 18) (im16 0))
 
 (defmipsinsn :sll     nil ((#b000000 0 #x3f) (#b000000 0 0)) :togpr-fromgpr-im5shift)
                           
@@ -220,6 +244,55 @@
 (defmipsinsn :rfe     (:ex)  ((#b010000 21 #x1f) (#x10 0 #x3f) (#b010000 0 0)) :empty)
 (defmipsinsn :eret    (:ex)  ((#b010000 21 #x1f) (#x10 0 #x3f) (#b011000 0 0)) :empty)
 (defmipsinsn :dret    (:ex)  ((#b010000 21 #x1f) (#x10 0 #x3f) (#b011111 0 0)) :empty)
+
+(defmipsinsn :mfc1    nil  ((#b010001 21 #x1f) (#b00000 0 0)) :from/togpr-fpr)
+(defmipsinsn :dmfc1   nil  ((#b010001 21 #x1f) (#b00001 0 0)) :from/togpr-fpr)
+(defmipsinsn :cfc1    nil  ((#b010001 21 #x1f) (#b00010 0 0)) :from/togpr-fpr)
+(defmipsinsn :mtc1    nil  ((#b010001 21 #x1f) (#b00100 0 0)) :from/togpr-fpr)
+(defmipsinsn :dmtc1   nil  ((#b010001 21 #x1f) (#b00101 0 0)) :from/togpr-fpr)
+(defmipsinsn :ctc1    nil  ((#b010001 21 #x1f) (#b00110 0 0)) :from/togpr-fpr)
+
+(defmipsinsn :bc1f    (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b00 0 0)) :c1cond-im16)
+(defmipsinsn :bc1t    (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b01 0 0)) :c1cond-im16)
+(defmipsinsn :bc1fl   (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b10 0 0)) :c1cond-im16)
+(defmipsinsn :bc1fl   (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b11 0 0)) :c1cond-im16)
+
+(defmipsinsn :add.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000000 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :add.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000000 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :sub.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000001 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :sub.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000001 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :mul.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000010 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :mul.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000010 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :div.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000011 0 0)) :tofpr-paramfpr-fromfpr)
+(defmipsinsn :div.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000011 0 0)) :tofpr-paramfpr-fromfpr)
+
+(defmipsinsn :sqrt.s    nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000100 0 0)) :tofpr-paramfpr)
+(defmipsinsn :sqrt.d    nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000100 0 0)) :tofpr-paramfpr)
+(defmipsinsn :abs.s     nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000101 0 0)) :tofpr-paramfpr)
+(defmipsinsn :abs.d     nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000101 0 0)) :tofpr-paramfpr)
+(defmipsinsn :mov.s     nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000110 0 0)) :tofpr-paramfpr)
+(defmipsinsn :mov.d     nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000110 0 0)) :tofpr-paramfpr)
+(defmipsinsn :neg.s     nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000111 0 0)) :tofpr-paramfpr)
+(defmipsinsn :neg.d     nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000111 0 0)) :tofpr-paramfpr)
+(defmipsinsn :round.l.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001000 0 0)) :tofpr-paramfpr)
+(defmipsinsn :round.l.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001000 0 0)) :tofpr-paramfpr)
+(defmipsinsn :trunc.l.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001001 0 0)) :tofpr-paramfpr)
+(defmipsinsn :trunc.l.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001001 0 0)) :tofpr-paramfpr)
+(defmipsinsn :ceil.l.s  nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001010 0 0)) :tofpr-paramfpr)
+(defmipsinsn :ceil.l.d  nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001010 0 0)) :tofpr-paramfpr)
+(defmipsinsn :floor.l.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001011 0 0)) :tofpr-paramfpr)
+(defmipsinsn :floor.l.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001011 0 0)) :tofpr-paramfpr)
+(defmipsinsn :round.w.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001100 0 0)) :tofpr-paramfpr)
+(defmipsinsn :round.w.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001100 0 0)) :tofpr-paramfpr)
+(defmipsinsn :trunc.w.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001101 0 0)) :tofpr-paramfpr)
+(defmipsinsn :trunc.w.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001101 0 0)) :tofpr-paramfpr)
+(defmipsinsn :ceil.w.s  nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001110 0 0)) :tofpr-paramfpr)
+(defmipsinsn :ceil.w.d  nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001110 0 0)) :tofpr-paramfpr)
+(defmipsinsn :floor.w.s nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b001111 0 0)) :tofpr-paramfpr)
+(defmipsinsn :floor.w.d nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b001111 0 0)) :tofpr-paramfpr)
+
+;; (defmipsinsn :   nil ((#b010001 21 #x1f) (#b10100 0 #x3f) (#b000000 0 0)) :)
+;; (defmipsinsn :   nil ((#b010001 21 #x1f) (#b10101 0 #x3f) (#b000000 0 0)) :)
 
 (defmipsinsn :beql    (:rel) ((#b010100 0 0)) :testgpr-basegpr-im16off)
 (defmipsinsn :beqzl   (:rel) ((#b010100 16 #x1f) (#b00000 0 0)) :testgpr-im16off)

@@ -139,6 +139,11 @@
   (width 0 :type integer)
   (node nil :type (or null node)))
 
+(defmethod print-object ((o insn) stream)
+  (write (insn-mnemonics o) :stream stream :circle nil))
+
+(defstruct (unknown-insn (:include insn (mnemonics :unknown))))
+
 (defstruct (branch-insn (:include insn))
   (dest-fn #'values :type (or null function)))
 

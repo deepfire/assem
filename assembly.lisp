@@ -270,9 +270,9 @@
             (let ((insn (node-contribution insn-node))
                   (iformat (node-contribution iformat-node)))
 ;;               (format t "insn ~S, iformat ~S~%" (insn-mnemonics insn) (iformat-mnemonics iformat))
-              (values (cons (insn-mnemonics insn) (decode-iformat-params isa iformat opcode))
+              (values (list* insn (decode-iformat-params isa iformat opcode))
                       (max (insn-width insn) (iformat-width iformat)))))
-          (values (list :unknown opcode) 32)))
+          (values (list (make-unknown-insn :opcode opcode) opcode) 32)))
 
 (defun disassemble-u8-sequence (isa seq &aux (length (length seq)))
   (iter (with offt = 0) (until (>= offt length))

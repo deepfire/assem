@@ -127,6 +127,7 @@
 (defmipsformat :to-gpr                     (gpr 11))
 (defmipsformat :from-gpr                   (gpr 21))
 (defmipsformat :xgpr-ygpr                  (gpr 21) (gpr 16))
+(defmipsformat :im16                       (im16 0))
 (defmipsformat :im20                       (im20 6))
 (defmipsformat :im26                       (im26 0))
 (defmipsformat :togpr-fromgpr-im16parm     (gpr 16) (gpr 21) (im16 0))
@@ -206,6 +207,11 @@
 (defmipsinsn :mtc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0100 0 0)) :from/togpr-cpsel)
 (defmipsinsn :dmtc0   nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0101 0 0)) :from/togpr-cpsel)
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :from/togpr-cpsel)
+
+(defmipsinsn :bc0f    (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0000 0 0)) :im16)
+(defmipsinsn :bc0t    (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0001 0 0)) :im16)
+(defmipsinsn :bc0f1   (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0010 0 0)) :im16)
+(defmipsinsn :bc0t1   (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0011 0 0)) :im16)
 
 (defmipsinsn :tlbr    nil ((#b010000 21 #x1f) (#x10 0 #x3f) (#b000001 0 0)) :empty)
 (defmipsinsn :tlbwi   nil ((#b010000 21 #x1f) (#x10 0 #x3f) (#b000010 0 0)) :empty)

@@ -108,7 +108,7 @@
   (push what (node-childs where)))
 
 (defclass mnemocoded-node ()
-  ((mnemonics :accessor mnemonics :type :keyword :initarg :mnemonics)
+  ((mnemonics :accessor mnemonics :type keyword :initarg :mnemonics)
    (opcode :accessor opcode :type (unsigned-byte 64) :initarg :opcode)
    (width :accessor width :type integer :initarg :width)
    (node :accessor node :type (or null node) :initarg :node)))
@@ -152,6 +152,7 @@
 (defclass rel-branch-mixin () ())
 (defclass indef-branch-mixin () ())
 (defclass cond-branch-mixin () ())
+(defclass uncond-branch-mixin () ())
 
 (defclass iformat (mnemocoded-node)
   ((params :accessor iformat-params :type list :initarg :params))

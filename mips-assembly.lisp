@@ -121,7 +121,7 @@
 (defclass cond-relimm-branch (branch-insn rel-branch-mixin cond-branch-mixin) ())
 (defclass absreg-branch (branch-insn abs-branch-mixin uncond-branch-mixin) ())
 (defclass cond-absreg-branch (branch-insn abs-branch-mixin cond-branch-mixin) ())
-(defclass exception (branch-insn uncond-branch-mixin) ())
+(defclass exception (branch-insn indef-branch-mixin uncond-branch-mixin) ())
 
 (defmacro defmipsinsn (id branchspec opcode-spec format-name)
   (multiple-value-bind (type dest-fn) (if (atom branchspec) 'insn

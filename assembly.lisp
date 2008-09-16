@@ -80,8 +80,8 @@
            (when-let ((c (node-contribution node)))
              (list
               (etypecase c
-                (insn (insn-mnemonics c))
-                (iformat (iformat-mnemonics c))))))))
+                (insn (mnemonics c))
+                (iformat (mnemonics c))))))))
 
 (defun bitree-insert-spec (bitree spec-list &key dont-coalesce)
   (labels ((iterate (bitree spec-list contributing-nodes)
@@ -107,8 +107,11 @@
   (setf (node-parent what) where)
   (push what (node-childs where)))
 
-(defstruct mnemonicable
-  (mnemonics nil :type keyword))
+(defclass mnemocoded-node ()
+  ((mnemonics :accessor mnemonics :type :keyword :initarg :mnemonics)
+   (opcode :accessor opcode :type (unsigned-byte 64) :initarg :opcode)
+   (width :accessor width :type integer :initarg :width)
+   (node :accessor node :type (or null node) :initarg :node)))
 
 (defun bitree-discriminate-value (node value &key (test nil testp))
   "Given a bitree NODE, yield the list of all contributing nodes down the discrimination path for VALUE."
@@ -132,30 +135,28 @@
 (defun make-node-spec (&rest params &key (val 0) (shift 0) (mask 0) &allow-other-keys)
   (list* val shift mask (remove-from-plist params :val :shift :mask)))
 
-(defstruct (mnemocode (:include mnemonicable))
-  (opcode 0 :type (unsigned-byte 64)))
-
-(defstruct (insn (:include mnemocode))
-  (width 0 :type integer)
-  (node nil :type (or null node)))
+(defclass insn (mnemocoded-node)
+  ()
+  (:default-initargs :width 0 :node nil))
 
 (defmethod print-object ((o insn) stream)
-  (write (insn-mnemonics o) :stream stream :circle nil))
+  (write (mnemonics o) :stream stream :circle nil))
 
-(defstruct (unknown-insn (:include insn (mnemonics :unknown))))
+(defclass unknown-insn (insn) () (:default-initargs :mnemonics :unknown))
 
-(defstruct (branch-insn (:include insn))
-  (dest-fn #'values :type (or null function)))
+(defclass branch-insn (insn)
+  ((destination-fn :accessor branch-destination-fn :type (or null function) :initarg :destination-fn))
+  (:default-initargs :destination-fn nil))
 
-(defstruct (cond-branch-insn (:include branch-insn)))
-(defstruct (abs-branch-insn (:include branch-insn)))
-(defstruct (rel-branch-insn (:include branch-insn)))
-(defstruct (exception-insn (:include branch-insn)))
+(defclass abs-branch-mixin () ())
+(defclass rel-branch-mixin () ())
+(defclass indef-branch-mixin () ())
+(defclass cond-branch-mixin () ())
 
-(defstruct (iformat (:include mnemocode))
-  (width 0 :type integer)
-  (node nil :type (or null node))
-  (params () :type list))
+(defclass iformat (mnemocoded-node)
+  ((params :accessor iformat-params :type list :initarg :params))
+  (:default-initargs
+   :width 0 :node nil :params ()))
 
 (defclass isa ()
   ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
@@ -188,28 +189,22 @@
 (defun insn (isa mnemonics) (gethash mnemonics (isa-insn# isa)))
 
 (defun define-iformat (isa mnemonics spec params &key dont-coalesce)
-  (let* ((iformat (make-iformat :mnemonics mnemonics :params params))
+  (let* ((iformat (make-instance 'iformat :mnemonics mnemonics :params params))
          (node (if (isa-insn-defines-format-p isa)
                    (make-node :contribution iformat)
                    (first (bitree-insert-spec (isa-iformat-root isa) (append spec (list (make-node-spec :contribution iformat))) :dont-coalesce dont-coalesce)))))
     (multiple-value-bind (opcode discrim-width) (assemble-bitree-node-value node)
-      (setf (iformat-node iformat) node
-            (iformat-opcode iformat) opcode
-            (iformat-width iformat) (max discrim-width (or (first (sort (mapcar (lambda (p) (+ (paramtype-width isa (car p)) (cadr p))) params) #'>)) 0))
+      (setf (node iformat) node
+            (opcode iformat) opcode
+            (width iformat) (max discrim-width (or (first (sort (mapcar (lambda (p) (+ (paramtype-width isa (car p)) (cadr p))) params) #'>)) 0))
             (gethash mnemonics (isa-iformat# isa)) iformat))))
 
 ;; opcode spec is a list of:
 ;;	either (PARENT-CONTEXT-VALUE CHILD-CONTEXT-SHIFT . CHILD-CONTEXT-MASK)
 ;;	or PARENT-CONTEXT-VALUE
 (defun define-insn (isa type mnemonics spec &rest rest &key format-name dont-coalesce &allow-other-keys)
-  (let* ((insn (apply (case type
-                        (insn #'make-insn)
-                        (branch-insn (error "BRANCH-INSN is an intermediate type and should not be used"))
-                        (cond-branch-insn #'make-cond-branch-insn)
-                        (abs-branch-insn #'make-abs-branch-insn)
-                        (rel-branch-insn #'make-rel-branch-insn)
-                        (exception-insn #'make-exception-insn))
-                :mnemonics mnemonics (remove-from-plist rest :format-name :dont-coalesce)))
+  (let* ((insn (apply #'make-instance type :mnemonics mnemonics
+                      (remove-from-plist rest :format-name :dont-coalesce)))
          (spec (append spec (list (make-node-spec :contribution insn))))
          (node (first (bitree-insert-spec (isa-insn-root isa) spec :dont-coalesce dont-coalesce)))
          (iformat (iformat isa format-name)))
@@ -221,12 +216,12 @@
           ((isa-insn-defines-format-p isa)
            (error "in DEFINE-INSN ~S: format neither specified directly, nor deducible by ISA" mnemonics)))
     (multiple-value-bind (opcode discrim-width) (assemble-bitree-node-value node)
-      (setf (insn-node insn) node
-            (insn-opcode insn) opcode
-            (insn-width insn) discrim-width
+      (setf (node insn) node
+            (opcode insn) opcode
+            (width insn) discrim-width
             (gethash mnemonics (isa-insn# isa)) insn))
     (bitree-leaf-nconc-node node (bitree-node-copy (if (isa-insn-defines-format-p isa)
-                                                       (iformat-node iformat)
+                                                       (node iformat)
                                                        (isa-iformat-root isa))))))
 
 (defun defparamtype (isa mnemonics width)
@@ -244,13 +239,13 @@
 (defun encode-insn (isa id &rest params)
   (if-let* ((insn (insn isa id))
             (iformat (if (isa-insn-defines-format-p isa)
-                         (node-contribution (first (node-childs (insn-node insn))))
+                         (node-contribution (first (node-childs (node insn))))
                          (iformat isa :empty))))
 	  (iter (for param in params)
                 (for (type offt) in (iformat-params iformat))
                 (unless (typep param type)
                   (error "~@<opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
-                (for acc initially (insn-opcode insn) then (logior acc (ash (encode-insn-param isa param type) offt)))
+                (for acc initially (opcode insn) then (logior acc (ash (encode-insn-param isa param type) offt)))
                 (finally (return acc)))
 	  (error "~@<ISA ~S does not specify insn ~S~:@>" isa id)))
 
@@ -269,10 +264,10 @@
           (destructuring-bind (insn-node iformat-node) ret
             (let ((insn (node-contribution insn-node))
                   (iformat (node-contribution iformat-node)))
-;;               (format t "insn ~S, iformat ~S~%" (insn-mnemonics insn) (iformat-mnemonics iformat))
+;;               (format t "insn ~S, iformat ~S~%" (mnemonics insn) (mnemonics iformat))
               (values (list* insn (decode-iformat-params isa iformat opcode))
-                      (max (insn-width insn) (iformat-width iformat)))))
-          (values (list (make-unknown-insn :opcode opcode) opcode) 32)))
+                      (max (width insn) (width iformat)))))
+          (values (list (make-instance 'unknown-insn :opcode opcode) opcode) 32)))
 
 (defun disassemble-u8-sequence (isa seq &aux (length (length seq)))
   (iter (with offt = 0) (until (>= offt length))

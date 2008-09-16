@@ -117,14 +117,21 @@
 (defmacro defmipsparamtype (id spec)
   `(defparamtype *mips-isa* ',id ,spec))
 
+(defclass relimm-branch (branch-insn rel-branch-mixin) ())
+(defclass cond-relimm-branch (branch-insn rel-branch-mixin cond-branch-mixin) ())
+(defclass absreg-branch (branch-insn abs-branch-mixin) ())
+(defclass cond-absreg-branch (branch-insn abs-branch-mixin cond-branch-mixin) ())
+(defclass exception (branch-insn) ())
+
 (defmacro defmipsinsn (id branchspec opcode-spec format-name)
   (multiple-value-bind (type dest-fn) (if (atom branchspec) 'insn
                                           (destructuring-bind (type &optional dest-fn) branchspec
                                             (case type
-                                              (:cond (values 'cond-branch-insn dest-fn))
-                                              (:abs (values 'abs-branch-insn dest-fn))
-                                              (:rel (values 'rel-branch-insn dest-fn))
-                                              (:ex (values 'exception-insn)))))
+                                              (:ri (values 'relimm-branch dest-fn))
+                                              (:cri (values 'cond-relimm-branch dest-fn))
+                                              (:ar (values 'absreg-branch dest-fn))
+                                              (:car (values 'cond-absreg-branch dest-fn))
+                                              (:ex (values 'exception)))))
     `(progn
        (definsn *mips-isa* ',type ,id ',opcode-spec :format-name ,format-name
                 ,@(when dest-fn `(:dest-fn ,dest-fn))))))
@@ -182,8 +189,8 @@
 (defmipsinsn :srlv    nil ((#b000000 0 #x3f) (#b000110 0 0)) :togpr-fromgpr-shiftgpr)
 (defmipsinsn :srav    nil ((#b000000 0 #x3f) (#b000111 0 0)) :togpr-fromgpr-shiftgpr)
                              
-(defmipsinsn :jr      (:abs) ((#b000000 0 #x3f) (#b001000 0 0)) :from-gpr)
-(defmipsinsn :jalr    (:abs) ((#b000000 0 #x3f) (#b001001 0 0)) :savegpr-addrgpr)
+(defmipsinsn :jr      (:ar) ((#b000000 0 #x3f) (#b001000 0 0)) :from-gpr)
+(defmipsinsn :jalr    (:ar) ((#b000000 0 #x3f) (#b001001 0 0)) :savegpr-addrgpr)
 (defmipsinsn :movz    nil ((#b000000 0 #x3f) (#b001010 0 0)) :togpr-fromgpr-testgpr)
 (defmipsinsn :movn    nil ((#b000000 0 #x3f) (#b001011 0 0)) :togpr-fromgpr-testgpr)
 
@@ -217,13 +224,13 @@
 (defmipsinsn :slt     nil ((#b000000 0 #x3f) (#b101010 0 0)) :togpr-xgpr-ygpr)
 (defmipsinsn :sltu    nil ((#b000000 0 #x3f) (#b101011 0 0)) :togpr-xgpr-ygpr)
 
-(defmipsinsn :j       (:abs) ((#b000010 0 0)) :im26)
-(defmipsinsn :jal     (:abs) ((#b000011 0 0)) :im26)
+(defmipsinsn :j       (:ri) ((#b000010 0 0)) :im26)
+(defmipsinsn :jal     (:ri) ((#b000011 0 0)) :im26)
 
-(defmipsinsn :beq     (:rel) ((#b000100 0 0)) :testgpr-basegpr-im16off)
-(defmipsinsn :bne     (:rel) ((#b000101 0 0)) :testgpr-basegpr-im16off)
-(defmipsinsn :blez    (:rel) ((#b000110 0 0)) :testgpr-basegpr-im16off)
-(defmipsinsn :bgtz    (:rel) ((#b000111 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :beq     (:cri) ((#b000100 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :bne     (:cri) ((#b000101 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :blez    (:cri) ((#b000110 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :bgtz    (:cri) ((#b000111 0 0)) :testgpr-basegpr-im16off)
 
 (defmipsinsn :addi    nil ((#b001000 0 0)) :togpr-fromgpr-im16parm)
 (defmipsinsn :addiu   nil ((#b001001 0 0)) :togpr-fromgpr-im16parm)
@@ -242,10 +249,10 @@
 (defmipsinsn :dmtc0   nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0101 0 0)) :from/togpr-cpsel)
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :from/togpr-cpsel)
 
-(defmipsinsn :bc0f    (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0000 0 0)) :im16)
-(defmipsinsn :bc0t    (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0001 0 0)) :im16)
-(defmipsinsn :bc0f1   (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0010 0 0)) :im16)
-(defmipsinsn :bc0t1   (:rel) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0011 0 0)) :im16)
+(defmipsinsn :bc0f    (:cri) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0000 0 0)) :im16)
+(defmipsinsn :bc0t    (:cri) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0001 0 0)) :im16)
+(defmipsinsn :bc0f1   (:cri) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0010 0 0)) :im16)
+(defmipsinsn :bc0t1   (:cri) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0011 0 0)) :im16)
 
 (defmipsinsn :tlbr    nil ((#b010000 21 #x1f) (#x10 0 #x3f) (#b000001 0 0)) :empty)
 (defmipsinsn :tlbwi   nil ((#b010000 21 #x1f) (#x10 0 #x3f) (#b000010 0 0)) :empty)
@@ -262,10 +269,10 @@
 (defmipsinsn :dmtc1   nil  ((#b010001 21 #x1f) (#b00101 0 0)) :from/togpr-fpr)
 (defmipsinsn :ctc1    nil  ((#b010001 21 #x1f) (#b00110 0 0)) :from/togpr-fpr)
 
-(defmipsinsn :bc1f    (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b00 0 0)) :c1cond-im16)
-(defmipsinsn :bc1t    (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b01 0 0)) :c1cond-im16)
-(defmipsinsn :bc1fl   (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b10 0 0)) :c1cond-im16)
-(defmipsinsn :bc1fl   (:rel) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b11 0 0)) :c1cond-im16)
+(defmipsinsn :bc1f    (:cri) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b00 0 0)) :c1cond-im16)
+(defmipsinsn :bc1t    (:cri) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b01 0 0)) :c1cond-im16)
+(defmipsinsn :bc1fl   (:cri) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b10 0 0)) :c1cond-im16)
+(defmipsinsn :bc1fl   (:cri) ((#b010001 21 #x1f) (#b01000 16 #x3) (#b11 0 0)) :c1cond-im16)
 
 (defmipsinsn :add.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b000000 0 0)) :tofpr-paramfpr-fromfpr)
 (defmipsinsn :add.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b000000 0 0)) :tofpr-paramfpr-fromfpr)
@@ -358,12 +365,12 @@
 (defmipsinsn :c.ngt.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b111111 0 0)) :c1cond-fromfpr-tofpr)
 (defmipsinsn :c.ngt.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b111111 0 0)) :c1cond-fromfpr-tofpr)
 
-(defmipsinsn :beql    (:rel) ((#b010100 0 0)) :testgpr-basegpr-im16off)
-(defmipsinsn :beqzl   (:rel) ((#b010100 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
-(defmipsinsn :bnel    (:rel) ((#b010101 0 0)) :testgpr-basegpr-im16off)
-(defmipsinsn :bnezl   (:rel) ((#b010101 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
-(defmipsinsn :blezl   (:rel) ((#b010110 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
-(defmipsinsn :bgtzl   (:rel) ((#b010111 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
+(defmipsinsn :beql    (:cri) ((#b010100 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :beqzl   (:cri) ((#b010100 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
+(defmipsinsn :bnel    (:cri) ((#b010101 0 0)) :testgpr-basegpr-im16off)
+(defmipsinsn :bnezl   (:cri) ((#b010101 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
+(defmipsinsn :blezl   (:cri) ((#b010110 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
+(defmipsinsn :bgtzl   (:cri) ((#b010111 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
                       
 (defmipsinsn :lb      nil ((#b100000 0 0)) :from/togpr-im16off-basegpr)
 (defmipsinsn :lh      nil ((#b100001 0 0)) :from/togpr-im16off-basegpr)

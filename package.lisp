@@ -5,8 +5,9 @@
   (:use :common-lisp :alexandria :iterate :pergamum)
   (:export
    #:isa #:isa-final-discriminator #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat
-   #:insn #:unknown-insn #:branch-insn #:cond-branch-insn #:abs-branch-insn #:rel-branch-insn #:exception-insn #:definsn #:branch-insn-dest-fn
-   #:define-arch-flow-breaks))
+   #:insn #:definsn
+   #:unknown-insn #:branch-insn #:branch-insn-dest-fn
+   #:abs-branch-mixin #:rel-branch-mixin #:indef-branch-mixin #:cond-branch-mixin))
 
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)

@@ -4,7 +4,7 @@
 (in-package :assem.system)
 
 (defsystem :assem
-  :depends-on (:alexandria :iterate :pergamum :custom-harness)
+  :depends-on (:alexandria :iterate :pergamum :custom-harness :semi-precious)
   :components
   ((:file "package")
    ;;;

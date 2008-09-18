@@ -134,7 +134,7 @@
                                               (:ex (values 'exception)))))
     `(progn
        (definsn *mips-isa* ',type ,id ',opcode-spec :format-name ,format-name
-                ,@(when dest-fn `(:dest-fn ,dest-fn))))))
+                ,@(when dest-fn `(:destination-fn (function ,dest-fn)))))))
 
 (defmacro defmipsformat (id &rest param-spec)
   `(defformat *mips-isa* ,id () ,param-spec))

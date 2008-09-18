@@ -65,7 +65,7 @@
                        (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))))
       (format t "total: ~X~%content: ~S~%" (length dis) dis)
       (let* (forwards
-             (outgoings (iter (with bb-start = 0)
+             (outgoings (iter (with bb-start = 0) (while (< bb-start (length dis)))
                               (when bb (format t "last bb: ~X ~S~%" (extent-base bb) (extent-data bb)))
                               (for chain-bb = (when (and bb (bb-typep isa bb 'cond-branch-mixin))
                                                 bb))

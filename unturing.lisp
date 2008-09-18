@@ -9,17 +9,17 @@
   (:default-initargs
    :ins nil :outs nil))
 
-(defun bb-tail-insn (bb)
+(defun bb-tail-insn (isa bb)
   "The type of BB is determined by its tail instruction."
-  (third (elt (extent-data bb) (if (> (extent-length bb) 1)
-                                   (- (extent-length bb) 2)
+  (third (elt (extent-data bb) (if (> (extent-length bb) (isa-delay-slots isa))
+                                   (- (extent-length bb) (1+ (isa-delay-slots isa)))
                                    0))))
 
-(defun bb-typep (bb type)
-  (typep (bb-tail-insn bb) type))
+(defun bb-typep (isa bb type)
+  (typep (bb-tail-insn isa bb) type))
 
-(defun bb-branches-p (bb)
-  (bb-typep bb 'branch-insn))
+(defun bb-branches-p (isa bb)
+  (bb-typep isa bb 'branch-insn))
 
 (defun link-bbs (from to)
   (push from (bb-ins to))
@@ -67,12 +67,15 @@
       (let* (forwards
              (outgoings (iter (with bb-start = 0)
                               (when bb (format t "last bb: ~X ~S~%" (extent-base bb) (extent-data bb)))
-                              (for chain-bb = (when (and bb (bb-typep bb 'cond-branch-mixin))
+                              (for chain-bb = (when (and bb (bb-typep isa bb 'cond-branch-mixin))
                                                 bb))
                               (for (values outgoing insn params) = (next-outgoing-branch bb-start))
-                              (when outgoing (format t "got: ~X -> ~X~%" bb-start (1+ outgoing)))
+                              (when outgoing (format t "got: ~X -> ~X~%"
+                                                     bb-start (+ outgoing (isa-delay-slots isa))))
                               (for bb = (maybe-new-bb chain-bb bb-start
-                                                      (if outgoing (+ outgoing 2) (length dis))))
+                                                      (if outgoing
+                                                          (+ outgoing 1 (isa-delay-slots isa))
+                                                          (length dis))))
                               (when bb ;; see maybe we're in forwards list, link, split and remove then
                                 (multiple-value-bind (destinated-at-us destinated-further)
                                     (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
@@ -98,7 +101,7 @@
                                 (when bb (format t "processing a branch: [~X...] -> +~X, ~S,~%"
                                                  (extent-base bb)
                                                  (apply dest-fn params)
-                                                 (type-of (bb-tail-insn bb))))
+                                                 (type-of (bb-tail-insn isa bb))))
                                 (when-let* ((delta (apply dest-fn params))
                                             (target (+ outgoing delta))
                                             (branch-local-p (and (>= target 0) (< target (length dis)))))
@@ -121,7 +124,7 @@
                                              (setf bb source-bb)))) ;; the chain-bb of the next turn..
                                         ((= delta 0))))) ;; is a NOP branch?
                               (collect (list outgoing insn params))
-                              (setf bb-start (+ outgoing 2)))))
+                              (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))))
         (format t "unresolved forwards: ~S, ~S~%" (length forwards) (mapcar #'car forwards))
         (format t "bbs: ")
         (oct-1d:do-tree-values (bb tree)

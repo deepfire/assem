@@ -4,7 +4,7 @@
   (:nicknames :asm) 
   (:use :common-lisp :alexandria :iterate :pergamum)
   (:export
-   #:isa #:isa-final-discriminator #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat
+   #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat
    #:insn #:definsn
    #:unknown-insn #:branch-insn #:branch-destination-fn
    #:abs-branch-mixin #:rel-branch-mixin #:indef-branch-mixin #:cond-branch-mixin #:uncond-branch-mixin))

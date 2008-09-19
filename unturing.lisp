@@ -129,10 +129,67 @@
         (format t "bbs: ")
         (oct-1d:do-tree-values (bb tree)
           (format t "[~S ~S] " (extent-base bb) (1- (extent-end bb))))
-        (format t "~%")))))
+        (format t "~%")
+        (oct-1d:tree-list tree)))))
 
-;; (defun lick-it ()
-;;   (insn-vector-to-basic-blocks
-;;    mips-assembly:*mips-isa*
-;;    (car (elf:ehdr-sections (bintype:parse 'elf:ehdr (file-as-vector "pestilence/to4fpu/preparee.o"))
-;;                            #'elf:shdr-executable-p))))
+;; OUTFWD: allocate fwd, will be collected later
+;; INBACK: allocate back, will be collected later
+;; OUTBACK: release back
+;; INFWD: release fwd
+;;                                       
+;;      OOO<---,                                                            
+;;      OOO   ||                           
+;;      OOO   ||                           
+;; ,----OOO   ||                           
+;; ||         ||                          
+;; ||   OOO<-,||                            
+;; ||   OOO  |||                            
+;; ||   OOO  |||                            
+;; ||,--OOO--||'                            
+;; |||       ||                             
+;; '|-->OOO  ||
+;;  |   OOO  ||                             
+;;  |   OOO  ||                            
+;;  |,--OOO--'|                             
+;;  ||        |                           
+;;  '-->OOO   |
+;;      OOO   |                             
+;;      OOO   |                            
+;;      OOO---'                                                           
+;;                                       
+(defun pprint-bignode-graph-linear (nodelist &key (stream t)
+                                    (node-line-fn (constantly "foobar"))
+                                    (node-width (+ (length "foobar") 2))
+                                    (node-separator "~%"))
+  (let ((fwd-limit 0)
+        (back-limit 0)
+        fwds backs)
+    (labels ((later-p (a b)
+               (>= (extent-base a) (extent-end b)))
+             (node-ins (node)
+               (bb-ins node))
+             (node-outs (node)
+               (bb-outs node))
+             (refedby-p (who by)
+               (find by (bb-ins who)))
+             (refs-p (who what)
+               (find what (bb-outs who))))
+      (iter (for node in nodelist)
+;;;;;;;;;;;; _this__ is about something started earlier, guaranteed to be an earlier node
+            (for (values f-at-us f-pending) = (unzip (curry #'refedby-p node) fwds))
+;;;;;;;;;;;; _this____ is about something yet to be started, guaranteed to be an earlier node
+            (for (values b-at-us b-pending) =  (unzip (rcurry #'refs-p node) backs))
+            (let ((new-fwds (remove-if (curry #'later-p node) (node-outs node)))
+                  (new-backs (remove-if-not (curry #'later-p node) (node-ins node))))
+              (maximize (length fwds) into max-fwds)
+              (maximize (+ (length f-pending) (length new-fwds)) into max-fwds)
+              (maximize (+ (length backs) (length new-backs)) into max-backs)
+              (setf backs (nconc new-backs b-pending)
+                    fwds (nconc new-fwds f-pending)))
+            (finally (setf (values fwd-limit back-limit) (values max-fwds max-backs))))
+      ;;       (iter (for node in nodelist)
+      ;;             (iter (for nodeline = (funcall node-line-fn))
+      ;;                   (while nodeline))
+      ;;             (format stream node-separator))
+      (format t "processed ~D nodes, limits: fwd: ~D, back: ~D~%"
+              (length nodelist) fwd-limit back-limit))))

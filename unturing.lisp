@@ -47,16 +47,13 @@
                                                            :initial-contents (subseq dis start end))
                            rest)))
                  (octree-1d:insert start bb tree)))
-             (maybe-new-bb (chain-bb start end &aux (end (or end (length dis))))
+             (new-linked-bb (chain-bb start end)
                "Create and chain/insert a BB START<->END, if only its length would be positive."
                (declare (type (or null bb) chain-bb) (type (integer 0) start end))
-               (when-let* ((length (- end start))
-                           (nonzero-p (plusp length))
-                           (bb (new-bb start end)))
+               (lret ((bb (new-bb start end)))
                  (if chain-bb
                      (link-bbs chain-bb bb)
-                     (push bb roots))
-                 bb))
+                     (push bb roots))))
              (flow-split-bb-at (bb at)
                (declare (type bb bb) (type (integer 0) at))
                (lret* ((old-end (extent-end bb))
@@ -72,36 +69,35 @@
                               (for (values outgoing insn params) = (next-outgoing-branch bb-start))
                               (when outgoing (format t "got: ~X -> ~X~%"
                                                      bb-start (+ outgoing (isa-delay-slots isa))))
-                              (for bb = (maybe-new-bb chain-bb bb-start
-                                                      (if outgoing
-                                                          (+ outgoing 1 (isa-delay-slots isa))
-                                                          (length dis))))
-                              (when bb ;; see maybe we're in forwards list, link, split and remove then
-                                (multiple-value-bind (destinated-at-us destinated-further)
-                                    (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
-                                  (when destinated-at-us
-                                    (iter (for (target srcbb) in (sort destinated-at-us #'< :key #'car))
-                                          ;; watch the code below carefully for "coincidences"...
-                                          (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
-                                          (with target-bb = bb)
-                                          (let* ((split-p (not (= target (extent-base target-bb))))
-                                                 (link-target (if split-p
-                                                                  (flow-split-bb-at target-bb target)
-                                                                  target-bb)))
-                                            (link-bbs srcbb link-target)
-                                            (when split-p
-                                              (setf target-bb link-target
-                                                    bb target-bb)))))
-                                  (setf forwards destinated-further)))
+                              (for bb = (new-linked-bb chain-bb bb-start
+                                                       (if outgoing
+                                                           (+ outgoing 1 (isa-delay-slots isa))
+                                                           (length dis))))
+                              (multiple-value-bind (destinated-at-us destinated-further)
+                                  (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
+                                (when destinated-at-us
+                                  (iter (for (target srcbb) in (sort destinated-at-us #'< :key #'car))
+                                        ;; watch the code below carefully for "coincidences"...
+                                        (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
+                                        (with target-bb = bb)
+                                        (let* ((split-p (not (= target (extent-base target-bb))))
+                                               (link-target (if split-p
+                                                                (flow-split-bb-at target-bb target)
+                                                                target-bb)))
+                                          (link-bbs srcbb link-target)
+                                          (when split-p
+                                            (setf target-bb link-target
+                                                  bb target-bb)))))
+                                (setf forwards destinated-further))
                               (while outgoing)
                               ;; we deal only with
                               ;; relative, specified, local branches
                               (when-let* ((relative-p (typep insn 'rel-branch-mixin))
                                           (dest-fn (branch-destination-fn insn)))
-                                (when bb (format t "processing a branch: [~X...] -> +~X, ~S,~%"
-                                                 (extent-base bb)
-                                                 (apply dest-fn params)
-                                                 (type-of (bb-tail-insn isa bb))))
+                                (format t "processing a branch: [~X...] -> +~X, ~S,~%"
+                                        (extent-base bb)
+                                        (apply dest-fn params)
+                                        (type-of (bb-tail-insn isa bb)))
                                 (when-let* ((delta (apply dest-fn params))
                                             (target (+ outgoing delta))
                                             (branch-local-p (and (>= target 0) (< target (length dis)))))

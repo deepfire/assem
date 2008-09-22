@@ -15,4 +15,4 @@
    (:file "assem-mini" :depends-on ("assembly"))
    ;;;
    (:file "assem-mini-mips" :depends-on ("mips-assembly" "assem-mini"))
-   (:file "unturing-mips" :depends-on ("unturing"))))
+   (:file "unturing-mips" :depends-on ("unturing" "mips-assembly"))))

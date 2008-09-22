@@ -104,7 +104,7 @@
                                 (when-let* ((delta (apply dest-fn params))
                                             (target (+ outgoing delta))
                                             (branch-local-p (point-in-extent-p dis target)))
-                                  (cond ((> delta 0) ;; is a forward reference? (past self)
+                                  (cond ((>= delta (isa-delay-slots isa)) ;; past this bb?
                                          (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                                          (push (list target bb) forwards))
                                         ((< delta 0) ;; a back reference...

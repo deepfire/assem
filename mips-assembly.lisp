@@ -17,10 +17,11 @@
 (in-package :mips-assembly)
 
 (deftype im26 () '(unsigned-byte 26))
-(deftype im20 () '(unsigned-byte 20))
+(deftype syscode () '(unsigned-byte 20))
+(deftype brkcode () '(unsigned-byte 10))
 (deftype im16 () '(unsigned-byte 16))
 (deftype im5 () '(unsigned-byte 5))
-(deftype mips-insn-param-type () '(member im26 im20 im16 im5 c1cond gpr cpsel fpr cacheop prefop))
+(deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
 (defmacro define-enumerated-operand-type (name bit-width (&rest set))
@@ -147,7 +148,8 @@
 (defmipsparamtype c1cond 3)
 (defmipsparamtype im5 5)
 (defmipsparamtype im16 16)
-(defmipsparamtype im20 20)
+(defmipsparamtype brkcode 10)
+(defmipsparamtype syscode 20)
 (defmipsparamtype im26 26)
 
 (defmipsformat :empty)
@@ -162,7 +164,8 @@
 (defmipsformat :from-gpr                   (gpr 21))
 (defmipsformat :xgpr-ygpr                  (gpr 21) (gpr 16))
 (defmipsformat :im16                       (im16 0))
-(defmipsformat :im20                       (im20 6))
+(defmipsformat :brkcode                    (brkcode 16))
+(defmipsformat :syscode                    (syscode 6))
 (defmipsformat :im26                       (im26 0))
 (defmipsformat :togpr-fromgpr-im16parm     (gpr 16) (gpr 21) (im16 0))
 (defmipsformat :tofpr-fromgpr-im16parm     (fpr 16) (gpr 21) (im16 0))
@@ -194,7 +197,8 @@
 (defmipsinsn :movz    nil ((#b000000 0 #x3f) (#b001010 0 0)) :togpr-fromgpr-testgpr)
 (defmipsinsn :movn    nil ((#b000000 0 #x3f) (#b001011 0 0)) :togpr-fromgpr-testgpr)
 
-(defmipsinsn :syscall (:ex)  ((#b000000 0 #x3f) (#b001100 0 0)) :im20)
+(defmipsinsn :syscall (:ex) ((#b000000 0 #x3f) (#b001100 0 0)) :syscode)
+(defmipsinsn :break   (:ex) ((#b000000 0 #x3f) (#b001101 0 0)) :brkcode)
 (defmipsinsn :sync    nil ((#b000000 0 #x3f) (#b001111 0 0)) :empty)
 
 (defmipsinsn :mfhi    nil ((#b000000 0 #x3f) (#b010000 0 0)) :to-gpr)

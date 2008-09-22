@@ -180,11 +180,11 @@
 ;;;;;;;;;;;; _this____ is about something yet to be started, guaranteed to be an earlier node
             (for (values b-at-us b-pending) =  (unzip (rcurry #'refs-p node) backs))
             (let ((new-fwds (remove-if (curry #'later-p node) (node-outs node)))
-                  (new-backs (remove-if-not (curry #'later-p node) (node-ins node))))
+                  (new-backs (remove-if (curry #'later-p node) (node-ins node))))
               (maximize (length fwds) into max-fwds)
               (maximize (+ (length f-pending) (length new-fwds)) into max-fwds)
               (maximize (+ (length backs) (length new-backs)) into max-backs)
-              (setf backs (nconc new-backs b-pending)
+              (setf backs (nconc (delete node new-backs) b-pending)
                     fwds (nconc new-fwds f-pending)))
             (finally (setf (values fwd-limit back-limit) (values max-fwds max-backs))))
       ;;       (iter (for node in nodelist)

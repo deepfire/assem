@@ -142,7 +142,17 @@
 (defmethod print-object ((o insn) stream)
   (write (mnemonics o) :stream stream :circle nil))
 
+;;; by CPU state/execution flow effect, disjoint, exhaustive partition
+(defclass noncontinue-mixin () ())  ;; the flow will _not_ return to the next instruction
+(defclass continue-mixin () ())     ;; execution might, or will, resume after this branch
+                                    ;; with altered, or unaltered CPU state
+;;; not disjoint, exhaustive partitioning
+(defclass pure-continue-mixin (continue-mixin) ()) ;; there is a pure continuation path
+(defclass dep-continue-mixin (continue-mixin) ())  ;; there is contpath dep, on some BB subnet/whatever
+
 (defclass unknown-insn (insn) () (:default-initargs :mnemonics :unknown))
+
+(defclass nonbranch-insn (insn pure-continue-mixin) ())
 
 (defclass branch-insn (insn)
   ((destination-fn :accessor branch-destination-fn :type (or null function) :initarg :destination-fn))
@@ -152,13 +162,6 @@
 (defclass rel-branch-insn (branch-insn) ())   ;; destination is PC-relative
 (defclass abs-branch-insn (branch-insn) ())   ;; destination is other than PC-relative, but not indefinite
 (defclass indef-branch-insn (branch-insn) ()) ;; destination inaccessible to static, state-agnostic analysis
-;;; by CPU state/execution flow effect, disjoint, exhaustive partition
-(defclass noncontinue-mixin () ())  ;; the flow will _not_ return to the next instruction
-(defclass continue-mixin () ())     ;; execution might, or will, resume after this branch
-                                    ;; with altered, or unaltered CPU state
-;;; not disjoint, exhaustive partitioning
-(defclass pure-continue-mixin (continue-mixin) ()) ;; there is a pure continuation path
-(defclass dep-continue-mixin (continue-mixin) ())  ;; there is contpath dep, on some BB subnet/whatever
 
 ;;; disjoint, exhaustive partitioning
 (defclass cond-branch-mixin (pure-continue-mixin) ())

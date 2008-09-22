@@ -67,7 +67,7 @@
       (let* (forwards
              (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (when bb (format t "last bb: ~X ~S~%" (extent-base bb) (extent-data bb)))
-                              (for chain-bb = (when (and bb (bb-typep isa bb 'cond-branch-mixin))
+                              (for chain-bb = (when (and bb (bb-typep isa bb 'pure-continue-mixin))
                                                 bb))
                               (for (values outgoing insn params) = (next-outgoing-branch bb-start))
                               (when outgoing (format t "got: ~X -> ~X~%"
@@ -95,7 +95,7 @@
                               (while outgoing)
                               ;; we deal only with
                               ;; relative, specified, local branches
-                              (when-let* ((relative-p (typep insn 'rel-branch-mixin))
+                              (when-let* ((relative-p (typep insn 'rel-branch-insn))
                                           (dest-fn (branch-destination-fn insn)))
                                 (format t "processing a branch: [~X...] -> +~X, ~S,~%"
                                         (extent-base bb)

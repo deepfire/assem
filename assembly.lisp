@@ -148,11 +148,24 @@
   ((destination-fn :accessor branch-destination-fn :type (or null function) :initarg :destination-fn))
   (:default-initargs :destination-fn nil))
 
-(defclass abs-branch-mixin () ())
-(defclass rel-branch-mixin () ())
-(defclass indef-branch-mixin () ())
-(defclass cond-branch-mixin () ())
+;;; by destination specification
+(defclass rel-branch-insn (branch-insn) ())   ;; destination is PC-relative
+(defclass abs-branch-insn (branch-insn) ())   ;; destination is other than PC-relative, but not indefinite
+(defclass indef-branch-insn (branch-insn) ()) ;; destination inaccessible to static, state-agnostic analysis
+;;; by CPU state/execution flow effect, disjoint, exhaustive partition
+(defclass noncontinue-mixin () ())  ;; the flow will _not_ return to the next instruction
+(defclass continue-mixin () ())     ;; execution might, or will, resume after this branch
+                                    ;; with altered, or unaltered CPU state
+;;; not disjoint, exhaustive partitioning
+(defclass pure-continue-mixin (continue-mixin) ()) ;; there is a pure continuation path
+(defclass dep-continue-mixin (continue-mixin) ())  ;; there is contpath dep, on some BB subnet/whatever
+
+;;; disjoint, exhaustive partitioning
+(defclass cond-branch-mixin (pure-continue-mixin) ())
 (defclass uncond-branch-mixin () ())
+;; in this terminology:
+;;     - JAL would be (uncond-branch-mixin dep-continue-mixin)
+;;     - BAL would be (cond-branch-mixin dep-continue-mixin)
 
 (defclass iformat (mnemocoded-node)
   ((params :accessor iformat-params :type list :initarg :params))

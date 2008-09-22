@@ -3,6 +3,9 @@
 (defclass ivec (extent)
   ())
 
+(defclass disivec (extent)
+  ())
+
 (defclass bb (ivec)
   ((ins :accessor bb-ins :type list :initarg :ins)
    (outs :accessor bb-outs :type list :initarg :outs))
@@ -27,16 +30,16 @@
 
 (defun insn-vector-to-basic-blocks (isa ivec &aux (*print-circle* nil))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
-  (let* ((dis (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector))
+  (let* ((dis (make-extent 'disivec 0 (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
          (tree (octree-1d:make-tree :length (extent-length ivec)))
          roots)
     (labels ((insn (i)
-               (destructuring-bind (opcode width insn . params) (elt dis i)
+               (destructuring-bind (opcode width insn . params) (elt (extent-data dis) i)
                  (declare (ignore opcode width))
                  (values insn params)))
              (next-outgoing-branch (bb-start)
                "Find the closest outgoing branch after bb-start."
-               (iter (for i from bb-start below (length dis))
+               (iter (for i from bb-start below (extent-length dis))
                      (for (values insn params) = (insn i))
                      (when (typep insn 'branch-insn)
                        (return (values i insn params)))))
@@ -44,7 +47,7 @@
                (declare (type (integer 0) start end))
                (lret ((bb (apply #'make-instance 'bb :base start
                            :data (make-array (- end start) :adjustable t
-                                                           :initial-contents (subseq dis start end))
+                                             :initial-contents (subseq (extent-data dis) start end))
                            rest)))
                  (octree-1d:insert start bb tree)))
              (new-linked-bb (chain-bb start end)
@@ -60,9 +63,9 @@
                        (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
                  (setf (bb-outs bb) (list new)
                        (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))))
-      (format t "total: ~X~%content: ~S~%" (length dis) dis)
+      (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
       (let* (forwards
-             (outgoings (iter (with bb-start = 0) (while (< bb-start (length dis)))
+             (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (when bb (format t "last bb: ~X ~S~%" (extent-base bb) (extent-data bb)))
                               (for chain-bb = (when (and bb (bb-typep isa bb 'cond-branch-mixin))
                                                 bb))
@@ -72,7 +75,7 @@
                               (for bb = (new-linked-bb chain-bb bb-start
                                                        (if outgoing
                                                            (+ outgoing 1 (isa-delay-slots isa))
-                                                           (length dis))))
+                                                           (extent-length dis))))
                               (multiple-value-bind (destinated-at-us destinated-further)
                                   (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
                                 (when destinated-at-us
@@ -100,7 +103,7 @@
                                         (type-of (bb-tail-insn isa bb)))
                                 (when-let* ((delta (apply dest-fn params))
                                             (target (+ outgoing delta))
-                                            (branch-local-p (and (>= target 0) (< target (length dis)))))
+                                            (branch-local-p (point-in-extent-p dis target)))
                                   (cond ((> delta 0) ;; is a forward reference? (past self)
                                          (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                                          (push (list target bb) forwards))

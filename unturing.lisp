@@ -169,7 +169,7 @@
 ;; INBACK: allocate back, will be collected later
 ;; OUTBACK: release back
 ;; INFWD: release fwd
-;;                                       
+;;
 ;;      OOO<---,                                                            
 ;;      OOO   ||                           
 ;;      OOO   ||                           
@@ -190,13 +190,31 @@
 ;;      OOO   |                            
 ;;      OOO---'                                                           
 ;;                                       
-(defun pprint-bignode-graph-linear (nodelist &key (stream t)
-                                    (node-line-fn (constantly "foobar"))
-                                    (node-width (+ (length "foobar") 2))
-                                    (node-separator "~%"))
-  (let ((fwd-limit 0)
-        (back-limit 0)
-        fwds backs)
+(defun check-graph-validity (nodelist node-ins-fn node-outs-fn)
+  "Validate NODELIST as a complete list of doubly-linked graph nodes, 
+   with NODE-INS-FN and NODE-OUTS-FN serving as accessor functions."
+  (labels ((node-ins (node) (funcall node-ins-fn node))
+           (node-outs (node) (funcall node-outs-fn node))
+           (node-listed-p (ref node)
+             (unless (find node nodelist)
+               (error "node ~S, as linked from known node~%~S~%... is missing from the specified nodelist.~%"
+                      node ref)))
+           (node-link-sanity-p (a b ins-p)
+             (unless (find a (funcall (if ins-p #'node-ins #'node-outs) b))
+               (error "node ~S~%, with ~:[out~;in~]s: ~S~%is missing a backlink to:~%~S,~%with ~:[in~;out~]s: ~S~%"
+                      b ins-p (mapcar #'extent-base (funcall (if ins-p #'node-ins #'node-outs) b))
+                      a ins-p (mapcar #'extent-base (funcall (if ins-p #'node-outs #'node-ins) a))))))
+    (iter (for node in nodelist)
+          (dolist (out (node-outs node))
+            (node-listed-p node out) (node-link-sanity-p node out t))
+          (dolist (in (node-ins node))
+            (node-listed-p node in) (node-link-sanity-p node in nil)))))
+
+(defun pprint-bignode-graph-linear (nodelist &key node-parameters-fn (stream t)
+                                    (node-width 30) (node-separator "~%")
+                                    suppress-flow-aligned-edges-p)
+  (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
+  (let (fwds backs)
     (labels ((later-p (a b)
                (>= (extent-base a) (extent-end b)))
              (node-ins (node)
@@ -219,10 +237,74 @@
               (maximize (+ (length backs) (length new-backs)) into max-backs)
               (setf backs (nconc (delete node new-backs) b-pending)
                     fwds (nconc new-fwds f-pending)))
-            (finally (setf (values fwd-limit back-limit) (values max-fwds max-backs))))
-      ;;       (iter (for node in nodelist)
-      ;;             (iter (for nodeline = (funcall node-line-fn))
-      ;;                   (while nodeline))
-      ;;             (format stream node-separator))
+            (finally (setf (values fwds backs)
+                           (values (make-array max-fwds :initial-element nil)
+                                   (make-array max-backs :initial-element nil)))))
+      (labels ((mark (pool from to &aux (slot (position from pool)))
+                 (setf (aref pool slot) to)
+                 slot)
+               (render (in prepend marksym reverse-p)
+                 (coerce (funcall (if reverse-p #'nreverse #'identity)
+                                  (append prepend (iter (for elt in-vector in)
+                                                        (collect (cond ((null elt) #\Space)
+                                                                       ((eq elt :mark) marksym)
+                                                                       (t #\|))))))
+                         'string))
+               (trans-render (in from to sym has-p src-p mirror-p)
+                 (mapc (rcurry (curry #'mark in) :mark) from)
+                 (prog1 (render in (cond ((not has-p) '(#\Space #\Space))
+                                         (src-p '(#\- #\-))
+                                         (mirror-p '(#\> #\-))
+                                         (t  '(#\< #\-))) sym mirror-p)
+                   (mapc (curry #'mark in :mark) to)))
+               (mkstub (for &optional stub) (make-list (length for) :initial-element stub))
+               (print-line (pre-pre pre core post)
+                 (format stream (format nil "~~~DA~~~DA~~~DA~~~DA~%"
+                                        9 (length fwds) node-width (length backs))
+                         pre-pre pre core post)))
+        (iter (for rest-nodes on nodelist) (for node = (car rest-nodes))
+              (for (values separate-p preline-fn line-fn total) = (funcall node-parameters-fn node))
+              (format t "bb ~S~%" node)
+              (iter (for i from 1 below total)
+                    (initially
+                     (with suppressed-flow-aligned-edge = nil)
+                     (multiple-value-bind (ifree iall) (unzip (curry #'later-p node) (node-ins node))
+                       (when (and suppress-flow-aligned-edges-p suppressed-flow-aligned-edge)
+                        (removef ifree suppressed-flow-aligned-edge)
+                        (setf suppressed-flow-aligned-edge nil))
+                       (when (or ifree iall)
+                         (format t "got ifrees: ~{~X ~}, ialls: ~{~X ~}~%"
+                                 (mapcar #'extent-base ifree)
+                                 (mapcar #'extent-base iall)))
+                       (print-line (funcall preline-fn 0)
+                                   (trans-render fwds (mkstub ifree node) (mkstub ifree) #\` ifree nil t)
+                                   (funcall line-fn 0)
+                                   (trans-render backs (mkstub iall) iall #\. iall nil nil))
+                       (when (or iall ifree)
+                         (setf pre-line (render fwds '(#\Space #\Space) nil t))
+                         (setf post-line (render backs '(#\Space #\Space) nil nil)))                       (when ifree)))
+                    (for indexline = (funcall preline-fn i))
+                    (with pre-line = (render fwds '(#\Space #\Space) nil t))
+                    (for nodeline = (funcall line-fn i))
+                    (with post-line = (render backs '(#\Space #\Space) nil nil))
+                    (if (= i (- total 1 1 #| (isa-delay-slots isa) |#))
+                        (multiple-value-bind (ofree oall) (unzip (curry #'later-p node) (node-outs node))
+                          (when-let* ((next-node (second rest-nodes))
+                                      (suppress-p (and suppress-flow-aligned-edges-p (find next-node oall))))
+                            (setf suppressed-flow-aligned-edge node)
+                            (removef oall next-node))
+                          (when (or ofree oall)
+                            (format t "got ofrees: ~{~X ~}, oalls: ~{~X ~}~%"
+                                    (mapcar #'extent-base ofree)
+                                    (mapcar #'extent-base oall)))
+                          (print-line indexline (trans-render fwds (mkstub oall) oall #\, oall t t)
+                                      nodeline (trans-render backs (mkstub ofree node) (mkstub ofree) #\' ofree t nil))
+                          (when (or oall ofree)
+                            (setf pre-line (render fwds '(#\Space #\Space) nil t))
+                            (setf post-line (render backs '(#\Space #\Space) nil nil))))
+                        (print-line indexline pre-line nodeline post-line))
+                    (finally 
+                     (when (or t separate-p)
+                       (print-line "" pre-line "" post-line))))))
       (format t "processed ~D nodes, limits: fwd: ~D, back: ~D~%"
-              (length nodelist) fwd-limit back-limit))))
+              (length nodelist) (length fwds) (length backs)))))

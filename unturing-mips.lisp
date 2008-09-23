@@ -1,6 +1,6 @@
 (in-package :asm-mips)
 
-(defun lick-it (&optional (filename "pestilence/to4fpu/preparee.o"))
+(defun lick-it (&optional (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))
   (let* ((b-p (symbol-function (find-symbol "PARSE" (find-package :bintype))))
          (e-e (find-symbol "EHDR" (find-package :elf)))
          (e-e-s (symbol-function (find-symbol "EHDR-SECTIONS" (find-package :elf))))
@@ -9,4 +9,8 @@
          (ehdr (funcall b-p e-e vector))
          (section (car (funcall e-e-s ehdr e-s-e-p)))
          (bbs (unturing:insn-vector-to-basic-blocks mips-assembly:*mips-isa* section)))
-    (unturing::pprint-bignode-graph-linear bbs)))
+    (mapc #'pprint bbs)
+    (unturing::check-graph-validity bbs #'unturing:bb-ins #'unturing:bb-outs)
+    (unturing::pprint-bignode-graph-linear bbs
+     :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)
+     :suppress-flow-aligned-edges-p suppress-p)))

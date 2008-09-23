@@ -12,21 +12,55 @@
   (:default-initargs
    :ins nil :outs nil))
 
+(defmethod print-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
+  (print-unreadable-object (o s :identity t)
+    (iter (for (nil nil mnemo . params) in-vector (extent-data o) with-index i)
+          (pprint-logical-block (s nil)
+            (format s "~8,'0X " (+ (extent-base o) i))
+            (write mnemo :stream s :circle nil) (write #\Space :stream s :escape nil) 
+            (dolist (p params)
+              (write #\Space :stream s :escape nil) (write p :stream s :circle nil))
+            (pprint-newline :mandatory s)))
+    (format s "ins: ~S, outs: ~S" (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
+
+(defun bb-branchly-large-p (isa bb)
+  (> (extent-length bb) (1+ (isa-delay-slots isa))))
+
+;;; An important statement: we don't chop off BB's delay slots, so that the following invariant holds:
+;;; (or (not (bb-typep bb 'branch-insn)) (and there-is-only-one-branch-exactly-where-expected))
+(defun bb-branch-posn (isa bb)
+  (- (extent-length bb) (1+ (isa-delay-slots isa))))
+
+(defun bb-insn (bb i)
+  (declare (type bb bb) (type (integer 0) i))
+  (third (aref (extent-data bb) i)))
+
 (defun bb-tail-insn (isa bb)
-  "The type of BB is determined by its tail instruction."
-  (third (elt (extent-data bb) (if (> (extent-length bb) (isa-delay-slots isa))
-                                   (- (extent-length bb) (1+ (isa-delay-slots isa)))
-                                   0))))
+  "The type of BB is determined by its branch-posn instruction, or is PLAIN."
+  (bb-insn bb (if (bb-branchly-large-p isa bb)
+                  (bb-branch-posn isa bb)
+                  (1- (extent-length bb)))))
 
 (defun bb-typep (isa bb type)
   (typep (bb-tail-insn isa bb) type))
 
-(defun bb-branches-p (isa bb)
+(defun bb-branch-p (isa bb)
   (bb-typep isa bb 'branch-insn))
+
+(defun bb-leaf-p (isa bb)
+  (not (bb-typep isa bb 'continue-mixin)))
 
 (defun link-bbs (from to)
   (push from (bb-ins to))
   (push to (bb-outs from)))
+
+(defun dis-printer-parameters (isa disivec)
+  (values (bb-leaf-p isa disivec)
+          (lambda (i)
+            (format nil "~8,'0X " (+ (extent-base disivec) i)))
+          (lambda (i)
+            (format nil "~S" (cddr (aref (extent-data disivec) i))))
+          (extent-length disivec)))
 
 (defun insn-vector-to-basic-blocks (isa ivec &aux (*print-circle* nil))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
@@ -34,7 +68,7 @@
          (tree (octree-1d:make-tree :length (extent-length ivec)))
          roots)
     (labels ((insn (i)
-               (destructuring-bind (opcode width insn . params) (elt (extent-data dis) i)
+               (destructuring-bind (opcode width insn . params) (aref (extent-data dis) i)
                  (declare (ignore opcode width))
                  (values insn params)))
              (next-outgoing-branch (bb-start)
@@ -53,29 +87,29 @@
              (new-linked-bb (chain-bb start end)
                "Create and chain/insert a BB START<->END, if only its length would be positive."
                (declare (type (or null bb) chain-bb) (type (integer 0) start end))
+               (format t "new: ~X -> ~X, chain: ~S~%" start end (and chain-bb (extent-base chain-bb)))
                (lret ((bb (new-bb start end)))
                  (if chain-bb
                      (link-bbs chain-bb bb)
                      (push bb roots))))
              (flow-split-bb-at (bb at)
+               "Splitting at delay slot is interesting."
                (declare (type bb bb) (type (integer 0) at))
                (lret* ((old-end (extent-end bb))
                        (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
-                 (setf (bb-outs bb) (list new)
-                       (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))))
+                 (setf (bb-outs bb) (list new))
+                 (when-let (not-delay-chop-p (not (and (bb-branch-p isa bb)
+                                                       (> at (+ (extent-base bb) (bb-branch-posn isa bb))))))
+                   (setf (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb))))))))
       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
       (let* (forwards
              (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
-                              (when bb (format t "last bb: ~X ~S~%" (extent-base bb) (extent-data bb)))
+                              (when bb (format t "last bb: ~S~%" bb))
                               (for chain-bb = (when (and bb (bb-typep isa bb 'pure-continue-mixin))
                                                 bb))
                               (for (values outgoing insn params) = (next-outgoing-branch bb-start))
-                              (when outgoing (format t "got: ~X -> ~X~%"
-                                                     bb-start (+ outgoing (isa-delay-slots isa))))
-                              (for bb = (new-linked-bb chain-bb bb-start
-                                                       (if outgoing
-                                                           (+ outgoing 1 (isa-delay-slots isa))
-                                                           (extent-length dis))))
+                              (for tail = (if outgoing (+ outgoing 1 (isa-delay-slots isa)) (extent-length dis)))
+                              (for bb = (new-linked-bb chain-bb bb-start tail))
                               (multiple-value-bind (destinated-at-us destinated-further)
                                   (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
                                 (when destinated-at-us

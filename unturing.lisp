@@ -72,7 +72,7 @@
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (let* ((dis (make-extent 'disivec 0 (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
          (tree (octree-1d:make-tree :length (extent-length ivec)))
-         roots)
+         roots forwards)
     (labels ((insn (i)
                (destructuring-bind (opcode width insn . params) (aref (extent-data dis) i)
                  (declare (ignore opcode width))
@@ -102,17 +102,24 @@
                "Splitting at delay slot is interesting."
                (declare (type bb bb) (type (integer 0) at))
                (lret* ((old-end (extent-end bb))
+                       (delay-chop-p (and (bb-branch-p isa bb)
+                                          (> at (+ (extent-base bb) (bb-branch-posn isa bb)))))
                        (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
-                 (dolist (out (bb-outs bb))
-                   (removef (bb-ins out) bb)
-                   (push new (bb-ins out)))
-                 (setf (bb-outs bb) (list new))
-                 (when-let (not-delay-chop-p (not (and (bb-branch-p isa bb)
-                                                       (> at (+ (extent-base bb) (bb-branch-posn isa bb))))))
-                   (setf (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb))))))))
+                 ;; should be keep our invariant? two instances of code...
+                 ;; bb outlinks to its chopped-off delay slot...
+                 ;; hmm triple branches...
+                 (unless delay-chop-p
+                   (iter (for (fwd . rest) on forwards) ;; sift through forwards, updating for the split
+                         (when (eq (second fwd) bb)
+                           (setf (second fwd) new)))
+                   (dolist (out (bb-outs bb))
+                     (push new (bb-ins out)) ;; whoever bb outlinked to, new does, bb does not anymore
+                     (removef (bb-ins out) bb))
+                   (setf (bb-outs bb) nil
+                         (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))
+                 (push new (bb-outs bb)))))
       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
-      (let* (forwards
-             (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
+      (let* ((outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (when bb (format t "last bb: ~S~%" bb))
                               (for chain-bb = (when (and bb (bb-typep isa bb 'pure-continue-mixin))
                                                 bb))
@@ -159,8 +166,8 @@
                                                 (hit-self-p (eq target-bb bb))
                                                 (self-superseded-p (and split-p hit-self-p))
                                                 (source-bb (if self-superseded-p link-target-bb bb)))
-                                           (format t "split back: ~X -> ~X~%"
-                                                   (extent-base source-bb) (extent-base link-target-bb))
+;;;                                            (format t "split back: ~X -> ~X~%"
+;;;                                                    (extent-base source-bb) (extent-base link-target-bb))
                                            (link-bbs source-bb link-target-bb)
                                            (when self-superseded-p
                                              (setf bb source-bb)))) ;; the chain-bb of the next turn..

@@ -14,6 +14,12 @@
 
 (defmethod print-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
+    (format s "base: ~X, len: ~X, ins: ~{~X ~}, outs: ~{~X ~}"
+            (extent-base o) (extent-length o)
+            (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
+
+(defmethod pprint-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
+  (print-unreadable-object (o s :identity t)
     (iter (for (nil nil mnemo . params) in-vector (extent-data o) with-index i)
           (pprint-logical-block (s nil)
             (format s "~8,'0X " (+ (extent-base o) i))

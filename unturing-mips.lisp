@@ -9,7 +9,8 @@
          (ehdr (funcall b-p e-e vector))
          (section (car (funcall e-e-s ehdr e-s-e-p)))
          (bbs (unturing:insn-vector-to-basic-blocks mips-assembly:*mips-isa* section)))
-    (mapc #'pprint bbs)
+    (dolist (o bbs)
+      (unturing::pprint-object o t) (terpri))
     (unturing::check-graph-validity bbs #'unturing:bb-ins #'unturing:bb-outs)
     (unturing::pprint-bignode-graph-linear bbs
      :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)

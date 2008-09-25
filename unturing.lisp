@@ -206,10 +206,10 @@
                (error "node ~S, as linked from known node~%~S~%... is missing from the specified nodelist.~%"
                       node ref)))
            (node-link-sanity-p (a b ins-p)
-             (unless (find a (funcall (if ins-p #'node-ins #'node-outs) b))
-               (error "node ~S~%, with ~:[out~;in~]s: ~S~%is missing a backlink to:~%~S,~%with ~:[in~;out~]s: ~S~%"
-                      b ins-p (mapcar #'extent-base (funcall (if ins-p #'node-ins #'node-outs) b))
-                      a ins-p (mapcar #'extent-base (funcall (if ins-p #'node-outs #'node-ins) a))))))
+             (let ((refs (funcall (if ins-p #'node-outs #'node-ins) a))
+                   (backrefs (funcall (if ins-p #'node-ins #'node-outs) b)))
+               (unless (find a backrefs)
+                 (error "node ~S,~%is missing a backref to ~S~%" b a)))))
     (iter (for node in nodelist)
           (dolist (out (node-outs node))
             (node-listed-p node out) (node-link-sanity-p node out t))

@@ -240,9 +240,9 @@
 
 (defun im2bd16 (c1cond imoff)
   (declare (ignore c1cond))
-  (if (logbitp 15 imoff)
-      (- imoff (ash 1 16))
-      imoff))
+  (+ 0 (if (logbitp 15 imoff)
+          (- imoff (ash 1 16))
+          imoff)))
 
 (defmipsinsn :bltz    (:rcp im2bd16) ((#b000001 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
 (defmipsinsn :bgez    (:rcp im2bd16) ((#b000001 16 #x1f) (#b00001 0 0)) :testgpr-im16off)
@@ -260,18 +260,18 @@
 (defmipsinsn :bgezall (:rcd im2bd16) ((#b000001 16 #x1f) (#b10011 0 0)) :testgpr-im16off)
 
 (defun im1bd26 (imoff)
-  (if (logbitp 25 imoff)
-      (- imoff (ash 1 26))
-      imoff))
+  (+ 0 (if (logbitp 25 imoff)
+          (- imoff (ash 1 26))
+          imoff)))
 
 (defmipsinsn :j       (:run im1bd26) ((#b000010 0 0)) :im26)
 (defmipsinsn :jal     (:rud im1bd26) ((#b000011 0 0)) :im26)
 
 (defun im3bd16 (gpr1 gpr2 imoff)
   (declare (ignore gpr1 gpr2))
-  (if (logbitp 15 imoff)
-      (- imoff (ash 1 16))
-      imoff))
+  (+ 0 (if (logbitp 15 imoff)
+          (- imoff (ash 1 16))
+          imoff)))
 
 (defmipsinsn :beq     (:rcp im3bd16) ((#b000100 0 0)) :testgpr-basegpr-im16off)
 (defmipsinsn :bne     (:rcp im3bd16) ((#b000101 0 0)) :testgpr-basegpr-im16off)
@@ -296,9 +296,9 @@
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :from/togpr-cpsel)
 
 (defun im1bd16 (imoff)
-  (if (logbitp 15 imoff)
-      (- imoff (ash 1 16))
-      imoff))
+  (+ 0 (if (logbitp 15 imoff)
+          (- imoff (ash 1 16))
+          imoff)))
 
 (defmipsinsn :bc0f    (:rcp im1bd16) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0000 0 0)) :im16)
 (defmipsinsn :bc0t    (:rcp im1bd16) ((#b010000 21 #x1) (#x8 16 #x1f) (#b0001 0 0)) :im16)

@@ -71,7 +71,7 @@
 (defun insn-vector-to-basic-blocks (isa ivec &aux (*print-circle* nil))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (let* ((dis (make-extent 'disivec 0 (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
-         (tree (octree-1d:make-tree :length (extent-length ivec)))
+         (tree (octree-1d:make-tree :start -1 :length (extent-length ivec)))
          roots forwards)
     (labels ((insn (i)
                (destructuring-bind (opcode width insn . params) (aref (extent-data dis) i)
@@ -83,12 +83,11 @@
                      (for (values insn params) = (insn i))
                      (when (typep insn 'branch-insn)
                        (return (values i insn params)))))
-             (new-bb (start end &rest rest)
-               (declare (type (integer 0) start end))
-               (lret ((bb (apply #'make-instance 'bb :base start
-                           :data (make-array (- end start) :adjustable t
-                                             :initial-contents (subseq (extent-data dis) start end))
-                           rest)))
+             (new-bb (start end &rest rest &key (data (make-array (- end start) :adjustable t
+                                                                  :initial-contents (subseq (extent-data dis) start end)))
+                      &allow-other-keys)
+               (declare (type integer start end))
+               (lret ((bb (apply #'make-instance 'bb :base start :data data (remove-from-plist rest :data))))
                  (octree-1d:insert start bb tree)))
              (new-linked-bb (chain-bb start end)
                "Create and chain/insert a BB START<->END, if only its length would be positive."
@@ -119,7 +118,9 @@
                          (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))
                  (push new (bb-outs bb)))))
       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
-      (let* ((outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
+      (let* ((minus-infinity (new-bb (1- (extent-base dis)) (extent-base dis) :data #((0 0 :head))))
+             (plus-infinity (new-bb (extent-end dis) (1+ (extent-end dis)) :data #((0 0 :tail))))
+             (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (when bb (format t "last bb: ~S~%" bb))
                               (for chain-bb = (when (and bb (bb-typep isa bb 'pure-continue-mixin))
                                                 bb))
@@ -152,9 +153,14 @@
                                         (apply dest-fn params)
                                         (type-of (bb-tail-insn isa bb)))
                                 (when-let* ((delta (apply dest-fn params))
-                                            (target (+ outgoing delta))
-                                            (branch-local-p (point-in-extent-p dis target)))
-                                  (cond ((>= delta (isa-delay-slots isa)) ;; past this bb?
+                                            (target (+ outgoing delta)))
+                                  (cond ((>= target (extent-end dis))
+                                         (format t "target ~S of ~S is plus-infinity~%" target bb)
+                                         (link-bbs bb plus-infinity))
+                                        ((< target (extent-base dis))
+                                         (format t "target ~S of ~S is minus-infinity~%" target bb)
+                                         (link-bbs bb minus-infinity))
+                                        ((>= delta (isa-delay-slots isa)) ;; past this bb?
                                          (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                                          (push (list target bb) forwards))
                                         ((< delta 0) ;; a back reference...
@@ -181,31 +187,6 @@
         (format t "~%")
         (oct-1d:tree-list tree)))))
 
-;; OUTFWD: allocate fwd, will be collected later
-;; INBACK: allocate back, will be collected later
-;; OUTBACK: release back
-;; INFWD: release fwd
-;;
-;;      OOO<---,                                                            
-;;      OOO   ||                           
-;;      OOO   ||                           
-;; ,----OOO   ||                           
-;; ||         ||                          
-;; ||   OOO<-,||                            
-;; ||   OOO  |||                            
-;; ||   OOO  |||                            
-;; ||,--OOO--||'                            
-;; |||       ||                             
-;; '|-->OOO  ||
-;;  |   OOO  ||                             
-;;  |   OOO  ||                            
-;;  |,--OOO--'|                             
-;;  ||        |                           
-;;  '-->OOO   |
-;;      OOO   |                             
-;;      OOO   |                            
-;;      OOO---'                                                           
-;;                                       
 (defun check-graph-validity (nodelist node-ins-fn node-outs-fn)
   "Validate NODELIST as a complete list of doubly-linked graph nodes, 
    with NODE-INS-FN and NODE-OUTS-FN serving as accessor functions."
@@ -216,10 +197,8 @@
                (error "node ~S, as linked from known node~%~S~%... is missing from the specified nodelist.~%"
                       node ref)))
            (node-link-sanity-p (a b ins-p)
-             (let ((refs (funcall (if ins-p #'node-outs #'node-ins) a))
-                   (backrefs (funcall (if ins-p #'node-ins #'node-outs) b)))
-               (unless (find a backrefs)
-                 (error "node ~S,~%is missing a backref to ~S~%" b a)))))
+             (unless (find a (funcall (if ins-p #'node-ins #'node-outs) b))
+               (error "node ~S,~%is missing a backref to ~S~%" b a))))
     (iter (for node in nodelist)
           (dolist (out (node-outs node))
             (node-listed-p node out) (node-link-sanity-p node out t))

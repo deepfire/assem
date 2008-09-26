@@ -134,14 +134,16 @@
                                         ;; watch the code below carefully for "coincidences"...
                                         (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
                                         (with target-bb = bb)
-                                        (let* ((split-p (not (= target (extent-base target-bb))))
-                                               (link-target (if split-p
-                                                                (flow-split-bb-at target-bb target)
-                                                                target-bb)))
-                                          (link-bbs srcbb link-target)
-                                          (when split-p
-                                            (setf target-bb link-target
-                                                  bb target-bb)))))
+                                        (let ((split-p (not (= target (extent-base target-bb)))))
+                                          (multiple-value-bind (link-target delay-chop-p)
+                                              (if split-p
+                                                  (flow-split-bb-at target-bb target)
+                                                  target-bb)
+                                            (link-bbs srcbb link-target)
+                                            (when split-p
+                                              (setf target-bb link-target)
+                                              (unless delay-chop-p ;; heck, is it worth the complications, already...
+                                                (setf bb target-bb)))))))
                                 (setf forwards destinated-further))
                               (while outgoing)
                               ;; we deal only with

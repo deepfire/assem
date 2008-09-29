@@ -14,7 +14,7 @@
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)
   (:export
-   #:ivec #:bb #:bb-ins #:bb-outs
+   #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths
    #:insn-vector-to-basic-blocks))
 
 (defpackage #:assem-mini

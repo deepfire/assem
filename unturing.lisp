@@ -61,6 +61,19 @@
   (push from (bb-ins to))
   (push to (bb-outs from)))
 
+;; (defun maptree-bb-backpaths (fn bb allotment &aux (this-len (extent-length bb)))
+;;   (if (or (<= allotment this-len) (null (bb-ins bb)))
+;;       (list (funcall fn bb allotment))
+;;       (iter (with this-edge = (funcall fn bb this-len))
+;;             (for in in (mappend (rcurry #'map-bb-backpaths (- allotment this-len)) (bb-ins bb)))
+;;             (collect (cons this-edge in)))))
+
+(defun mapt-bb-paths (fn allotment bb &key (key #'bb-outs) &aux (this-len (extent-length bb)))
+  (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
+  (funcall fn bb allotment)
+  (when (> allotment this-len)
+    (mapc (curry #'mapt-bb-paths fn (- allotment this-len)) (funcall key bb))))
+
 (defun dis-printer-parameters (isa disivec)
   (values (bb-leaf-p isa disivec)
           (lambda (i)

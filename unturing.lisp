@@ -237,7 +237,7 @@
             (node-listed-p node in) (node-link-sanity-p node in nil)))))
 
 (defun pprint-bignode-graph-linear (nodelist &key node-parameters-fn (stream t)
-                                    (node-width 30) suppress-flow-aligned-edges-p)
+                                    (node-width 30) suppress-flow-aligned-edges-p force-bb-separation-p)
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (let (fwds backs)
     (labels ((later-p (a b)
@@ -349,7 +349,7 @@
                             (setf pre-line (render fwds '(#\Space #\Space) nil t))
                             (setf post-line (render backs '(#\Space #\Space) nil nil))))
                         (print-line indexline pre-line nodeline post-line))
-                    (finally (when (or separate-p)
+                    (finally (when (or force-bb-separation-p separate-p)
                                (print-line "" pre-line "" post-line))))))
 ;;       (format t "processed ~D nodes, limits: fwd: ~D, back: ~D~%"
 ;;               (length nodelist) (length fwds) (length backs))

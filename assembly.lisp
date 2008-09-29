@@ -258,8 +258,8 @@
   (setf (gethash mnemonics (isa-paramtype# isa)) width))
 
 (defmacro defformat (isa mnemonics format-spec param-spec &key dont-coalesce)
-  `(define-iformat ,isa ,mnemonics ,format-spec (list ,@(iter (for (type offt) in param-spec)
-                                                              (collect `(list ',type ,offt))))
+  `(define-iformat ,isa ,mnemonics ,format-spec (list ,@(iter (for (type . rest) in param-spec)
+                                                              (collect `(list ',type ,@rest))))
                    ,@(when dont-coalesce `(:dont-coalesce ,dont-coalesce))))
 
 ;;; Bogus wrapper? Maybe not, futurewise.
@@ -272,7 +272,7 @@
                          (node-contribution (first (node-childs (node insn))))
                          (iformat isa :empty))))
 	  (iter (for param in params)
-                (for (type offt) in (iformat-params iformat))
+                (for (type offt . nil) in (iformat-params iformat))
                 (unless (typep param type)
                   (error "~@<opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
                 (for acc initially (opcode insn) then (logior acc (ash (encode-insn-param isa param type) offt)))
@@ -286,7 +286,7 @@
 	     (setf (u8-vector-word32le ,vector offset) (apply #'encode-insn ,isa insn))))))
 
 (defun decode-iformat-params (isa iformat opcode)
-  (iter (for (type shift) in (iformat-params iformat))
+  (iter (for (type shift . nil) in (iformat-params iformat))
         (collect (decode-insn-param isa (ash opcode (* -1 shift)) type))))
 
 (defun decode-insn (isa opcode)

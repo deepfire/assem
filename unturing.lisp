@@ -129,8 +129,9 @@
       (let* ((minus-infinity (new-bb (1- (extent-base dis)) (extent-base dis) :data #((0 0 :head))))
              (plus-infinity (new-bb (extent-end dis) (1+ (extent-end dis)) :data #((0 0 :tail))))
              (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
-                              (when bb (format t "last bb: ~S~%" bb))
-                              (for chain-bb = (when (and bb (bb-typep isa bb 'pure-continue-mixin))
+                              (with last-branch-was-nop-p = nil)
+                              (for chain-bb = (when (and bb (or (bb-typep isa bb 'pure-continue-mixin) last-branch-was-nop-p))
+                                                (setf last-branch-was-nop-p nil)
                                                 bb))
                               (for (values outgoing insn params) = (next-outgoing-branch bb-start))
                               (for tail = (if outgoing (+ outgoing 1 (isa-delay-slots isa)) (extent-length dis)))
@@ -170,7 +171,7 @@
                                         ((< target (extent-base dis))
                                          (format t "target ~S of ~S is minus-infinity~%" target bb)
                                          (link-bbs bb minus-infinity))
-                                        ((>= delta (isa-delay-slots isa)) ;; past this bb?
+                                        ((> delta (isa-delay-slots isa)) ;; past this bb?
                                          (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                                          (push (list target bb) forwards))
                                         ((< delta 0) ;; a back reference...
@@ -187,7 +188,8 @@
                                            (link-bbs source-bb link-target-bb)
                                            (when self-superseded-p
                                              (setf bb source-bb)))) ;; the chain-bb of the next turn..
-                                        ((= delta (isa-delay-slots isa)))))) ;; is a NOP branch?
+                                        ((= delta (isa-delay-slots isa))
+                                         (setf last-branch-was-nop-p t))))) ;; is a NOP branch? should just ignore them.
                               (collect (list outgoing insn params))
                               (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))))
         (format t "unresolved forwards: ~S, ~S~%" (length forwards) (mapcar #'car forwards))

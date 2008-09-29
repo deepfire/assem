@@ -20,13 +20,14 @@
 
 (defmethod pprint-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
-    (iter (for (nil nil mnemo . params) in-vector (extent-data o) with-index i)
-          (pprint-logical-block (s nil)
-            (format s "~8,'0X " (+ (extent-base o) i))
-            (write mnemo :stream s :circle nil) (write #\Space :stream s :escape nil) 
-            (dolist (p params)
-              (write #\Space :stream s :escape nil) (write p :stream s :circle nil))
-            (pprint-newline :mandatory s)))
+    (loop :for (nil nil mnemo . params) :across (extent-data o)
+          :for i :from 0 :do
+       (pprint-logical-block (s nil)
+         (format s "~8,'0X " (+ (extent-base o) i))
+         (write mnemo :stream s :circle nil) (write #\Space :stream s :escape nil) 
+         (dolist (p params)
+           (write #\Space :stream s :escape nil) (write p :stream s :circle nil))
+         (pprint-newline :mandatory s)))
     (format s "ins: ~S, outs: ~S" (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
 
 (defun bb-branchly-large-p (isa bb)

@@ -179,7 +179,7 @@
                                            (link-bbs source-bb link-target-bb)
                                            (when self-superseded-p
                                              (setf bb source-bb)))) ;; the chain-bb of the next turn..
-                                        ((= delta 0))))) ;; is a NOP branch?
+                                        ((= delta (isa-delay-slots isa)))))) ;; is a NOP branch?
                               (collect (list outgoing insn params))
                               (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))))
         (format t "unresolved forwards: ~S, ~S~%" (length forwards) (mapcar #'car forwards))

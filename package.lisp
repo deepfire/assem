@@ -5,7 +5,7 @@
   (:use :common-lisp :alexandria :iterate :pergamum)
   (:export
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat
-   #:insn #:definsn
+   #:insn #:definsn #:opcode #:mnemonics #:width
    #:unknown-insn #:branch-insn #:nonbranch-insn #:branch-destination-fn
    #:abs-branch-insn #:rel-branch-insn #:indef-branch-insn
    #:continue-mixin #:pure-continue-mixin #:dep-continue-mixin #:noncontinue-mixin

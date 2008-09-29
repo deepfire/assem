@@ -297,13 +297,7 @@
 ;;               (format t "insn ~S, iformat ~S~%" (mnemonics insn) (mnemonics iformat))
               (values (list* insn (decode-iformat-params isa iformat opcode))
                       (max (width insn) (width iformat)))))
-          (values (list (make-unknown-insn opcode) opcode) 32)))
-
-(defun insn-iformat (insn)
-  (node-contribution (first (node-childs (node insn)))))
-
-(defun insn-src/dst-spec (insn &aux (iformat (insn-iformat insn)))
-  (mapcar #'third (iformat-params iformat)))
+          (values (list (make-instance 'unknown-insn :opcode opcode) opcode) 32)))
 
 (defun disassemble-u8-sequence (isa seq &aux (length (length seq)))
   (iter (with offt = 0) (until (>= offt length))

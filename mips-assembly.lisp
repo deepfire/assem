@@ -7,13 +7,6 @@
 ;;   http://www.gnu.org/licenses/lgpl-3.0.txt
 ;;
 
-(defpackage mips-assembly
-  (:nicknames :asm-mips) 
-  (:use :common-lisp :alexandria :assembly :custom-harness)
-  (:export
-   #:*mips-isa*
-   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn))
-
 (in-package :mips-assembly)
 
 (deftype im26 () '(unsigned-byte 26))

@@ -25,3 +25,10 @@
     #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
     #:emit-nops #:emit-set-memory #:emit-get-memory #:emit-set-gpr #:emit-register-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
+
+(defpackage #:mips-assembly
+  (:nicknames :asm-mips) 
+  (:use :common-lisp :alexandria :assembly :custom-harness :pergamum :iterate)
+  (:export
+   #:*mips-isa*
+   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn))

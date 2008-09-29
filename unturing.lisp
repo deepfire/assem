@@ -100,23 +100,30 @@
              (flow-split-bb-at (bb at)
                "Splitting at delay slot is interesting."
                (declare (type bb bb) (type (integer 0) at))
-               (lret* ((old-end (extent-end bb))
-                       (delay-chop-p (and (bb-branch-p isa bb)
-                                          (> at (+ (extent-base bb) (bb-branch-posn isa bb)))))
-                       (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
+               (let* ((old-end (extent-end bb))
+                      (delay-chop-p (and (bb-branch-p isa bb)
+                                         (> at (+ (extent-base bb) (bb-branch-posn isa bb)))))
+                      (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
+;;                  (format t "SPLIT  pre bb: ~S~%" bb)
+;;                  (format t "SPLIT  pre outs: ~{~S~_ ~}~%" (bb-outs bb))
                  ;; should be keep our invariant? two instances of code...
                  ;; bb outlinks to its chopped-off delay slot...
                  ;; hmm triple branches...
-                 (unless delay-chop-p
-                   (iter (for (fwd . rest) on forwards) ;; sift through forwards, updating for the split
-                         (when (eq (second fwd) bb)
-                           (setf (second fwd) new)))
-                   (dolist (out (bb-outs bb))
-                     (push new (bb-ins out)) ;; whoever bb outlinked to, new does, bb does not anymore
-                     (removef (bb-ins out) bb))
-                   (setf (bb-outs bb) nil
-                         (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))
-                 (push new (bb-outs bb)))))
+                 (if (unless delay-chop-p
+                       (iter (for (fwd . rest) on forwards) ;; sift through forwards, updating for the split
+                             (when (eq (second fwd) bb)
+                               (setf (second fwd) new)))
+                       (dolist (out (bb-outs bb))
+                         (push new (bb-ins out)) ;; whoever bb outlinked to, new does, bb does not anymore
+                         (removef (bb-ins out) bb))
+                       (setf (bb-outs bb) nil
+                             (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))
+                     t (format t "DELAY CHOP OF BB: ~S~%" bb))
+                 (push new (bb-outs bb))
+;;                  (format t "SPLIT post b : ~S~%" bb)
+;;                  (format t "SPLIT post  b: ~S~%" new)
+;;                  (format t "SPLIT post outs: ~{~S~_ ~}~%" (bb-outs new))
+                 (values new delay-chop-p))))
       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
       (let* ((minus-infinity (new-bb (1- (extent-base dis)) (extent-base dis) :data #((0 0 :head))))
              (plus-infinity (new-bb (extent-end dis) (1+ (extent-end dis)) :data #((0 0 :tail))))

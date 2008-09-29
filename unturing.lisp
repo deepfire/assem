@@ -143,8 +143,7 @@
 ;;                  (format t "SPLIT post outs: ~{~S~_ ~}~%" (bb-outs new))
                  (values new delay-chop-p))))
 ;;       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
-      (let* ((minus-infinity (new-pseudo-bb :head (1- (extent-base dis))))
-             (plus-infinity (new-pseudo-bb :tail (extent-end dis)))
+      (let* (minus-infinity plus-infinity
              (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (with last-branch-was-nop-p = nil)
                               (for chain-bb = (when (and bb (or (bb-typep isa bb 'pure-continue-mixin) last-branch-was-nop-p))
@@ -158,7 +157,7 @@
                                 (when destinated-at-us
                                   (iter (for (target srcbb) in (sort destinated-at-us #'< :key #'car))
                                         ;; watch the code below carefully for "coincidences"...
-;;                                         (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
+                                        ;; (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
                                         (with target-bb = bb)
                                         (let ((split-p (not (= target (extent-base target-bb)))))
                                           (multiple-value-bind (link-target delay-chop-p)
@@ -176,20 +175,22 @@
                               ;; relative, specified, local branches
                               (when-let* ((relative-p (typep insn 'rel-branch-insn))
                                           (dest-fn (branch-destination-fn insn)))
-;;                                 (format t "processing a branch: [~X...] -> +~X, ~S,~%"
-;;                                         (extent-base bb)
-;;                                         (apply dest-fn params)
-;;                                         (type-of (bb-tail-insn isa bb)))
+                                ;; (format t "processing a branch: [~X...] -> +~X, ~S,~%"
+                                ;;         (extent-base bb)
+                                ;;         (apply dest-fn params)
+                                ;;         (type-of (bb-tail-insn isa bb)))
                                 (when-let* ((delta (apply dest-fn params))
                                             (target (+ outgoing delta)))
                                   (cond ((>= target (extent-end dis))
-                                         (format t "target ~S of ~S is plus-infinity~%" target bb)
-                                         (link-bbs bb plus-infinity))
+                                         (let ((inf (or plus-infinity
+                                                        (setf plus-infinity (new-pseudo-bb :tail (extent-end dis))))))
+                                           (link-bbs bb inf)))
                                         ((< target (extent-base dis))
-                                         (format t "target ~S of ~S is minus-infinity~%" target bb)
-                                         (link-bbs bb minus-infinity))
+                                         (let ((inf (or minus-infinity
+                                                        (setf minus-infinity (new-pseudo-bb :head (1- (extent-base dis)))))))
+                                           (link-bbs bb inf)))
                                         ((> delta (isa-delay-slots isa)) ;; past this bb?
-;;                                          (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
+                                         ;; (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                                          (push (list target bb) forwards))
                                         ((< delta 0) ;; a back reference...
                                          (let* ((target-bb (oct-1d:resolve target tree))

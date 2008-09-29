@@ -30,6 +30,9 @@
          (pprint-newline :mandatory s)))
     (format s "ins: ~S, outs: ~S" (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
 
+(defun make-pseudo-bb (mnemonics start)
+  (make-instance 'bb :base start :data (make-array 1 :initial-contents (list `(0 0 ,(make-pseudo-insn mnemonics))))))
+
 (defun bb-branchly-large-p (isa bb)
   (> (extent-length bb) (1+ (isa-delay-slots isa))))
 
@@ -103,6 +106,7 @@
                (declare (type integer start end))
                (lret ((bb (apply #'make-instance 'bb :base start :data data (remove-from-plist rest :data))))
                  (octree-1d:insert start bb tree)))
+             (new-pseudo-bb (mnemonics at) (lret ((bb (make-pseudo-bb mnemonics at))) (octree-1d:insert at bb tree)))
              (new-linked-bb (chain-bb start end)
                "Create and chain/insert a BB START<->END, if only its length would be positive."
                (declare (type (or null bb) chain-bb) (type (integer 0) start end))
@@ -139,8 +143,8 @@
 ;;                  (format t "SPLIT post outs: ~{~S~_ ~}~%" (bb-outs new))
                  (values new delay-chop-p))))
 ;;       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
-      (let* ((minus-infinity (new-bb (1- (extent-base dis)) (extent-base dis) :data #((0 0 :head))))
-             (plus-infinity (new-bb (extent-end dis) (1+ (extent-end dis)) :data #((0 0 :tail))))
+      (let* ((minus-infinity (new-pseudo-bb :head (1- (extent-base dis))))
+             (plus-infinity (new-pseudo-bb :tail (extent-end dis)))
              (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
                               (with last-branch-was-nop-p = nil)
                               (for chain-bb = (when (and bb (or (bb-typep isa bb 'pure-continue-mixin) last-branch-was-nop-p))
@@ -307,6 +311,7 @@
               (for (values ifree iall) = (unzip (curry #'later-p node) (node-ins node)))
               (for (values ofree oall) = (unzip (curry #'later-p node) (node-outs node)))
 ;;               (format t "bb ~D ~S~%" total node)
+;;               (format t "bb ~S~%backpaths: " node) (mapt-bb-backpaths (curry (formatter "~S:~S ") t) node 10) (terpri)
               (with suppressed-flow-aligned-edge = nil)
               (when suppress-flow-aligned-edges-p
                 (removef ifree suppressed-flow-aligned-edge)

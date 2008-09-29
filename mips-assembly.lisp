@@ -238,9 +238,11 @@
 (defmipsinsn :slt     nil ((#b000000 0 #x3f) (#b101010 0 0)) :togpr-xgpr-ygpr)
 (defmipsinsn :sltu    nil ((#b000000 0 #x3f) (#b101011 0 0)) :togpr-xgpr-ygpr)
 
+(defparameter *branch-shift* 1)
+
 (defun im2bd16 (c1cond imoff)
   (declare (ignore c1cond))
-  (+ 0 (if (logbitp 15 imoff)
+  (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))
 
@@ -260,7 +262,7 @@
 (defmipsinsn :bgezall (:rcd im2bd16) ((#b000001 16 #x1f) (#b10011 0 0)) :testgpr-im16off)
 
 (defun im1bd26 (imoff)
-  (+ 0 (if (logbitp 25 imoff)
+  (+ *branch-shift* (if (logbitp 25 imoff)
           (- imoff (ash 1 26))
           imoff)))
 
@@ -269,7 +271,7 @@
 
 (defun im3bd16 (gpr1 gpr2 imoff)
   (declare (ignore gpr1 gpr2))
-  (+ 0 (if (logbitp 15 imoff)
+  (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))
 
@@ -296,7 +298,7 @@
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :from/togpr-cpsel)
 
 (defun im1bd16 (imoff)
-  (+ 0 (if (logbitp 15 imoff)
+  (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))
 

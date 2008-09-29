@@ -330,7 +330,7 @@
                             (setf pre-line (render fwds '(#\Space #\Space) nil t))
                             (setf post-line (render backs '(#\Space #\Space) nil nil))))
                         (print-line indexline pre-line nodeline post-line))
-                    (finally (when (or t separate-p)
+                    (finally (when (or separate-p)
                                (print-line "" pre-line "" post-line))))))
 ;;       (format t "processed ~D nodes, limits: fwd: ~D, back: ~D~%"
 ;;               (length nodelist) (length fwds) (length backs))

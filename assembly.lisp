@@ -152,6 +152,8 @@
 
 (defclass unknown-insn (insn) () (:default-initargs :mnemonics :unknown))
 
+(defclass pseudo-insn (insn) ())
+
 (defclass nonbranch-insn (insn pure-continue-mixin) ())
 
 (defclass branch-insn (insn)
@@ -174,6 +176,17 @@
   ((params :accessor iformat-params :type list :initarg :params))
   (:default-initargs
    :width 0 :node nil :params ()))
+
+(defparameter *unknown-iformat* (lret ((iformat (make-instance 'iformat)))
+                                  (setf (node iformat) (make-node :contribution iformat))))
+
+(defun make-unknown-insn (opcode)
+  (lret ((insn (make-instance 'unknown-insn :opcode opcode)))
+    (setf (node insn) (make-node :contribution insn :childs (list (node *unknown-iformat*))))))
+
+(defun make-pseudo-insn (mnemonics)
+  (lret ((insn (make-instance 'pseudo-insn :mnemonics mnemonics)))
+    (setf (node insn) (make-node :contribution insn :childs (list (node *unknown-iformat*))))))
 
 (defclass isa ()
   ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
@@ -284,7 +297,13 @@
 ;;               (format t "insn ~S, iformat ~S~%" (mnemonics insn) (mnemonics iformat))
               (values (list* insn (decode-iformat-params isa iformat opcode))
                       (max (width insn) (width iformat)))))
-          (values (list (make-instance 'unknown-insn :opcode opcode) opcode) 32)))
+          (values (list (make-unknown-insn opcode) opcode) 32)))
+
+(defun insn-iformat (insn)
+  (node-contribution (first (node-childs (node insn)))))
+
+(defun insn-src/dst-spec (insn &aux (iformat (insn-iformat insn)))
+  (mapcar #'third (iformat-params iformat)))
 
 (defun disassemble-u8-sequence (isa seq &aux (length (length seq)))
   (iter (with offt = 0) (until (>= offt length))

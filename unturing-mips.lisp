@@ -17,8 +17,9 @@
                                ;; <-----allotment---->
                                (when (insn-load-p insn)
                                  ;; that's it -- in all mem->reg load insn formats the victim is 1st insn parameter
-                                 (setf (gethash (first params) endangered-regs)
-                                       (list bb (- allotment (extent-length bb) (- i)))))))
+                                 (unless (gethash (first params) endangered-regs) 
+                                   (setf (gethash (first params) endangered-regs)
+                                         (list bb (- allotment (extent-length bb) (- i))))))))
                        (insn-dstreg-list (insn params)
                          ;; (format t "<~S~{ ~S~}>~%" insn (insn-src/dst-spec insn))
                          (and (not (insn-load-p insn))

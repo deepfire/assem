@@ -49,7 +49,7 @@
                                            (maximize danger-rest)) 0))
                 (unturing:mapt-bb-paths #'note-affected-insns max-danger bb :key #'bb-outs)))))))
 
-(defun lick-it (&optional (force-bb-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))
+(defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))
   (let* ((b-p (symbol-function (find-symbol "PARSE" (find-package :bintype))))
          (e-e (find-symbol "EHDR" (find-package :elf)))
          (e-e-s (symbol-function (find-symbol "EHDR-SECTIONS" (find-package :elf))))
@@ -63,6 +63,6 @@
     (unturing::check-graph-validity bbs #'unturing:bb-ins #'unturing:bb-outs)
     (unturing::pprint-bignode-graph-linear bbs
      :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)
-     :force-bb-separation-p force-bb-separation-p
+     :force-node-separation-p force-node-separation-p
      :suppress-flow-aligned-edges-p suppress-p)
     (analyse-for-mc24rt-bug bbs)))

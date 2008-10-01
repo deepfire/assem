@@ -12,6 +12,11 @@
   (:default-initargs
    :ins nil :outs nil))
 
+(defclass victim-bb (bb)
+  ((addr :accessor victim-addr :initarg :addr)
+   (reg :accessor victim-reg :initarg :reg)
+   (aggressor :accessor victim-aggressor :initarg :aggressor)))
+
 (defmethod print-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
     (format s "base: ~X, len: ~X, ins: ~{~X ~}, outs: ~{~X ~}"
@@ -38,6 +43,7 @@
 
 ;;; An important statement: we don't chop off BB's delay slots, so that the following invariant holds:
 ;;; (or (not (bb-typep bb 'branch-insn)) (and there-is-only-one-branch-exactly-where-expected))
+;;; An important result: this policy appears to be very costly.
 (defun bb-branch-posn (isa bb)
   (- (extent-length bb) (1+ (isa-delay-slots isa))))
 

@@ -32,7 +32,7 @@
                                                    (gethash (first params) endangered-regs))))
                                  (setf (gethash (first params) endangered-regs)
                                        (list bb (- allotment (extent-length bb) (- i)))))))
-                       (note-affected-insns (bb allotment &aux (used-danger (- max-danger allotment)) bb-hits)
+                       (note-affected-insns (bb allotment &aux (used-danger (- max-danger allotment)))
                          ;; (format t "eyeing: ~S ~S~%" bb used-danger)
                          (iter (for (nil nil insn . params) in-vector (extent-data bb) with-index i)
                                (for danger-index from used-danger)
@@ -48,11 +48,9 @@
                                    ;; <-------max-danger-------->
                                    (when (and (< danger-index reg-safety-edge)
                                               (not (eq bb dmg-bb)))
-                                     (push (list (+ (extent-base bb) i) dstreg dmg-bb) bb-hits)))))
-                         (when bb-hits
-                           (unturing::pprint-object bb t)
-                           (format t "~%affect list:~:{~%addr ~S, reg ~S, damage-bb ~S~}~%~%" bb-hits)
-                           (appendf hits bb-hits))))
+                                     (push (change-class bb 'unturing:victim-bb
+                                            :addr (+ (extent-base bb) i) :reg dstreg :aggressor dmg-bb)
+                                           hits)))))))
                 (unturing:mapt-bb-paths #'collect-endangered-regs danger-window bb :key #'bb-ins)
                 (setf max-danger (or (iter (for (nil (nil danger-rest)) in-hashtable endangered-regs)
                                            (maximize danger-rest)) 0))

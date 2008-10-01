@@ -23,6 +23,11 @@
             (extent-base o) (extent-length o)
             (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
 
+(defmethod print-object ((o victim-bb) s &aux (*print-level* nil) (*print-length* nil))
+  (print-unreadable-object (o s)
+    (format s "VICTIM ~X, insn-addr: ~X, reg: ~S, aggressor-base: ~X"
+            (extent-base o) (victim-addr o) (victim-reg o) (extent-base (victim-aggressor o)))))
+
 (defmethod pprint-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
     (loop :for (nil nil mnemo . params) :across (extent-data o)

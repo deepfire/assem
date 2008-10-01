@@ -88,6 +88,18 @@
   (when (> allotment this-len)
     (mapc (curry #'mapt-bb-paths fn (- allotment this-len)) (funcall key bb))))
 
+(defun bb-graph-within-distance-set (nodelist distance)
+  "Expand NODELIST with set of nodes within DISTANCE."
+  (remove-duplicates
+   (lret (bbs)
+     (labels ((note-bb (bb rest-distance)
+                (declare (ignore rest-distance))
+                (push bb bbs)))
+       (dolist (start-node nodelist)
+         (note-bb start-node 0)
+         (mapt-bb-paths #'note-bb distance start-node :key #'bb-ins)
+         (mapt-bb-paths #'note-bb distance start-node :key #'bb-outs))))))
+
 (defun dis-printer-parameters (isa disivec)
   (values (bb-leaf-p isa disivec)
           (lambda (i)

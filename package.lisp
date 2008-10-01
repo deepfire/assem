@@ -14,7 +14,7 @@
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)
   (:export
-   #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths
+   #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths #:bb-graph-within-distance-set
    #:victim-bb #:victim-addr #:victim-reg #:victim-aggressor
    #:insn-vector-to-basic-blocks))
 

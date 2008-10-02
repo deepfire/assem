@@ -238,8 +238,8 @@
 
 (defparameter *branch-shift* 1)
 
-(defun im2bd16 (c1cond imoff)
-  (declare (ignore c1cond))
+(defun im2bd16 (addr c1cond imoff)
+  (declare (ignore addr c1cond))
   (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))
@@ -259,16 +259,15 @@
 (defmipsinsn :bltzall (:ricd im2bd16) ((#b000001 16 #x1f) (#b10010 0 0)) :testgpr-im16off)
 (defmipsinsn :bgezall (:ricd im2bd16) ((#b000001 16 #x1f) (#b10011 0 0)) :testgpr-im16off)
 
-(defun im1bd26 (imoff)
-  (+ *branch-shift* (if (logbitp 25 imoff)
-          (- imoff (ash 1 26))
-          imoff)))
+(defun im1bd26 (addr imoff)
+  (let ((target (dpb imoff (byte 26 0) addr)))
+    (- target addr)))
 
 (defmipsinsn :j       (:aiun im1bd26) ((#b000010 0 0)) :im26)
 (defmipsinsn :jal     (:aiud im1bd26) ((#b000011 0 0)) :im26)
 
-(defun im3bd16 (gpr1 gpr2 imoff)
-  (declare (ignore gpr1 gpr2))
+(defun im3bd16 (addr gpr1 gpr2 imoff)
+  (declare (ignore addr gpr1 gpr2))
   (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))
@@ -295,7 +294,8 @@
 (defmipsinsn :dmtc0   nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0101 0 0)) :togpr-cpsel)
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :togpr-cpsel)
 
-(defun im1bd16 (imoff)
+(defun im1bd16 (addr imoff)
+  (declare (ignore addr))
   (+ *branch-shift* (if (logbitp 15 imoff)
           (- imoff (ash 1 16))
           imoff)))

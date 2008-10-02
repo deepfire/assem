@@ -204,7 +204,7 @@
                 ;;         (extent-base bb)
                 ;;         (apply dest-fn params)
                 ;;         (type-of (bb-tail-insn isa bb)))
-                (when-let* ((delta (apply dest-fn params))
+                (when-let* ((delta (apply dest-fn outgoing params))
                             (target (+ outgoing delta)))
                   (cond ((>= target (extent-end dis))
                          (let ((inf (or plus-infinity

@@ -198,7 +198,7 @@
               (while outgoing)
               ;; we deal only with
               ;; relative, specified, local branches
-              (when-let* ((relative-p (typep insn 'rel-branch-insn))
+              (when-let* ((immediate-p (typep insn 'branch-imm))
                           (dest-fn (branch-destination-fn insn)))
                 ;; (format t "processing a branch: [~X...] -> +~X, ~S,~%"
                 ;;         (extent-base bb)

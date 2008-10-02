@@ -7,9 +7,8 @@
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble-u8-sequence #:defparamtype #:define-iformat-root #:defformat
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec
    #:unknown-insn #:pseudo-insn #:branch-insn #:nonbranch-insn #:branch-destination-fn #:make-pseudo-insn
-   #:abs-branch-insn #:rel-branch-insn #:indef-branch-insn
    #:continue-mixin #:pure-continue-mixin #:dep-continue-mixin #:noncontinue-mixin
-   #:cond-branch-mixin #:uncond-branch-mixin))
+   #:branch-abs #:branch-rel #:branch-imm #:branch-reg #:branch-indef #:branch-cond #:branch-uncond))
 
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)

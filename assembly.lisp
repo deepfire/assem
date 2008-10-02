@@ -161,13 +161,15 @@
   (:default-initargs :destination-fn nil))
 
 ;;; by destination specification
-(defclass rel-branch-insn (branch-insn) ())   ;; destination is PC-relative
-(defclass abs-branch-insn (branch-insn) ())   ;; destination is other than PC-relative, but not indefinite
-(defclass indef-branch-insn (branch-insn) ()) ;; destination inaccessible to static, state-agnostic analysis
-
-;;; disjoint, exhaustive partitioning
-(defclass cond-branch-mixin (pure-continue-mixin) ())
-(defclass uncond-branch-mixin () ())
+(defclass branch-rel () ())
+(defclass branch-abs () ())
+;;; by destination specifier
+(defclass branch-imm () ())
+(defclass branch-reg () ())
+(defclass branch-indef () ())
+;;; 
+(defclass branch-cond (pure-continue-mixin) ())
+(defclass branch-uncond () ())
 ;; in this terminology:
 ;;     - JAL would be (uncond-branch-mixin dep-continue-mixin)
 ;;     - BAL would be (cond-branch-mixin dep-continue-mixin)

@@ -110,21 +110,24 @@
 
 (defun insn-vector-to-basic-blocks (isa ivec &aux (*print-circle* nil))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
-  (let* ((dis (make-extent 'disivec 0 (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
-         (tree (octree-1d:make-tree :start -1 :length (extent-length ivec)))
+  (let* ((dis (make-extent 'disivec (ash (extent-base ivec) -2) ;; the assumption for fixed-opcode-length 32bit arch..
+                           (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
+         (tree (octree-1d:make-tree :start (1- (extent-base dis)) :length (+ (extent-length dis) 2)))
          roots forwards)
     (labels ((insn (i)
-               (destructuring-bind (opcode width insn . params) (aref (extent-data dis) i)
+               (destructuring-bind (opcode width insn . params) (aref (extent-data dis) (- i (extent-base dis)))
                  (declare (ignore opcode width))
                  (values insn params)))
              (next-outgoing-branch (bb-start)
                "Find the closest outgoing branch after bb-start."
-               (iter (for i from bb-start below (extent-length dis))
+               (iter (for i from bb-start below (extent-end dis))
                      (for (values insn params) = (insn i))
                      (when (typep insn 'branch-insn)
                        (return (values i insn params)))))
              (new-bb (start end &rest rest &key (data (make-array (- end start) :adjustable t
-                                                                  :initial-contents (subseq (extent-data dis) start end)))
+                                                                  :initial-contents (subseq (extent-data dis) 
+                                                                                            (- start (extent-base dis))
+                                                                                            (- end (extent-base dis)))))
                       &allow-other-keys)
                (declare (type integer start end))
                (lret ((bb (apply #'make-instance 'bb :base start :data data (remove-from-plist rest :data))))
@@ -133,7 +136,6 @@
              (new-linked-bb (chain-bb start end)
                "Create and chain/insert a BB START<->END, if only its length would be positive."
                (declare (type (or null bb) chain-bb) (type (integer 0) start end))
-;;                (format t "new: ~X -> ~X, chain: ~S~%" start end (and chain-bb (extent-base chain-bb)))
                (lret ((bb (new-bb start end)))
                  (if chain-bb
                      (link-bbs chain-bb bb)
@@ -145,8 +147,8 @@
                       (delay-chop-p (and (bb-branch-p isa bb)
                                          (> at (+ (extent-base bb) (bb-branch-posn isa bb)))))
                       (new (new-bb at old-end :ins (list bb) :outs (bb-outs bb))))
-;;                  (format t "SPLIT  pre bb: ~S~%" bb)
-;;                  (format t "SPLIT  pre outs: ~{~S~_ ~}~%" (bb-outs bb))
+                 ;; (format t "SPLIT  pre bb: ~S~%" bb)
+                 ;; (format t "SPLIT  pre outs: ~{~S~_ ~}~%" (bb-outs bb))
                  ;; should be keep our invariant? two instances of code...
                  ;; bb outlinks to its chopped-off delay slot...
                  ;; hmm triple branches...
@@ -161,84 +163,80 @@
                              (extent-data bb) (adjust-array (extent-data bb) (- at (extent-base bb)))))
                      t (format t "delay chop: ~S~%" bb))
                  (push new (bb-outs bb))
-;;                  (format t "SPLIT post b : ~S~%" bb)
-;;                  (format t "SPLIT post  b: ~S~%" new)
-;;                  (format t "SPLIT post outs: ~{~S~_ ~}~%" (bb-outs new))
+                 ;; (format t "SPLIT post b : ~S~%" bb)
+                 ;; (format t "SPLIT post  b: ~S~%" new)
+                 ;; (format t "SPLIT post outs: ~{~S~_ ~}~%" (bb-outs new))
                  (values new delay-chop-p))))
-;;       (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
-      (let* (minus-infinity plus-infinity
-             (outgoings (iter (with bb-start = 0) (while (< bb-start (extent-length dis)))
-                              (with last-branch-was-nop-p = nil)
-                              (for chain-bb = (when (and bb (or (bb-typep isa bb 'pure-continue-mixin) last-branch-was-nop-p))
-                                                (setf last-branch-was-nop-p nil)
-                                                bb))
-                              (for (values outgoing insn params) = (next-outgoing-branch bb-start))
-                              (for tail = (if outgoing (+ outgoing 1 (isa-delay-slots isa)) (extent-length dis)))
-                              (for bb = (new-linked-bb chain-bb bb-start tail))
-                              (multiple-value-bind (destinated-at-us destinated-further)
-                                  (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
-                                (when destinated-at-us
-                                  (iter (for (target srcbb) in (sort destinated-at-us #'< :key #'car))
-                                        ;; watch the code below carefully for "coincidences"...
-                                        ;; (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
-                                        (with target-bb = bb)
-                                        (let ((split-p (not (= target (extent-base target-bb)))))
-                                          (multiple-value-bind (link-target delay-chop-p)
-                                              (if split-p
-                                                  (flow-split-bb-at target-bb target)
-                                                  target-bb)
-                                            (link-bbs srcbb link-target)
-                                            (when split-p
-                                              (setf target-bb link-target)
-                                              (unless delay-chop-p ;; heck, is it worth the complications, already...
-                                                (setf bb target-bb)))))))
-                                (setf forwards destinated-further))
-                              (while outgoing)
-                              ;; we deal only with
-                              ;; relative, specified, local branches
-                              (when-let* ((relative-p (typep insn 'rel-branch-insn))
-                                          (dest-fn (branch-destination-fn insn)))
-                                ;; (format t "processing a branch: [~X...] -> +~X, ~S,~%"
-                                ;;         (extent-base bb)
-                                ;;         (apply dest-fn params)
-                                ;;         (type-of (bb-tail-insn isa bb)))
-                                (when-let* ((delta (apply dest-fn params))
-                                            (target (+ outgoing delta)))
-                                  (cond ((>= target (extent-end dis))
-                                         (let ((inf (or plus-infinity
-                                                        (setf plus-infinity (new-pseudo-bb :tail (extent-end dis))))))
-                                           (link-bbs bb inf)))
-                                        ((< target (extent-base dis))
-                                         (let ((inf (or minus-infinity
-                                                        (setf minus-infinity (new-pseudo-bb :head (1- (extent-base dis)))))))
-                                           (link-bbs bb inf)))
-                                        ((> delta (isa-delay-slots isa)) ;; past this bb?
-                                         ;; (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
-                                         (push (list target bb) forwards))
-                                        ((< delta 0) ;; a back reference...
-                                         (let* ((target-bb (oct-1d:resolve target tree))
-                                                (split-p (not (= target (extent-base target-bb))))
-                                                (link-target-bb (if split-p
-                                                                    (flow-split-bb-at target-bb target)
-                                                                    target-bb))
-                                                (hit-self-p (eq target-bb bb))
-                                                (self-superseded-p (and split-p hit-self-p))
-                                                (source-bb (if self-superseded-p link-target-bb bb)))
-;;;                                            (format t "split back: ~X -> ~X~%"
-;;;                                                    (extent-base source-bb) (extent-base link-target-bb))
-                                           (link-bbs source-bb link-target-bb)
-                                           (when self-superseded-p
-                                             (setf bb source-bb)))) ;; the chain-bb of the next turn..
-                                        ((= delta (isa-delay-slots isa))
-                                         (setf last-branch-was-nop-p t))))) ;; is a NOP branch? should just ignore them.
-                              (collect (list outgoing insn params))
-                              (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))))
+      ;; (format t "total: ~X~%content: ~S~%" (extent-length dis) (extent-data dis))
+      (let* (minus-infinity plus-infinity)
+        (iter (with bb-start = (extent-base dis)) (while (< bb-start (extent-end dis)))
+              (with last-branch-was-nop-p = nil)
+              (for chain-bb = (when (and bb (or (bb-typep isa bb 'pure-continue-mixin) last-branch-was-nop-p))
+                                (setf last-branch-was-nop-p nil)
+                                bb))
+              (for (values outgoing insn params) = (next-outgoing-branch bb-start))
+              (for tail = (if outgoing (+ outgoing 1 (isa-delay-slots isa)) (extent-end dis)))
+              (for bb = (new-linked-bb chain-bb bb-start tail))
+              (multiple-value-bind (destinated-at-us destinated-further)
+                  (unzip (curry #'point-in-extent-p bb) forwards :key #'car)
+                (when destinated-at-us
+                  (iter (for (target srcbb) in (sort destinated-at-us #'< :key #'car))
+                        ;; watch the code below carefully for "coincidences"...
+                        ;; (format t "resolved forward: ~X -> ~X~%" (extent-base srcbb) target)
+                        (with target-bb = bb)
+                        (let ((split-p (not (= target (extent-base target-bb)))))
+                          (multiple-value-bind (link-target delay-chop-p)
+                              (if split-p
+                                  (flow-split-bb-at target-bb target)
+                                  target-bb)
+                            (link-bbs srcbb link-target)
+                            (when split-p
+                              (setf target-bb link-target)
+                              (unless delay-chop-p ;; heck, is it worth the complications, already...
+                                (setf bb target-bb)))))))
+                (setf forwards destinated-further))
+              (while outgoing)
+              ;; we deal only with
+              ;; relative, specified, local branches
+              (when-let* ((relative-p (typep insn 'rel-branch-insn))
+                          (dest-fn (branch-destination-fn insn)))
+                ;; (format t "processing a branch: [~X...] -> +~X, ~S,~%"
+                ;;         (extent-base bb)
+                ;;         (apply dest-fn params)
+                ;;         (type-of (bb-tail-insn isa bb)))
+                (when-let* ((delta (apply dest-fn params))
+                            (target (+ outgoing delta)))
+                  (cond ((>= target (extent-end dis))
+                         (let ((inf (or plus-infinity
+                                        (setf plus-infinity (new-pseudo-bb :tail (extent-end dis))))))
+                           (link-bbs bb inf)))
+                        ((< target (extent-base dis))
+                         (let ((inf (or minus-infinity
+                                        (setf minus-infinity (new-pseudo-bb :head (1- (extent-base dis)))))))
+                           (link-bbs bb inf)))
+                        ((> delta (isa-delay-slots isa)) ;; past this bb?
+                         ;; (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
+                         (push (list target bb) forwards))
+                        ((< delta 0) ;; a back reference...
+                         (let* ((target-bb (oct-1d:resolve target tree))
+                                (split-p (not (= target (extent-base target-bb))))
+                                (link-target-bb (if split-p
+                                                    (flow-split-bb-at target-bb target)
+                                                    target-bb))
+                                (hit-self-p (eq target-bb bb))
+                                (self-superseded-p (and split-p hit-self-p))
+                                (source-bb (if self-superseded-p link-target-bb bb)))
+                           ;; (format t "split back: ~X -> ~X~%"
+                           ;;         (extent-base source-bb) (extent-base link-target-bb))
+                           (link-bbs source-bb link-target-bb)
+                           (when self-superseded-p
+                             (setf bb source-bb)))) ;; the chain-bb of the next turn..
+                        ((= delta (isa-delay-slots isa))
+                         (setf last-branch-was-nop-p t))))) ;; is a NOP branch? should just ignore them.
+              (collect (list outgoing insn params))
+              (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))
         (when forwards
           (format t "unresolved forwards: ~S, ~S~%" (length forwards) (mapcar #'car forwards)))
-;;         (format t "bbs: ")
-;;         (oct-1d:do-tree-values (bb tree)
-;;           (format t "[~S ~S] " (extent-base bb) (1- (extent-end bb))))
-;;         (format t "~%")
         (oct-1d:tree-list tree)))))
 
 (defun check-graph-validity (nodelist node-ins-fn node-outs-fn)

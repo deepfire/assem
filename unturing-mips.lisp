@@ -34,8 +34,11 @@
                ;; (format t "eyeing: ~S ~S~%" bb used-danger)
                (iter (for (nil nil insn . params) in-vector (extent-data bb))
                      (for i below danger-window)
+                     (iter (for srcreg in (insn-reg-list :src insn params))
+                           (setf (gethash srcreg protected-regs) t))
                      (for dstreg = (first (insn-reg-list :dst insn params)))
                      (when-let (vulnspec (and dstreg (not (insn-load-p insn))
+                                              (not (gethash dstreg protected-regs))
                                               (gethash dstreg endangered-regs))) ;; vulnerable?
                        (destructuring-bind (dmg-bb reg-safety-edge) vulnspec
                          ;;        <--i---->

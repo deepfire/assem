@@ -12,10 +12,13 @@
   (:default-initargs
    :ins nil :outs nil))
 
-(defclass victim-bb (bb)
-  ((addr :accessor victim-addr :initarg :addr)
-   (reg :accessor victim-reg :initarg :reg)
-   (aggressor :accessor victim-aggressor :initarg :aggressor)))
+(defclass linked-bb (bb)
+  ((addr :accessor linked-addr :initarg :addr)
+   (reg :accessor linked-reg :initarg :reg)
+   (to :accessor linked-to :initarg :to)))
+
+(defclass victim-bb (linked-bb) ())
+(defclass aggressor-bb (linked-bb) ())
 
 (defmethod print-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
@@ -26,7 +29,12 @@
 (defmethod print-object ((o victim-bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s)
     (format s "VICTIM ~X, insn-addr: ~X, reg: ~S, aggressor-base: ~X"
-            (extent-base o) (victim-addr o) (victim-reg o) (extent-base (victim-aggressor o)))))
+            (extent-base o) (linked-addr o) (linked-reg o) (extent-base (linked-to o)))))
+
+(defmethod print-object ((o aggressor-bb) s &aux (*print-level* nil) (*print-length* nil))
+  (print-unreadable-object (o s)
+    (format s "AGGR ~X, insn-addr: ~X, reg: ~S, victim-base: ~X"
+            (extent-base o) (linked-addr o) (linked-reg o) (extent-base (linked-to o)))))
 
 (defmethod pprint-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
@@ -86,7 +94,8 @@
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (funcall fn bb allotment)
   (when (> allotment this-len)
-    (mapc (curry #'mapt-bb-paths fn (- allotment this-len)) (funcall key bb))))
+    (dolist (bb (funcall key bb))
+      (mapt-bb-paths fn (- allotment this-len) bb :key key))))
 
 (defun bb-graph-within-distance-set (nodelist distance)
   "Expand NODELIST with set of nodes within DISTANCE."

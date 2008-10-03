@@ -29,7 +29,7 @@
                                 (not (or (gethash (first params) protected-regs)
                                          (gethash (first params) endangered-regs))))
                        (setf (gethash (first params) endangered-regs)
-                             (list bb (- allotment (extent-length bb) (- i)))))))
+                             (list bb (- allotment (extent-length bb) (- i)) (+ (extent-base bb) i))))))
              (bb-affected-p (bb danger-window)
                ;; (format t "eyeing: ~S ~S~%" bb used-danger)
                (iter (for (nil nil insn . params) in-vector (extent-data bb))
@@ -40,7 +40,7 @@
                      (when-let (vulnspec (and dstreg (not (insn-load-p insn))
                                               (not (gethash dstreg protected-regs))
                                               (gethash dstreg endangered-regs))) ;; vulnerable?
-                       (destructuring-bind (dmg-bb reg-safety-edge) vulnspec
+                       (destructuring-bind (dmg-bb reg-safety-edge aggr-addr) vulnspec
                          ;;        <--i---->
                          ;; (------[..rse..d-idx.]----)
                          ;; <-reg-dgr->
@@ -48,7 +48,7 @@
                          ;; <-------max-danger-------->
                          (when (and (< i reg-safety-edge)
                                     (not (eq bb dmg-bb)))
-                           (return (values bb (+ (extent-base bb) i) dstreg dmg-bb))))))))
+                           (return (values bb (+ (extent-base bb) i) dstreg dmg-bb aggr-addr))))))))
       (dolist (entrant (bb-ins node))
         (unturing:mapt-bb-paths #'collect-endangered-regs danger-window entrant :key #'bb-ins))
       (let ((max-danger (or (iter (for (nil (nil danger-rest)) in-hashtable endangered-regs)
@@ -58,9 +58,10 @@
 
 (defun find-mc24rt2-victims (bbnet &optional (danger-window 10))
   (iter (for bb in bbnet)
-        (for (values victim addr reg aggressor) = (bb-mc24rt2-victim-p bb danger-window))
+        (for (values victim addr reg aggressor aggr-addr) = (bb-mc24rt2-victim-p bb danger-window))
         (when victim
-          (collect (change-class victim 'unturing:victim-bb :addr addr :reg reg :aggressor aggressor)))))
+          (change-class aggressor 'unturing:aggressor-bb :addr aggr-addr :reg reg :to victim)
+          (collect (change-class victim 'unturing:victim-bb :addr addr :reg reg :to aggressor)))))
 
 (defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))
   (let* ((b-p (symbol-function (find-symbol "PARSE" (find-package :bintype))))

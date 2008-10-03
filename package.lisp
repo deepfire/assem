@@ -14,7 +14,7 @@
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)
   (:export
    #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths #:bb-graph-within-distance-set
-   #:victim-bb #:victim-addr #:victim-reg #:victim-aggressor
+   #:linked-bb #:linked-addr #:linked-reg #:linked-to #:victim-bb #:aggressor-bb
    #:insn-vector-to-basic-blocks))
 
 (defpackage #:assem-mini

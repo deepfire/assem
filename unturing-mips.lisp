@@ -54,6 +54,13 @@
                        (not (eq bb dmg-bb)))
               (return (values bb (+ (extent-base bb) i) dstreg dmg-bb aggr-addr)))))))
 
+(defun path-hurt-by-mc24rt2-p (path &optional (danger-window 10) &aux (rpath (reverse path)))
+  (let ((endangered-regs (make-hash-table))
+        (protected-regs (make-hash-table)))
+    (dolist (in (rest rpath))
+      (update-protected/endangered-sets in danger-window protected-regs endangered-regs))
+    (bb-endangered-p (first rpath) (maximum-set-danger endangered-regs) protected-regs endangered-regs)))
+
 (defun bb-mc24rt2-victim-p (node &optional (danger-window 10))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (let* ((endangered-regs (make-hash-table))

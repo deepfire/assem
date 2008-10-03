@@ -61,6 +61,9 @@
         (for (values victim addr reg aggressor aggr-addr) = (bb-mc24rt2-victim-p bb danger-window))
         (when victim
           (change-class aggressor 'unturing:aggressor-bb :addr aggr-addr :reg reg :to victim)
+          (iter (for (node . rest) on (rest (unturing:find-bb-path aggressor victim)))
+                (while rest)
+                (change-class node 'unturing:linked-bb :addr addr :reg reg :to victim))
           (collect (change-class victim 'unturing:victim-bb :addr addr :reg reg :to aggressor)))))
 
 (defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))

@@ -52,7 +52,7 @@
   (make-instance 'bb :base start :data (make-array 1 :initial-contents (list `(0 0 ,(make-pseudo-insn mnemonics))))))
 
 (defun bb-branchly-large-p (isa bb)
-  (> (extent-length bb) (1+ (isa-delay-slots isa))))
+  (> (extent-length bb) (isa-delay-slots isa)))
 
 ;;; An important statement: we don't chop off BB's delay slots, so that the following invariant holds:
 ;;; (or (not (bb-typep bb 'branch-insn)) (and there-is-only-one-branch-exactly-where-expected))

@@ -97,6 +97,17 @@
     (dolist (bb (funcall key bb))
       (mapt-bb-paths fn (- allotment this-len) bb :key key))))
 
+(defun find-bb-path (from to &aux (seen (make-hash-table :test #'eq)))
+  (labels ((rec (at)
+             (unless (gethash at seen)
+               (setf (gethash at seen) t)
+               (if (eq at to)
+                   (list at)
+                   (iter (for try in (unturing:bb-outs at))
+                         (when-let (out (rec try))
+                           (return (cons at out))))))))
+    (rec from)))
+
 (defun bb-graph-within-distance-set (nodelist distance)
   "Expand NODELIST with set of nodes within DISTANCE."
   (remove-duplicates

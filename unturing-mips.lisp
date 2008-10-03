@@ -78,4 +78,4 @@
      :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)
      :force-node-separation-p force-node-separation-p
      :suppress-flow-aligned-edges-p suppress-p)
-    (analyse-for-mc24rt-bug bbs)))
+    (find-mc24rt2-victims bbs)))

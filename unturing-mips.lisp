@@ -60,7 +60,24 @@
   (iter (for bb in bbnet)
         (for (values victim addr reg aggressor aggr-addr) = (bb-mc24rt2-victim-p bb danger-window))
         (when victim
-          (mark-bb-path aggressor victim 'unturing:aggressor-bb 'unturing:linked-bb 'unturing:victim-bb aggr-addr addr reg))))
+          (unturing:mark-path (unturing:find-bb-path aggressor victim)
+                              `(unturing:aggressor-bb :addr ,aggr-addr :reg ,reg :to ,victim)
+                              `(unturing:linked-bb :addr ,addr :reg ,reg :to ,victim)
+                              `(unturing:victim-bb :addr ,addr :reg ,reg :to ,aggressor))
+          (collect victim))))
+
+(defun mark-aggr-vic-reg-triplets (bbnet tlets)
+  (labels ((bb (x) (find x bbnet :key #'extent-base)))
+    (iter (for (a v r) in tlets)
+          (if-let ((ag (bb a))
+                   (vi (bb v)))
+                  (if-let (path (unturing:find-bb-path ag vi))
+                          (unturing:mark-path path
+                                              `(unturing:aggressor-bb :addr ,a :reg ,r :to ,vi)
+                                              `(unturing:linked-bb :addr ,v :reg ,r :to ,vi)
+                                              `(unturing:victim-bb :addr ,v :reg ,r :to ,ag))
+                          (format t "NOT marking ~X -> ~X: path not found~%" a v))
+                  (format t "NOT marking ~X -> ~X: somebody not found~%" a v)))))
 
 (defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/preparee.o"))
   (let* ((b-p (symbol-function (find-symbol "PARSE" (find-package :bintype))))

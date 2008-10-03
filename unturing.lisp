@@ -108,6 +108,13 @@
                            (return (cons at out))))))))
     (rec from)))
 
+(defun mark-bb-path (from to fromclass pathclass toclass fromaddr toaddr reg)
+  (change-class from fromclass :addr fromaddr :reg reg :to to)
+  (iter (for (node . rest) on (rest (find-bb-path from to)))
+        (while rest)
+        (change-class node pathclass :addr toaddr :reg reg :to to))
+  (change-class to toclass :addr toaddr :reg reg :to from))
+
 (defun bb-graph-within-distance-set (nodelist distance)
   "Expand NODELIST with set of nodes within DISTANCE."
   (remove-duplicates

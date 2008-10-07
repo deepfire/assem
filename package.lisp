@@ -15,7 +15,7 @@
   (:export
    #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths #:find-bb-path #:mark-path #:bb-graph-within-distance-set
    #:linked-bb #:linked-addr #:linked-reg #:linked-to #:victim-bb #:aggressor-bb
-   #:insn-vector-to-basic-blocks))
+   #:insn-vector-to-basic-blocks #:bbnet-tree))
 
 (defpackage #:assem-mini
   (:nicknames #:assem)

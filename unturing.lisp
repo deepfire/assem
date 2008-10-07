@@ -282,7 +282,17 @@
               (setf bb-start (+ outgoing 1 (isa-delay-slots isa))))
         (when forwards
           (format t "unresolved forwards: ~S, ~S~%" (length forwards) (mapcar #'car forwards)))
-        (oct-1d:tree-list tree)))))
+        (values (oct-1d:tree-list tree) tree)))))
+
+(defun bbnet-tree (bbnet)
+  "Reconstruct the octree for the BB netlist."
+  (lret (tree)
+    (iter (for bb in bbnet)
+          (minimize (extent-base bb) into base)
+          (maximize (extent-end bb) into end)
+          (finally (setf tree (oct-1d:make-tree :start base :length (- end base)))))
+    (iter (for bb in bbnet)
+        (oct-1d:insert (extent-base bb) bb tree))))
 
 (defun check-graph-validity (nodelist node-ins-fn node-outs-fn)
   "Validate NODELIST as a complete list of doubly-linked graph nodes, 

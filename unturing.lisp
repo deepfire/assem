@@ -126,12 +126,15 @@
                            (decoder-rec paths (cons node acc))))))
         (decoder-rec tree nil)))))
 
-(defun mark-path (path fromargs pathargs toargs)
-  (apply #'change-class (first path) fromargs)
-  (iter (for (node . rest) on (rest path))
-        (if rest
-            (apply #'change-class node pathargs)
-            (apply #'change-class node toargs))))
+(defmacro do-path-internal-nodes ((nodevar path) &body body)
+  (with-gensyms (rest)
+    `(iter (for (,nodevar . ,rest) on (rest ,path))
+           (when ,rest
+             ,@body))))
+
+(defun mark-source-and-target (src srcaddr tgt tgtaddr reg)
+  (change-class tgt 'unturing:victim-bb :addr tgtaddr :reg reg :to src)
+  (change-class src 'unturing:aggressor-bb :addr srcaddr :reg reg :to tgt))
 
 (defun bb-graph-within-distance-set (nodelist distance)
   "Expand NODELIST with set of nodes within DISTANCE."

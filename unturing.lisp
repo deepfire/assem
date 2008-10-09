@@ -159,7 +159,7 @@
 (defun insn-vector-to-basic-blocks (isa ivec &aux (*print-circle* nil))
   (declare (optimize (speed 0) (space 0) (debug 3) (safety 3)))
   (let* ((dis (make-extent 'disivec (ash (extent-base ivec) -2) ;; the assumption for fixed-opcode-length 32bit arch..
-                           (coerce (disassemble-u8-sequence isa (extent-data ivec)) 'vector)))
+                           (coerce (disassemble isa ivec) 'vector)))
          (tree (octree-1d:make-tree :start (1- (extent-base dis)) :length (+ (extent-length dis) 2)))
          roots forwards)
     (labels ((insn (i)

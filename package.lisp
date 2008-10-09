@@ -3,6 +3,7 @@
 (defpackage #:assembly
   (:nicknames :asm) 
   (:use :common-lisp :alexandria :iterate :pergamum)
+  (:shadow #:disassemble)
   (:export
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector #:decode-insn #:disassemble #:defparamtype #:define-iformat-root #:defformat
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec
@@ -12,6 +13,7 @@
 
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)
+  (:shadowing-import-from :assembly #:disassemble)
   (:export
    #:ivec #:bb #:bb-ins #:bb-outs #:mapt-bb-paths #:find-bb-path #:do-path-internal-nodes #:mark-source-and-target #:bb-graph-within-distance-set
    #:linked-bb #:linked-addr #:linked-reg #:linked-to #:victim-bb #:aggressor-bb
@@ -29,6 +31,7 @@
 (defpackage #:mips-assembly
   (:nicknames :asm-mips) 
   (:use :common-lisp :alexandria :assembly :custom-harness :pergamum :iterate)
+  (:shadowing-import-from :assembly #:disassemble)
   (:export
    #:*mips-isa*
    #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn))

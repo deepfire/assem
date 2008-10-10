@@ -1,3 +1,5 @@
+;;; -*- Mode: Lisp -*-
+
 (defpackage :assem.system
   (:use :cl :asdf))
 

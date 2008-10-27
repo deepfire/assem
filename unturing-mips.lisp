@@ -116,36 +116,25 @@
   (iter (for bb in bbnet)
         (for (values victim addr reg aggressor aggr-addr) = (bb-mc24rt2-victim-p bb danger-window))
         (when victim
-          (unturing:mark-source-and-target aggressor aggr-addr victim addr reg)
-          (collect victim))))
+          (collect (list (unturing:bons aggressor victim) aggr-addr addr reg)))))
 
-(defun mark-aggr-vic-reg-triplets (bbnet triplets)
-  (labels ((bb-by-addr (x) (find x bbnet :key #'extent-base)))
-    (iter (for (a@ v@ reg) in triplets)
-          (if-let ((aggr (bb-by-addr a@))
-                   (vict (bb-by-addr v@)))
-                  (if-let (path (unturing:find-bb-path aggr vict))
-                          (unturing:mark-source-and-target aggr a@ v@ vict reg)
-                          (format t "NOT marking ~X -> ~X: path not found~%" a@ v@))
-                  (format t "NOT marking ~X -> ~X: somebody not found~%" a@ v@)))))
-
-(defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/to_mcs.o"))
-  (let* ((e-f-s (symbol-function (find-symbol "ELF-FILE-SECTION" (find-package :elf))))
-         (section (funcall e-f-s filename (intern ".TEXT" (find-package :elf))))
-         (bbnet (unturing:insn-vector-to-basic-blocks mips-assembly:*mips-isa* section)))
-    ;; (dolist (o bbnet)
-    ;;   (unturing::pprint-object o t) (terpri))
-    ;; (unturing::check-graph-validity bbnet #'unturing:bb-ins #'unturing:bb-outs)
-    ;; (unturing::pprint-bignode-graph-linear bbnet
-    ;;   :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)
-    ;;   :force-node-separation-p force-node-separation-p
-    ;;   :suppress-flow-aligned-edges-p suppress-p)
-    (let* ((vnet-10 (find-mc24rt2-victims bbnet 10))
-           (hurtpath-10-10 (remove-if-not (rcurry #'path-hurt-by-mc24rt2-p 10)
-                                          (mapcar #'unturing:find-bb-path (mapcar #'unturing:linked-to vnet-10) vnet-10)))
-           ;; don't mind the fixorage
-           (vnet-12 (remove-if-not (rcurry #'typep 'unturing:victim-bb) (find-mc24rt2-victims bbnet 12)))
+;; (defun lick-it (&optional (force-node-separation-p t) (suppress-p t) (filename "pestilence/to4fpu/to_mcs.o"))
+;;   (let* ((e-f-s (symbol-function (find-symbol "ELF-FILE-SECTION" (find-package :elf))))
+;;          (section (funcall e-f-s filename (intern ".TEXT" (find-package :elf))))
+;;          (bbnet (unturing:insn-vector-to-basic-blocks mips-assembly:*mips-isa* section)))
+;;     ;; (dolist (o bbnet)
+;;     ;;   (unturing::pprint-object o t) (terpri))
+;;     ;; (unturing::check-graph-validity bbnet #'unturing:bb-ins #'unturing:bb-outs)
+;;     ;; (unturing::pprint-bignode-graph-linear bbnet
+;;     ;;   :node-parameters-fn (curry #'unturing::dis-printer-parameters *mips-isa*)
+;;     ;;   :force-node-separation-p force-node-separation-p
+;;     ;;   :suppress-flow-aligned-edges-p suppress-p)
+;;     (let* ((vnet-10 (find-mc24rt2-victims bbnet 10))
+;;            (hurtpath-10-10 (remove-if-not (rcurry #'path-hurt-by-mc24rt2-p 10)
+;;                                           (mapcar #'unturing:bons-path (mapcar #'unturing:linked-to vnet-10) vnet-10)))
+;;            ;; don't mind the fixorage
+;;            (vnet-12 (remove-if-not (rcurry #'typep 'unturing:victim-bb) (find-mc24rt2-victims bbnet 12)))
        
-           (hurtpath-12-10 (remove-if-not (rcurry #'path-hurt-by-mc24rt2-p 10)
-                                          (mapcar #'unturing:find-bb-path (mapcar #'unturing:linked-to vnet-12) vnet-12))))
-      (set-difference hurtpath-10-10 hurtpath-12-10 :test #'equal))))
+;;            (hurtpath-12-10 (remove-if-not (rcurry #'path-hurt-by-mc24rt2-p 10)
+;;                                           (mapcar #'unturing:find-bb-path (mapcar #'unturing:linked-to vnet-12) vnet-12))))
+;;       (set-difference hurtpath-10-10 hurtpath-12-10 :test #'equal))))

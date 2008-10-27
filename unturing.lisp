@@ -32,29 +32,33 @@
   (:default-initargs
    :ins nil :outs nil))
 
+(defstruct (bons (:constructor bons (bar bdr)) (:conc-name nil))
+  (bar nil :type (or null bb)) (bdr nil :type (or null bb)))
+
+(defun bons-path (bons &aux (seen (make-hash-table :test #'eq)))
+  (labels ((rec (at)
+             (unless (gethash at seen)
+               (setf (gethash at seen) t)
+               (if (eq at (bdr bons))
+                   (list at)
+                   (iter (for try in (unturing:bb-outs at))
+                         (when-let (out (rec try))
+                           (return (cons at out))))))))
+    (rec (bar bons))))
+
+(defun bons-connected-p (bons)
+  (not (null (bons-path bons))))
+
 (defclass linked-bb (bb)
   ((addr :accessor linked-addr :initarg :addr)
    (reg :accessor linked-reg :initarg :reg)
    (to :accessor linked-to :initarg :to)))
-
-(defclass victim-bb (linked-bb) ())
-(defclass aggressor-bb (linked-bb) ())
 
 (defmethod print-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
     (format s "base: ~X, len: ~X, ins: ~{~X ~}, outs: ~{~X ~}"
             (extent-base o) (extent-length o)
             (mapcar #'extent-base (bb-ins o)) (mapcar #'extent-base (bb-outs o)))))
-
-(defmethod print-object ((o victim-bb) s &aux (*print-level* nil) (*print-length* nil))
-  (print-unreadable-object (o s)
-    (format s "VICTIM ~X, insn-addr: ~X, reg: ~S, aggressor-base: ~X"
-            (extent-base o) (linked-addr o) (linked-reg o) (extent-base (linked-to o)))))
-
-(defmethod print-object ((o aggressor-bb) s &aux (*print-level* nil) (*print-length* nil))
-  (print-unreadable-object (o s)
-    (format s "AGGR ~X, insn-addr: ~X, reg: ~S, victim-base: ~X"
-            (extent-base o) (linked-addr o) (linked-reg o) (extent-base (linked-to o)))))
 
 (defmethod pprint-object ((o bb) s &aux (*print-level* nil) (*print-length* nil))
   (print-unreadable-object (o s :identity t)
@@ -117,17 +121,6 @@
     (dolist (bb (funcall key bb))
       (mapt-bb-paths fn (- allotment this-len) bb :key key))))
 
-(defun find-bb-path (from to &aux (seen (make-hash-table :test #'eq)))
-  (labels ((rec (at)
-             (unless (gethash at seen)
-               (setf (gethash at seen) t)
-               (if (eq at to)
-                   (list at)
-                   (iter (for try in (unturing:bb-outs at))
-                         (when-let (out (rec try))
-                           (return (cons at out))))))))
-    (rec from)))
-
 (defun find-all-bb-paths (from to &aux (seen (make-hash-table :test #'eq)))
   (labels ((finder-rec (at)
              (unless (gethash at seen)
@@ -151,10 +144,6 @@
     `(iter (for (,nodevar . ,rest) on (rest ,path))
            (when ,rest
              ,@body))))
-
-(defun mark-source-and-target (src srcaddr tgt tgtaddr reg)
-  (change-class tgt 'unturing:victim-bb :addr tgtaddr :reg reg :to src)
-  (change-class src 'unturing:aggressor-bb :addr srcaddr :reg reg :to tgt))
 
 (defun bb-graph-within-distance-set (nodelist distance)
   "Expand NODELIST with set of nodes within DISTANCE."

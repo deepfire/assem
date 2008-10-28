@@ -15,7 +15,8 @@
   (:use :common-lisp :alexandria :iterate :pergamum :assembly)
   (:shadowing-import-from :assembly #:disassemble)
   (:export
-   #:ivec #:bb #:bb-ins #:bb-outs #:bons #:bar #:bdr #:bons-path #:bons-connected-p
+   #:ivec #:bb #:bb-ins #:bb-outs
+   #:bons #:bar #:bdr #:bons-path #:all-bons-paths #:shortest-bons-path #:bons-connected-p
    #:mapt-bb-paths #:do-path-internal-nodes #:bb-graph-within-distance-set
    #:linked-bb #:linked-addr #:linked-reg #:linked-to #:victim-bb #:aggressor-bb
    #:insn-vector-to-basic-blocks #:bbnet-tree))

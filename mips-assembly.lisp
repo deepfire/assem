@@ -52,12 +52,13 @@
    (:f30 . 30) (:f31 . 31)))
 
 (define-enumerated-operand-type cpsel 5
-  ((:prid . 15) (:status . 12) (:cause . 13) (:epc . 14) (:badvaddr . 8)
-   (:index . 0) (:random . 1) (:entrylo0 . 2) (:entrylo1 . 3)
-   (:entryhi . 10) (:context . 4) (:pagemask . 5) (:wired . 6)
-   (:count . 9) (:compare . 11) (:config . 16) (:watchlo . 18)
-   (:watchhi . 19) (:cacheerr . 27) (:ecc . 26) (:errorepc . 30)
-   (:taglo . 28) (:taghi . 29) (:lladdr . 17) (:debugepc . 24) (:perfcnt . 25) (:desave . 31)))
+  ((:index . 0) (:random . 1) (:entrylo0 . 2) (:entrylo1 . 3)
+   (:context . 4) (:pagemask . 5) (:wired . 6) (:badvaddr . 8)
+   (:count . 9) (:entryhi . 10) (:compare . 11) (:status . 12)
+   (:cause . 13) (:epc . 14) (:prid . 15) (:config . 16)
+   (:lladdr . 17) (:watchlo . 18) (:watchhi . 19) (:debug . 23)
+   (:debugepc . 24) (:perfcnt . 25) (:ecc . 26) (:cacheerr . 27)
+   (:taglo . 28) (:taghi . 29) (:errorepc . 30) (:desave . 31)))
 
 (define-enumerated-operand-type cacheop 5
   ((:index-inv-i . #x0) (:index-wbinv-d . #x1) (:index-inv-si . #x2) (:index-wbinv-sd . #x3)

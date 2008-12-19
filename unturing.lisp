@@ -278,7 +278,7 @@
                          ;; (format t "pushing a forward: ~X -> ~X~%" (extent-base bb) target)
                          (push (list target bb) forwards))
                         ((< delta 0) ;; a back reference...
-                         (let* ((target-bb (oct-1d:resolve target tree))
+                         (let* ((target-bb (oct-1d:tree-left target tree))
                                 (split-p (not (= target (extent-base target-bb))))
                                 (link-target-bb (if split-p
                                                     (flow-split-bb-at target-bb target)

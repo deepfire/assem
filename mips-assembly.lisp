@@ -20,18 +20,14 @@
 
 (in-package :mips-assembly)
 
-(deftype im26 () '(unsigned-byte 26))
-(deftype syscode () '(unsigned-byte 20))
-(deftype brkcode () '(unsigned-byte 10))
-(deftype im16 () '(unsigned-byte 16))
-(deftype im5 () '(unsigned-byte 5))
+(define-operand-type im26 26)
+(define-operand-type syscode 20)
+(define-operand-type brkcode 10)
+(define-operand-type im16 16)
+(define-operand-type im5 5)
+
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
-
-(defmacro define-enumerated-operand-type (name bit-width (&rest set))
-  `(progn
-     (deftype ,name () '(or (unsigned-byte ,bit-width) (member ,@(mapcar #'car set))))
-     (defparameter ,(format-symbol t "*~A*" name) ',set)))
 
 (define-enumerated-operand-type gpr 5
   ((:r0 . 0)   (:r1 . 1)   (:r2 . 2)   (:r3 . 3)   (:r4 . 4)
@@ -97,8 +93,16 @@
 (defun decode-mips-insn (opcode)
   (funcall #'decode-insn *mips-isa* opcode))
 
+(defmethod param-type-alist ((isa mips-isa) type)
+  (ecase type
+    ((im26 im16 im5 c1cond))
+    (gpr *gpr*)
+    (fpr *fpr*)
+    (cpsel *cpsel*)
+    (cacheop *cacheop*)
+    (prefop *prefop*)))
+
 (defmethod encode-insn-param ((isa mips-isa) val type)
-  (declare (ignore isa))
   (ecase type
     ((im26 im16 im5 c1cond) val)
     (gpr (if (integerp val) val (cdr (assoc val *gpr*))))
@@ -108,7 +112,6 @@
     (prefop (if (integerp val) val (cdr (assoc val *prefop*))))))
 
 (defmethod decode-insn-param ((isa mips-isa) val type)
-  (declare (ignore isa))
   (case type
     (im26 (logand val #x3ffffff))
     (im16 (logand val #xffff))

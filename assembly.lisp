@@ -187,6 +187,21 @@
 ;;     - JAL would be (uncond-branch-mixin dep-continue-mixin)
 ;;     - BAL would be (cond-branch-mixin dep-continue-mixin)
 
+(defvar *operand-type-widths* (make-hash-table :test 'eq))
+
+(define-container-hash-accessor *operand-type-widths* type-bit-width :type integer :if-exists :continue)
+
+(defmacro define-operand-type (name bit-width)
+  `(progn
+     (setf (type-bit-width ',name) ,bit-width)
+     (deftype ,name () '(unsigned-byte ,bit-width))))
+
+(defmacro define-enumerated-operand-type (name bit-width (&rest set))
+  `(progn
+     (setf (type-bit-width ',name) ,bit-width)
+     (deftype ,name () '(or (unsigned-byte ,bit-width) (member ,@(mapcar #'car set))))
+     (defparameter ,(format-symbol t "*~A*" name) ',set)))
+
 (defclass iformat (mnemocoded-node)
   ((params :accessor iformat-params :type list :initarg :params))
   (:default-initargs
@@ -225,6 +240,7 @@
   (unless insn-defines-format-p
     (setf (isa-iformat-root isa) (make-node :val 0 :shift format-root-shift :mask format-root-mask))))
 
+(defgeneric param-type-alist (isa type))
 (defgeneric validate-insn-parameter-spec (isa insn param-spec))
 (defgeneric encode-insn-param (isa val type))
 (defgeneric decode-insn-param (isa val type))
@@ -280,6 +296,18 @@
 ;;; Bogus wrapper? Maybe not, futurewise.
 (defmacro definsn (isa type mnemonics opcode-spec &rest rest)
   `(define-insn ,isa ,type ,mnemonics ,opcode-spec ,@rest))
+
+(defun lookup-insn (isa id)
+  "Given an instruction ID and an ISA, return the instruction's opcode,
+   as well as a list of its parameter byte specs."
+  (let ((insn (insn isa id)))
+    (values (opcode insn)
+            (let ((iformat (if (isa-insn-defines-format-p isa)
+                               (node-contribution (first (node-childs (node insn))))
+                               (iformat isa :empty))))
+              (iter (for (type offt . nil) in (iformat-params iformat))
+                    (collect (cons (byte (type-bit-width type) offt)
+                                   (param-type-alist isa type))))))))
 
 (defun encode-insn (isa id &rest params)
   (if-let* ((insn (insn isa id))

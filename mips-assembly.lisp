@@ -223,7 +223,7 @@
 (defmipsinsn :syscall (:iud) ((#b000000 0 #x3f) (#b001100 0 0)) :syscode)
 (defmipsinsn :break   (:iud) ((#b000000 0 #x3f) (#b001101 0 0)) :brkcode)
 (defmipsinsn :sync    nil ((#b000000 0 #x3f) (#b001111 0 0)) :empty)
-(defmipsinsn :mc-break (:iud) ((#b000000 6 #x1f)(#b00001 0 #x3f) (#b001101 0 0)) :empty)
+(defmipsinsn :breakd  (:iud) ((#b000000 6 #x1f)(#b00001 0 #x3f) (#b001101 0 0)) :empty)
 
 (defmipsinsn :mfhi    nil ((#b000000 0 #x3f) (#b010000 0 0)) :to-gpr)
 (defmipsinsn :mthi    nil ((#b000000 0 #x3f) (#b010001 0 0)) :from-gpr)

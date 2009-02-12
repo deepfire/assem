@@ -75,5 +75,6 @@
 (defmacro with-extentable-segment ((extentable addr segment) &body body)
   `(let ((,segment (make-instance 'segment)))
      (progn-1
-       ,@body
+       (macrolet ((emitted-insn-count () `(/ (segment-current-index ,',segment) 4)))
+         ,@body)
        (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment)))))

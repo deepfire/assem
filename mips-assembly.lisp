@@ -489,12 +489,12 @@
                         (:SRL :R27 :R27 6) (:MTC0 :R27 :ENTRYLO1) (:NOP) (:NOP) (:TLBWI) (:NOP) (:NOP)
                         (:ERET) (:NOP)))
 
-(deftest :assembly mips-assemble (null &key (input *tlb-decoded*) (expected *tlb-raw*))
+(deftest :assembly mips-assemble () (null &key (input *tlb-decoded*) (expected *tlb-raw*))
   (declare (ignore null))
   (let ((actual (map 'simple-vector (curry #'apply (curry #'encode-insn *mips-isa*)) input)))
     (expect-value expected actual :test #'equalp)))
 
-(deftest :assembly mips-disassemble (null &key (input *tlb-raw*) (expected *tlb-decoded*))
+(deftest :assembly mips-disassemble () (null &key (input *tlb-raw*) (expected *tlb-decoded*))
   (declare (ignore null))
   (let ((actual (map 'simple-vector (curry #'decode-insn *mips-isa*) input)))
     (expect-value expected actual :test #'equalp)))

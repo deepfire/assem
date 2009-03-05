@@ -30,7 +30,14 @@
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
 (define-enumerated-operand-type gpr 5
-  ((:r0 . 0)   (:r1 . 1)   (:r2 . 2)   (:r3 . 3)   (:r4 . 4)
+  ((:zero . 0) (:at . 1)   (:v0 . 2)   (:v1 . 3)   (:a0 . 4)
+   (:a1 . 5)   (:a2 . 6)   (:a3 . 7)   (:t0 . 8)   (:t1 . 9)
+   (:t2 . 10)  (:t3 . 11)  (:t4 . 12)  (:t5 . 13)  (:t6 . 14)
+   (:t7 . 15)  (:s0 . 16)  (:s1 . 17)  (:s2 . 18)  (:s3 . 19)
+   (:s4 . 20)  (:s5 . 21)  (:s6 . 22)  (:s7 . 23)  (:t8 . 24)
+   (:t9 . 25)  (:kt0 . 26) (:kt1 . 27) (:gp . 28)  (:sp . 29)
+   (:s8 . 30)  (:ra . 31)
+   (:r0 . 0)   (:r1 . 1)   (:r2 . 2)   (:r3 . 3)   (:r4 . 4)
    (:r5 . 5)   (:r6 . 6)   (:r7 . 7)   (:r8 . 8)   (:r9 . 9)
    (:r10 . 10) (:r11 . 11) (:r12 . 12) (:r13 . 13) (:r14 . 14)
    (:r15 . 15) (:r16 . 16) (:r17 . 17) (:r18 . 18) (:r19 . 19)
@@ -480,13 +487,13 @@
                     2407137280 2407202820 1757570 1083838464 1825154 1083906048 0 0 1107296258 0 0
                     1107296280 0))
 
-(defvar *tlb-decoded* #((:MFC0 :R26 :INDEX) (:ADDIU :R26 :R26 1) (:ANDI :R26 :R26 15)
-                        (:MTC0 :R26 :INDEX) (:LUI :R27 32858) (:MFC0 :R26 :BADVADDR)
-                        (:LW :R27 16392 :R27) (:SRL :R26 :R26 22) (:SLL :R26 :R26 2)
-                        (:ADDU :R27 :R27 :R26) (:LW :R27 0 :R27) (:MFC0 :R26 :CONTEXT)
-                        (:SRL :R26 :R26 3) (:ANDI :R26 :R26 16376) (:ADDU :R27 :R27 :R26)
-                        (:LW :R26 0 :R27) (:LW :R27 4 :R27) (:SRL :R26 :R26 6) (:MTC0 :R26 :ENTRYLO0)
-                        (:SRL :R27 :R27 6) (:MTC0 :R27 :ENTRYLO1) (:NOP) (:NOP) (:TLBWI) (:NOP) (:NOP)
+(defvar *tlb-decoded* #((:MFC0 :kt0 :INDEX) (:ADDIU :kt0 :kt0 1) (:ANDI :kt0 :kt0 15)
+                        (:MTC0 :kt0 :INDEX) (:LUI :kt1 32858) (:MFC0 :kt0 :BADVADDR)
+                        (:LW :kt1 16392 :kt1) (:SRL :kt0 :kt0 22) (:SLL :kt0 :kt0 2)
+                        (:ADDU :kt1 :kt1 :kt0) (:LW :kt1 0 :kt1) (:MFC0 :kt0 :CONTEXT)
+                        (:SRL :kt0 :kt0 3) (:ANDI :kt0 :kt0 16376) (:ADDU :kt1 :kt1 :kt0)
+                        (:LW :kt0 0 :kt1) (:LW :kt1 4 :kt1) (:SRL :kt0 :kt0 6) (:MTC0 :kt0 :ENTRYLO0)
+                        (:SRL :kt1 :kt1 6) (:MTC0 :kt1 :ENTRYLO1) (:NOP) (:NOP) (:TLBWI) (:NOP) (:NOP)
                         (:ERET) (:NOP)))
 
 (deftest :assembly mips-assemble () (null &key (input *tlb-decoded*) (expected *tlb-raw*))

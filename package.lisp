@@ -31,7 +31,9 @@
     #:segment #:emit #:emit-mips #:segment-active-vector #:segment-instruction-count
     #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment #:emitted-insn-count
     ;; assem-mini-mips.lisp
-    #:emit-nops #:emit-set-memory #:emit-get-memory #:emit-set-gpr #:emit-register-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
+    #:emit-nops #:emit-set-gpr
+    #:emit-store-word #:emit-load-word #:emit-store-halfword #:emit-load-halfword #:emit-store-byte #:emit-load-byte
+    #:emit-register-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
 
 (defpackage #:mips-assembly
   (:nicknames :asm-mips) 

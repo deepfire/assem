@@ -40,18 +40,44 @@
            (:lui gpr (ash value -16))
            (:ori gpr gpr (logand #xffff value))))))
 
-(defun emit-set-memory (segment basereg offset value &optional (proxy :t3))
+(defun emit-store-word (segment basereg offset value &optional (proxy :t3))
   (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
   (emit-set-gpr segment proxy value)
   (emit-mips segment
     (:sw proxy offset basereg)))
 
-(defun emit-get-memory (segment reg addr &optional (proxy :t3))
+(defun emit-load-word (segment reg addr &optional (proxy :t3))
   (declare (type segment segment) (type (unsigned-byte 32) addr))
   (emit-set-gpr segment proxy addr)
   (emit-mips segment
     (:nop)
     (:lw reg 0 proxy)))
+
+(defun emit-store-halfword (segment basereg offset value &optional (proxy :t3))
+  (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
+  (emit-set-gpr segment proxy value)
+  (emit-mips segment
+    (:sh proxy offset basereg)))
+
+(defun emit-load-halfword (segment reg addr &optional (proxy :t3))
+  (declare (type segment segment) (type (unsigned-byte 32) addr))
+  (emit-set-gpr segment proxy addr)
+  (emit-mips segment
+    (:nop)
+    (:lh reg 0 proxy)))
+
+(defun emit-store-byte (segment basereg offset value &optional (proxy :t3))
+  (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
+  (emit-set-gpr segment proxy value)
+  (emit-mips segment
+    (:sb proxy offset basereg)))
+
+(defun emit-load-byte (segment reg addr &optional (proxy :t3))
+  (declare (type segment segment) (type (unsigned-byte 32) addr))
+  (emit-set-gpr segment proxy addr)
+  (emit-mips segment
+    (:nop)
+    (:lb reg 0 proxy)))
 
 (defun emit-register-jump (segment address &optional (proxy :t3))
   (declare (type segment segment) (type (unsigned-byte 32) address))

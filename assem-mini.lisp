@@ -60,6 +60,10 @@
   (declare (type segment segment))
   (subseq (segment-data segment) 0 (segment-current-index segment)))
 
+(defun segment-disassemble (isa segment)
+  (declare (type segment segment))
+  (asm:disassemble isa (segment-active-vector segment)))
+
 (defun segment-instruction-count (segment)
   (ash (segment-current-index segment) -2))
 

@@ -28,7 +28,7 @@
   (:nicknames #:assem)
   (:use :common-lisp :alexandria :pergamum :iterate)
   (:export
-    #:segment #:emit #:emit-mips #:segment-active-vector #:segment-instruction-count
+    #:segment #:emit #:emit-mips #:segment-active-vector #:segment-disassemble #:segment-instruction-count
     #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment #:emitted-insn-count
     ;; assem-mini-mips.lisp
     #:emit-nops #:emit-set-gpr

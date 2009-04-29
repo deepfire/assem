@@ -29,16 +29,19 @@
 
 (defun emit-set-gpr (segment gpr value)
   (declare (type segment segment) (type (unsigned-byte 32) value))
-  (cond ((not (ldb-test (byte 16 16) value))
-         (emit-mips segment
-           (:ori gpr :zero value)))
-        ((not (ldb-test (byte 16 0) value))
-         (emit-mips segment
-           (:lui gpr (ash value -16))))
-        (t
-         (emit-mips segment
-           (:lui gpr (ash value -16))
-           (:ori gpr gpr (logand #xffff value))))))
+  (let ((hi (ldb (byte 16 16) value))
+        (lo (ldb (byte 16 0) value)))
+    ;; The first case also takes care of (ZEROP VALUE)
+    (cond ((zerop hi)
+           (emit-mips segment
+             (:ori gpr :zero lo)))
+          ((zerop lo)
+           (emit-mips segment
+             (:lui gpr hi)))
+          (t
+           (emit-mips segment
+             (:lui gpr hi)
+             (:ori gpr gpr lo))))))
 
 (defun emit-store-word (segment basereg offset value &optional (proxy :t3))
   (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))

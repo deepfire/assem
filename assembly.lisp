@@ -326,12 +326,6 @@
                 (finally (return acc)))
 	  (assembly-error "~@<ISA ~S does not specify insn ~S~:@>" isa id)))
 
-(defmacro assemble-into-u8-vector ((isa base vector) &body insns)
-  (once-only (isa vector)
-    `(let ((insns (list ,@(iter (for insn in insns) (collect `(list ,@insn))))))
-       (iter (for insn in insns) (for offset from ,base by 4)
-	     (setf (u8-vector-word32le ,vector offset) (apply #'encode-insn ,isa insn))))))
-
 (defun decode-iformat-params (isa iformat opcode)
   (iter (for (type shift . nil) in (iformat-params iformat))
         (collect (decode-insn-param isa (ash opcode (* -1 shift)) type))))

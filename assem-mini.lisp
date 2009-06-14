@@ -47,6 +47,40 @@
   (setf (u8-vector-word64le (segment-data segment) (segment-current-index segment)) insn)
   (incf (segment-current-index segment) 8))
 
+(defmacro with-optype-allocator (optype &body body)
+  `(with-allocator (,optype ',(asm:optype-allocatables (asm:optype optype)))
+     ,@body))
+
+(defmacro allocate-bind ((&rest binding-set) optype &body body)
+  (with-gensyms (allocation)
+    `(let* ((,allocation (iter (for binding in ',binding-set)
+                               (collect (allocate ',optype binding)))))
+       (unwind-protect (progn ,@body)
+         (mapcar (curry #'release ',optype) ,allocation)))))
+
+(defun substitute-insn (isa optype insn)
+  (cons (car insn)
+        (iter (for opvar in (asm:insn-optype-variables isa optype insn))
+              (for params initially (subst (allocated optype opvar) opvar (cdr insn))
+                   then (subst (allocated optype opvar) opvar params))
+              (finally (return params)))))
+
+(defvar *isa* nil)
+(defvar *optype* nil)
+(defvar *segment* nil)
+
+(defun emit2 (insn)
+  (declare (special *isa* *optype* *segment*))
+  (%emit32le *segment* (substitute-insn *isa* *optype* insn)))
+
+(defmacro with-segment-emission ((isa optype segment) &body body)
+  `(let ((*isa* ,isa)
+         (*optype* ,optype)
+         (*segment* ,segment))
+     (declare (special *isa* *optype* *segment*))
+     (with-optype-allocator ,optype
+       ,@body)))
+
 (defmacro emit (isa segment &body insns)
   (cond ((null insns))
         ((= 1 (length insns))

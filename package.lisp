@@ -2,14 +2,16 @@
 
 (defpackage #:assembly
   (:nicknames :asm) 
-  (:use :common-lisp :alexandria :iterate :pergamum)
+  (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:shadow #:disassemble)
   (:export
-   #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn
-   #:param-type-alist
    #:assembly-condition #:assembly-error #:simple-assembly-error
+   #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param
+   #:optype #:optype-name #:optype-width #:optype-set #:optype-unallocatables #:optype-allocatables
+   #:define-optype #:define-enumerated-optype
+   #:insn-optype-params #:insn-optype-variables #:encode-insn
+   #:param-type-alist
    #:lookup-insn #:decode-insn #:disassemble #:defparamtype #:define-iformat-root #:defformat
-   #:define-operand-type #:define-enumerated-operand-type #:type-bit-width
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec
    #:unknown-insn #:pseudo-insn #:branch-insn #:nonbranch-insn #:branch-destination-fn #:make-pseudo-insn
    #:continue-mixin #:pure-continue-mixin #:dep-continue-mixin #:noncontinue-mixin
@@ -27,7 +29,7 @@
 
 (defpackage #:assem-mini
   (:nicknames #:assem)
-  (:use :common-lisp :alexandria :pergamum :iterate)
+  (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:export
     #:segment #:emit #:emit-mips #:segment-active-vector #:segment-disassemble #:segment-instruction-count
     #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment #:emitted-insn-count
@@ -42,4 +44,5 @@
   (:shadowing-import-from :assembly #:disassemble)
   (:export
    #:*mips-isa*
-   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn))
+   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn
+   #:with-gpr-pool #:allocate-gpr #:release-gpr))

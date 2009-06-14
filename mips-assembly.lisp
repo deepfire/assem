@@ -20,61 +20,62 @@
 
 (in-package :mips-assembly)
 
-(define-operand-type im26 26)
-(define-operand-type syscode 20)
-(define-operand-type brkcode 10)
-(define-operand-type im16 16)
-(define-operand-type im5 5)
+(define-optype im26 26)
+(define-optype syscode 20)
+(define-optype brkcode 10)
+(define-optype im16 16)
+(define-optype im5 5)
 
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
-(define-enumerated-operand-type gpr 5
-  ((:zero . 0) (:at . 1)   (:v0 . 2)   (:v1 . 3)   (:a0 . 4)
-   (:a1 . 5)   (:a2 . 6)   (:a3 . 7)   (:t0 . 8)   (:t1 . 9)
-   (:t2 . 10)  (:t3 . 11)  (:t4 . 12)  (:t5 . 13)  (:t6 . 14)
-   (:t7 . 15)  (:s0 . 16)  (:s1 . 17)  (:s2 . 18)  (:s3 . 19)
-   (:s4 . 20)  (:s5 . 21)  (:s6 . 22)  (:s7 . 23)  (:t8 . 24)
-   (:t9 . 25)  (:kt0 . 26) (:kt1 . 27) (:gp . 28)  (:sp . 29)
-   (:s8 . 30)  (:ra . 31)
-   (:r0 . 0)   (:r1 . 1)   (:r2 . 2)   (:r3 . 3)   (:r4 . 4)
-   (:r5 . 5)   (:r6 . 6)   (:r7 . 7)   (:r8 . 8)   (:r9 . 9)
-   (:r10 . 10) (:r11 . 11) (:r12 . 12) (:r13 . 13) (:r14 . 14)
-   (:r15 . 15) (:r16 . 16) (:r17 . 17) (:r18 . 18) (:r19 . 19)
-   (:r20 . 20) (:r21 . 21) (:r22 . 22) (:r23 . 23) (:r24 . 24)
-   (:r25 . 25) (:r26 . 26) (:r27 . 27) (:r28 . 28) (:r29 . 29)
-   (:r30 . 30) (:r31 . 31)))
+(define-enumerated-optype gpr 5
+  ((:zero 0) (:at 1)   (:v0 2)   (:v1 3)   (:a0 4)
+   (:a1 5)   (:a2 6)   (:a3 7)   (:t0 8)   (:t1 9)
+   (:t2 10)  (:t3 11)  (:t4 12)  (:t5 13)  (:t6 14)
+   (:t7 15)  (:s0 16)  (:s1 17)  (:s2 18)  (:s3 19)
+   (:s4 20)  (:s5 21)  (:s6 22)  (:s7 23)  (:t8 24)
+   (:t9 25)  (:kt0 26) (:kt1 27) (:gp 28)  (:sp 29)
+   (:s8 30)  (:ra 31)
+   (:r0 0)   (:r1 1)   (:r2 2)   (:r3 3)   (:r4 4)
+   (:r5 5)   (:r6 6)   (:r7 7)   (:r8 8)   (:r9 9)
+   (:r10 10) (:r11 11) (:r12 12) (:r13 13) (:r14 14)
+   (:r15 15) (:r16 16) (:r17 17) (:r18 18) (:r19 19)
+   (:r20 20) (:r21 21) (:r22 22) (:r23 23) (:r24 24)
+   (:r25 25) (:r26 26) (:r27 27) (:r28 28) (:r29 29)
+   (:r30 30) (:r31 31))
+  :unallocatables (:zero :r0))
 
-(define-enumerated-operand-type fpr 5
-  ((:f0 . 0)   (:f1 . 1)   (:f2 . 2)   (:f3 . 3)   (:f4 . 4)
-   (:f5 . 5)   (:f6 . 6)   (:f7 . 7)   (:f8 . 8)   (:f9 . 9)
-   (:f10 . 10) (:f11 . 11) (:f12 . 12) (:f13 . 13) (:f14 . 14)
-   (:f15 . 15) (:f16 . 16) (:f17 . 17) (:f18 . 18) (:f19 . 19)
-   (:f20 . 20) (:f21 . 21) (:f22 . 22) (:f23 . 23) (:f24 . 24)
-   (:f25 . 25) (:f26 . 26) (:f27 . 27) (:f28 . 28) (:f29 . 29)
-   (:f30 . 30) (:f31 . 31)))
+(define-enumerated-optype fpr 5
+  ((:f0 0)   (:f1 1)   (:f2 2)   (:f3 3)   (:f4 4)
+   (:f5 5)   (:f6 6)   (:f7 7)   (:f8 8)   (:f9 9)
+   (:f10 10) (:f11 11) (:f12 12) (:f13 13) (:f14 14)
+   (:f15 15) (:f16 16) (:f17 17) (:f18 18) (:f19 19)
+   (:f20 20) (:f21 21) (:f22 22) (:f23 23) (:f24 24)
+   (:f25 25) (:f26 26) (:f27 27) (:f28 28) (:f29 29)
+   (:f30 30) (:f31 31)))
 
-(define-enumerated-operand-type cpsel 5
-  ((:index . 0) (:random . 1) (:entrylo0 . 2) (:entrylo1 . 3)
-   (:context . 4) (:pagemask . 5) (:wired . 6) (:badvaddr . 8)
-   (:count . 9) (:entryhi . 10) (:compare . 11) (:status . 12)
-   (:cause . 13) (:epc . 14) (:prid . 15) (:config . 16)
-   (:lladdr . 17) (:watchlo . 18) (:watchhi . 19) (:debug . 23)
-   (:debugepc . 24) (:perfcnt . 25) (:ecc . 26) (:cacheerr . 27)
-   (:taglo . 28) (:taghi . 29) (:errorepc . 30) (:desave . 31)))
+(define-enumerated-optype cpsel 5
+  ((:index 0) (:random 1) (:entrylo0 2) (:entrylo1 3)
+   (:context 4) (:pagemask 5) (:wired 6) (:badvaddr 8)
+   (:count 9) (:entryhi 10) (:compare 11) (:status 12)
+   (:cause 13) (:epc 14) (:prid 15) (:config 16)
+   (:lladdr 17) (:watchlo 18) (:watchhi 19) (:debug 23)
+   (:debugepc 24) (:perfcnt 25) (:ecc 26) (:cacheerr 27)
+   (:taglo 28) (:taghi 29) (:errorepc 30) (:desave 31)))
 
-(define-enumerated-operand-type cacheop 5
-  ((:index-inv-i . #x0) (:index-wbinv-d . #x1) (:index-inv-si . #x2) (:index-wbinv-sd . #x3)
-   (:index-load-tag-i . #x4) (:index-load-tag-d . #x5) (:index-load-tag-si . #x6) (:index-load-tag-sd . #x7)
-   (:index-store-tag-i . #x8) (:index-store-tag-d . #x9) (:index-store-tag-si . #xa) (:index-store-tag-sd . #xb)
-   (:index-dirty-exc-d . #xd) (:index-dirty-exc-sd . #xf)
-   (:hit-inv-i . #x0) (:hit-inv-d . #x1) (:hit-inv-si . #x2) (:hit-inv-sd . #x3)
-   (:fill-i . #x14)
-   (:index-wbinv-d . #x15) (:index-wbinv-sd . #x17)
-   (:index-wb-i . #x18) (:index-wb-d . #x19) (:index-wb-sd . #x1b)
-   (:index-set-virt-si . #x1e) (:index-set-virt-sd . #x1f)))
+(define-enumerated-optype cacheop 5
+  ((:index-inv-i #x0) (:index-wbinv-d #x1) (:index-inv-si #x2) (:index-wbinv-sd #x3)
+   (:index-load-tag-i #x4) (:index-load-tag-d #x5) (:index-load-tag-si #x6) (:index-load-tag-sd #x7)
+   (:index-store-tag-i #x8) (:index-store-tag-d #x9) (:index-store-tag-si #xa) (:index-store-tag-sd #xb)
+   (:index-dirty-exc-d #xd) (:index-dirty-exc-sd #xf)
+   (:hit-inv-i #x0) (:hit-inv-d #x1) (:hit-inv-si #x2) (:hit-inv-sd #x3)
+   (:fill-i #x14)
+   (:index-wbinv-d #x15) (:index-wbinv-sd #x17)
+   (:index-wb-i #x18) (:index-wb-d #x19) (:index-wb-sd #x1b)
+   (:index-set-virt-si #x1e) (:index-set-virt-sd #x1f)))
 
-(define-enumerated-operand-type prefop 5
+(define-enumerated-optype prefop 5
   ())
 
 (defclass mips-isa (isa)
@@ -95,10 +96,10 @@
       (error "in insn definition for ~S: the cadr does not designate a usable parameter offset" mnemonics))))
 
 (defun encode-mips-insn (id &rest params)
-  (apply #'encode-insn *mips-isa* id params))
+  (encode-insn *mips-isa* (cons id params)))
 
 (defun decode-mips-insn (opcode)
-  (funcall #'decode-insn *mips-isa* opcode))
+  (decode-insn *mips-isa* opcode))
 
 (defmethod param-type-alist ((isa mips-isa) type)
   (ecase type
@@ -112,11 +113,11 @@
 (defmethod encode-insn-param ((isa mips-isa) val type)
   (ecase type
     ((im26 im16 im5 c1cond) val)
-    (gpr (if (integerp val) val (cdr (assoc val *gpr*))))
-    (fpr (if (integerp val) val (cdr (assoc val *fpr*))))
-    (cpsel (if (integerp val) val (cdr (assoc val *cpsel*))))
-    (cacheop (if (integerp val) val (cdr (assoc val *cacheop*))))
-    (prefop (if (integerp val) val (cdr (assoc val *prefop*))))))
+    (gpr (if (integerp val) val (cadr (assoc val *gpr*))))
+    (fpr (if (integerp val) val (cadr (assoc val *fpr*))))
+    (cpsel (if (integerp val) val (cadr (assoc val *cpsel*))))
+    (cacheop (if (integerp val) val (cadr (assoc val *cacheop*))))
+    (prefop (if (integerp val) val (cadr (assoc val *prefop*))))))
 
 (defmethod decode-insn-param ((isa mips-isa) val type)
   (case type
@@ -124,11 +125,11 @@
     (im16 (logand val #xffff))
     (im5 (logand val #x1f))
     (c1cond (logand val #x7))
-    (gpr (car (rassoc (logand val #x1f) *gpr*)))
-    (fpr (car (rassoc (logand val #x1f) *fpr*)))
-    (cpsel (car (rassoc (logand val #x1f) *cpsel*)))
-    (cacheop (car (rassoc (logand val #x1f) *cacheop*)))
-    (prefop (car (rassoc (logand val #x1f) *prefop*)))))
+    (gpr (car (rassoc (logand val #x1f) *gpr* :key #'car)))
+    (fpr (car (rassoc (logand val #x1f) *fpr* :key #'car)))
+    (cpsel (car (rassoc (logand val #x1f) *cpsel* :key #'car)))
+    (cacheop (car (rassoc (logand val #x1f) *cacheop* :key #'car)))
+    (prefop (car (rassoc (logand val #x1f) *prefop* :key #'car)))))
 
 (defmacro defmipsparamtype (id spec)
   `(defparamtype *mips-isa* ',id ,spec))

@@ -191,21 +191,6 @@
 ;;     - JAL would be (uncond-branch-mixin dep-continue-mixin)
 ;;     - BAL would be (cond-branch-mixin dep-continue-mixin)
 
-(defvar *operand-type-widths* (make-hash-table :test 'eq))
-
-(define-container-hash-accessor *operand-type-widths* type-bit-width :type integer :if-exists :continue)
-
-(defmacro define-operand-type (name bit-width)
-  `(progn
-     (setf (type-bit-width ',name) ,bit-width)
-     (deftype ,name () '(unsigned-byte ,bit-width))))
-
-(defmacro define-enumerated-operand-type (name bit-width (&rest set))
-  `(progn
-     (setf (type-bit-width ',name) ,bit-width)
-     (deftype ,name () '(or (unsigned-byte ,bit-width) (member ,@(mapcar #'car set))))
-     (defparameter ,(format-symbol t "*~A*" name) ',set)))
-
 (defclass iformat (mnemocoded-node)
   ((params :accessor iformat-params :type list :initarg :params))
   (:default-initargs
@@ -221,6 +206,35 @@
 (defun make-pseudo-insn (mnemonics)
   (lret ((insn (make-instance 'pseudo-insn :mnemonics mnemonics)))
     (setf (node insn) (make-node :contribution insn :childs (list (node *unknown-iformat*))))))
+
+(defstruct optype
+  (name nil :type symbol)
+  (width 0 :type (unsigned-byte 6)))
+
+(defstruct (enumerated-optype (:include optype) (:conc-name optype-))
+  (set nil :type hash-table)
+  (unallocatables nil :type list))
+
+(defvar *optypes* (make-hash-table :test 'eq))
+(define-container-hash-accessor *optypes* optype :type optype :if-exists :continue)
+
+(defmacro define-optype (name bit-width)
+  `(progn
+     (deftype ,name () '(unsigned-byte ,bit-width))
+     (setf (optype ',name) (make-optype :name ',name :width ,bit-width))))
+
+(defmacro define-enumerated-optype (name bit-width (&rest set) &key unallocatables)
+  `(progn
+     (deftype ,name () '(or (unsigned-byte ,bit-width) (member ,@(mapcar #'car set))))
+     (setf (optype ',name) (make-enumerated-optype :name ',name :width ,bit-width
+                                                   :set ,(alist-hash-table (iter (for (name value) in set)
+                                                                                 (collect (cons name value)))
+                                                                           :test 'eq)
+                                                   :unallocatables ',unallocatables))))
+
+(defun optype-allocatables (optype)
+  "Compute the set of allocatable optype values."
+  (set-difference (mapcar #'car (hash-table-keys (optype-set optype))) (optype-unallocatables optype)))
 
 (defclass isa ()
   ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
@@ -310,8 +324,26 @@
                                (node-contribution (first (node-childs (node insn))))
                                (iformat isa :empty))))
               (iter (for (type offt . nil) in (iformat-params iformat))
-                    (collect (cons (byte (type-bit-width type) offt)
+                    (collect (cons (byte (optype-width (optype type)) offt)
                                    (param-type-alist isa type))))))))
+
+(defun insn-optype-params (isa optype insn)
+  (destructuring-bind (id &rest params) insn
+    (if-let* ((insn (insn isa id))
+              (iformat (if (isa-insn-defines-format-p isa)
+                           (node-contribution (first (node-childs (node insn))))
+                           (iformat isa :empty))))
+             (iter (for param in params)
+                   (for (type offt . nil) in (iformat-params iformat))
+                   (unless (or (typep param type) (keywordp param))
+                     (assembly-error "~@<Opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
+                   (when (eq type optype)
+                     (collect param)))
+             (assembly-error "~@<ISA ~S does not specify insn ~S~:@>" isa id))))
+
+(defun insn-optype-variables (isa optype insn)
+  (let ((allocatable-params (remove-duplicates (insn-optype-params isa optype insn))))
+    (set-difference allocatable-params (hash-table-keys (optype-set (optype optype))))))
 
 (defun encode-insn (isa insn)
   (destructuring-bind (id &rest params) insn

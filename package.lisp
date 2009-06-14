@@ -7,6 +7,7 @@
   (:export
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param #:encode-insn #:assemble-into-u8-vector
    #:param-type-alist
+   #:assembly-condition #:assembly-error #:simple-assembly-error
    #:lookup-insn #:decode-insn #:disassemble #:defparamtype #:define-iformat-root #:defformat
    #:define-operand-type #:define-enumerated-operand-type #:type-bit-width
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec

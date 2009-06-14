@@ -52,6 +52,10 @@
   childs
   contribution)
 
+(define-condition assembly-condition (condition) ())
+(define-condition assembly-error (assembly-condition error) ())
+(define-simple-error assembly-error)
+
 ;; Shakey we are here...
 (defun bitree-more-specific-p (s1 s2)
   "S1 has something more to inquire about, while S2 is final."
@@ -78,7 +82,7 @@
 
 (defun bitree-node-set-contribution (node tag val)
   (when (node-contribution node)
-    (error "~@<attempt to set contribution of node ~S, where it already has one~:@>" node))
+    (assembly-error "~@<Attempt to set contribution of node ~S, where it already has one.~:@>" node))
   (first (push (make-node :val tag :parent node :contribution val) (node-childs node))))
 
 (defun node-extraction (node &optional (pfc 7))
@@ -114,7 +118,7 @@
 (defun bitree-leaf-nconc-node (where what)
   "Nconc WHAT at the bitree leaf WHERE."
   (when (node-childs where)
-    (error "~@<node ~S is not a leaf~:@>" where))
+    (assembly-error "~@<Node ~S is not a leaf.~:@>" where))
   (when-let ((parent (node-parent what)))
     (copy-slots where parent '(shift mask)))
   (setf (node-parent what) where)
@@ -245,7 +249,7 @@
 (defgeneric encode-insn-param (isa val type))
 (defgeneric decode-insn-param (isa val type))
 
-(defun paramtype-width (isa mnemonics) (or (gethash mnemonics (isa-paramtype# isa)) (error "unknown PARAMTYPE ~S" mnemonics)))
+(defun paramtype-width (isa mnemonics) (or (gethash mnemonics (isa-paramtype# isa)) (assembly-error "~@<unknown PARAMTYPE ~S~:@>" mnemonics)))
 (defun iformat (isa mnemonics) (gethash mnemonics (isa-iformat# isa)))
 (defun insn (isa mnemonics) (gethash mnemonics (isa-insn# isa)))
 
@@ -271,11 +275,11 @@
          (iformat (iformat isa format-name)))
     (cond (format-name
            (unless iformat
-             (error "in DEFINE-INSN ~S: format ~S unknown" mnemonics format-name))
+             (assembly-error "~@<In DEFINE-INSN ~S: format ~S unknown~:@>" mnemonics format-name))
            (unless (isa-insn-defines-format-p isa)
-             (error "in DEFINE-INSN ~S: specified format ~S, but the ISA ~S does too" mnemonics format-name isa)))
+             (assembly-error "~@<In DEFINE-INSN ~S: specified format ~S, but the ISA ~S does too~:@>" mnemonics format-name isa)))
           ((isa-insn-defines-format-p isa)
-           (error "in DEFINE-INSN ~S: format neither specified directly, nor deducible by ISA" mnemonics)))
+           (assembly-error "~@<In DEFINE-INSN ~S: format neither specified directly, nor deducible by ISA~:@>" mnemonics)))
     (multiple-value-bind (opcode discrim-width) (assemble-bitree-node-value node)
       (setf (node insn) node
             (opcode insn) opcode
@@ -317,10 +321,10 @@
 	  (iter (for param in params)
                 (for (type offt . nil) in (iformat-params iformat))
                 (unless (typep param type)
-                  (error "~@<opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
+                  (assembly-error "~@<Opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
                 (for acc initially (opcode insn) then (logior acc (ash (encode-insn-param isa param type) offt)))
                 (finally (return acc)))
-	  (error "~@<ISA ~S does not specify insn ~S~:@>" isa id)))
+	  (assembly-error "~@<ISA ~S does not specify insn ~S~:@>" isa id)))
 
 (defmacro assemble-into-u8-vector ((isa base vector) &body insns)
   (once-only (isa vector)

@@ -50,10 +50,10 @@
 (defmacro emit (isa segment &body insns)
   (cond ((null insns))
         ((= 1 (length insns))
-         `(%emit32le ,segment (asm:encode-insn ,isa ,@(first insns))))
+         `(%emit32le ,segment (asm:encode-insn ,isa ',(first insns))))
         (t
          (once-only (isa segment)
-           `(let ((insns (list ,@(iter (for insn in insns) (collect `(asm:encode-insn ,isa ,@insn))))))
+           `(let ((insns (list ,@(iter (for insn in insns) (collect `(asm:encode-insn ,isa ',insn))))))
               (dolist (insn insns) (%emit32le ,segment insn)))))))
 
 (defun segment-active-vector (segment)

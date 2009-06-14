@@ -498,7 +498,7 @@
 
 (deftest :assembly mips-assemble () (null &key (input *tlb-decoded*) (expected *tlb-raw*))
   (declare (ignore null))
-  (let ((actual (map 'simple-vector (curry #'apply (curry #'encode-insn *mips-isa*)) input)))
+  (let ((actual (map 'simple-vector (curry #'encode-insn *mips-isa*) input)))
     (expect-value expected actual :test #'equalp)))
 
 (deftest :assembly mips-disassemble () (null &key (input *tlb-raw*) (expected *tlb-decoded*))

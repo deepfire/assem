@@ -32,7 +32,7 @@
   (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:export
     #:segment #:segment-active-vector #:segment-disassemble #:segment-instruction-count
-    #:eval-insn #:emit #:emit* #:with-segment-emission #:emitted-insn-count
+    #:eval-insn #:emit #:emit* #:with-segment-emission #:*segment* #:emitted-insn-count
     #:extent-list-adjoin-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
     #:with-extentable-mips-segment

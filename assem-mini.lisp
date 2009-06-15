@@ -51,44 +51,38 @@
   `(with-allocator (,optype ',(asm:optype-allocatables (asm:optype optype)))
      ,@body))
 
-(defmacro allocate-bind ((&rest binding-set) optype &body body)
-  (with-gensyms (allocation)
-    `(let* ((,allocation (iter (for binding in ',binding-set)
-                               (collect (allocate ',optype binding)))))
-       (unwind-protect (progn ,@body)
-         (mapcar (curry #'release ',optype) ,allocation)))))
-
-(defun substitute-insn (isa optype insn)
-  (cons (car insn)
-        (iter (for opvar in (asm:insn-optype-variables isa optype insn))
-              (for params initially (subst (allocated optype opvar) opvar (cdr insn))
-                   then (subst (allocated optype opvar) opvar params))
-              (finally (return params)))))
+(defun eval-insn (isa optype insn)
+  (flet ((subst-variable (iargs iargvar)
+           (subst (eval-allocated optype iargvar) iargvar iargs)))
+    (destructuring-bind (opcode &rest iargs) insn
+      (cons opcode (reduce #'subst-variable (asm:insn-optype-variables isa optype insn) :initial-value iargs)))))
 
 (defvar *isa* nil)
 (defvar *optype* nil)
 (defvar *segment* nil)
 
-(defun emit2 (insn)
+(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (optype &rest bound-set) &body body)
+  (when (and bound-set (not optype))
+    (asm:assembly-error "~@<Requested to bind allocatables with no pool specified.~:@>"))
+  (multiple-value-bind (decls body) (destructure-binding-form-body body)
+    `(let ((*isa* ,isa)
+           (*optype* ,optype)
+           (*segment* ,segment))
+       (declare (special *isa* *optype* *segment*))
+       (with-optype-allocator ,optype
+         (allocate-let ,(when optype (cons optype bound-set))
+           ,@(when decls `((declare ,@decls)))
+           (flet ((emitted-insn-count () (/ (segment-current-index *segment*) 4)))
+             ,@body)))
+       *segment*)))
+
+(defun emit (insn)
   (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (substitute-insn *isa* *optype* insn)))
+  (%emit32le *segment* (eval-insn *isa* *optype* insn)))
 
-(defmacro with-segment-emission ((isa optype segment) &body body)
-  `(let ((*isa* ,isa)
-         (*optype* ,optype)
-         (*segment* ,segment))
-     (declare (special *isa* *optype* *segment*))
-     (with-optype-allocator ,optype
-       ,@body)))
-
-(defmacro emit (isa segment &body insns)
-  (cond ((null insns))
-        ((= 1 (length insns))
-         `(%emit32le ,segment (asm:encode-insn ,isa ',(first insns))))
-        (t
-         (once-only (isa segment)
-           `(let ((insns (list ,@(iter (for insn in insns) (collect `(asm:encode-insn ,isa ',insn))))))
-              (dolist (insn insns) (%emit32le ,segment insn)))))))
+(defun emit* (&rest insn)
+  (declare (special *isa* *optype* *segment* *lexicals*))
+  (%emit32le *segment* (eval-insn *isa* *optype* insn)))
 
 (defun segment-active-vector (segment)
   (declare (type segment segment))
@@ -101,18 +95,11 @@
 (defun segment-instruction-count (segment)
   (ash (segment-current-index segment) -2))
 
-(defun extent-list-adjoin-segment (extent-list segment address)
+(defun extent-list-adjoin-segment (extent-list address segment)
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
-(defmacro with-extent-list-segment (extent-list (segment address) &body body)
-  `(let ((,segment (make-instance 'segment)))
-     (progn-1
-       ,@body
-       (extent-list-adjoin-segment ,extent-list ,segment ,address))))
-
-(defmacro with-extentable-segment ((extentable addr segment) &body body)
-  `(let ((,segment (make-instance 'segment)))
-     (progn-1
-       (macrolet ((emitted-insn-count () `(/ (segment-current-index ,',segment) 4)))
-         ,@body)
+(defmacro with-extentable-segment ((isa extentable addr) (optype &rest bound-set) &body body)
+  (with-gensyms (segment)
+    `(lret ((,segment (with-segment-emission (,isa) (,optype ,@bound-set)
+                        ,@body)))
        (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment)))))

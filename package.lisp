@@ -32,11 +32,15 @@
   (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:export
     #:segment #:segment-active-vector #:segment-disassemble #:segment-instruction-count
-    #:extent-list-adjoin-segment #:with-extent-list-segment #:with-extentable-segment #:emitted-insn-count
+    #:eval-insn #:emit #:emit* #:with-segment-emission #:emitted-insn-count
+    #:extent-list-adjoin-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
+    #:with-extentable-mips-segment
     #:emit-nops #:emit-set-gpr
-    #:emit-store-word #:emit-load-word #:emit-store-halfword #:emit-load-halfword #:emit-store-byte #:emit-load-byte
-    #:emit-register-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
+    #:emit-based-store8 #:emit-based-store16 #:emit-based-store32 #:emit-store8 #:emit-store16 #:emit-store32
+    #:emit-based-load8 #:emit-based-load16 #:emit-based-load32 #:emit-load8 #:emit-load16 #:emit-load32
+    #:emit-mask16 #:emit-mask32
+    #:emit-long-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
 
 (defpackage #:mips-assembly
   (:nicknames :asm-mips) 
@@ -44,5 +48,4 @@
   (:shadowing-import-from :assembly #:disassemble)
   (:export
    #:*mips-isa*
-   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn
-   #:with-gpr-pool #:allocate-gpr #:release-gpr))
+   #:gpr #:cpsel #:encode-mips-insn #:decode-mips-insn))

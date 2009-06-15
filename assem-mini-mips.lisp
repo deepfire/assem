@@ -1,6 +1,6 @@
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: ASSEM-MINI; Base: 10 -*-
 ;;;
-;;;  (c) copyright 2006-2008 by
+;;;  (c) copyright 2006-2009 by
 ;;;           Samium Gromoff (_deepfire@feelingofgreen.ru)
 ;;;
 ;;; This library is free software; you can redistribute it and/or
@@ -20,92 +20,117 @@
 
 (in-package :assem-mini)
 
-(defun emit-nops (segment count)
-  (dotimes (i count)
-    (emit-mips segment (:nop))))
+(defmacro with-extentable-mips-segment ((extentable addr) (optype &rest bound-set) &body body)
+  `(with-extentable-segment (asm-mips:*mips-isa* ,extentable ,addr) (,optype ,@bound-set)
+     ,@body))
 
-(defun emit-set-gpr (segment gpr value)
-  (declare (type segment segment) (type (unsigned-byte 32) value))
+(defun emit-nops (count)
+  (dotimes (i count)
+    (emit* :nop)))
+
+(defmacro define-emitter (name lambda-list binding-spec &body body)
+  (multiple-value-bind (docstring decls body) (destructure-def-body body)
+    (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
+      (emit-defun
+       name (mapcar (compose #'car #'ensure-cons) lambda-list)
+       `((allocate-let ,(when binding-spec `(',(car binding-spec) ,@(cdr binding-spec))) ,@special-decls ,@body))
+       :documentation docstring
+       :declarations (append nonspecial-decls
+                             (iter (for paramspec in lambda-list)
+                                   (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
+                                     (when paramwidth
+                                       (unless (typep paramwidth '(unsigned-byte 6))
+                                         (asm:assembly-error "~@<Error in DEFINE-LET-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
+                                                             name paramwidth paramname))
+                                       (collect `(type (unsigned-byte ,paramwidth) ,paramname))))))))))
+
+(define-emitter emit-set-gpr (gpr (value 32)) nil
   (let ((hi (ldb (byte 16 16) value))
         (lo (ldb (byte 16 0) value)))
     ;; The first case also takes care of (ZEROP VALUE)
-    (cond ((zerop hi)
-           (emit-mips segment
-             (:ori gpr :zero lo)))
-          ((zerop lo)
-           (emit-mips segment
-             (:lui gpr hi)))
-          (t
-           (emit-mips segment
-             (:lui gpr hi)
-             (:ori gpr gpr lo))))))
+    (cond ((zerop hi) (emit* :ori gpr :zero lo))
+          ((zerop lo) (emit* :lui gpr hi))
+          (t          (emit* :lui gpr hi)
+                      (emit* :ori gpr gpr lo)))))
 
-(defun emit-store-word (segment basereg offset value &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
-  (emit-set-gpr segment proxy value)
-  (emit-mips segment
-    (:sw proxy offset basereg)))
+;;;
+;;; Register-based memory stores
+;;;
+(define-emitter emit-based-store32 ((value 32) basereg (offset 16)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :sw :proxy offset basereg))
+(define-emitter emit-based-store16 ((value 16) basereg (offset 16)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :sh :proxy offset basereg))
+(define-emitter emit-based-store8 ((value 8) basereg (offset 16)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :sb :proxy offset basereg))
 
-(defun emit-load-word (segment reg addr &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 32) addr))
-  (emit-set-gpr segment proxy addr)
-  (emit-mips segment
-    (:nop)
-    (:lw reg 0 proxy)))
+;;;
+;;; Absolute memory stores
+;;;
+(define-emitter emit-store32 ((value 32) address) (gpr :base)
+  (emit-set-gpr :base (logand #xffff0000 address))
+  (emit-based-store32 value :base (logand #xffff address)))
+(define-emitter emit-store16 ((value 32) address) (gpr :base)
+  (emit-set-gpr :base (logand #xffff0000 address))
+  (emit-based-store16 value :base (logand #xffff address)))
+(define-emitter emit-store8 ((value 32) address) (gpr :base)
+  (emit-set-gpr :base (logand #xffff0000 address))
+  (emit-based-store8 value :base (logand #xffff address)))
 
-(defun emit-store-halfword (segment basereg offset value &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
-  (emit-set-gpr segment proxy value)
-  (emit-mips segment
-    (:sh proxy offset basereg)))
+;;;
+;;; Register-based memory loads
+;;;
+(define-emitter emit-based-load32 (dstreg (offset 16) basereg) nil
+  (emit* :lw dstreg offset basereg))
+(define-emitter emit-based-load16 (dstreg (offset 16) basereg) nil
+  (emit* :lh dstreg offset basereg))
+(define-emitter emit-based-load8 (dstreg (offset 16) basereg) nil
+  (emit* :lb dstreg offset basereg))
 
-(defun emit-load-halfword (segment reg addr &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 32) addr))
-  (emit-set-gpr segment proxy addr)
-  (emit-mips segment
-    (:nop)
-    (:lh reg 0 proxy)))
+;;;
+;;; Absolute, self-based memory loads
+;;;
+(define-emitter emit-load32 (dstreg (addr 32)) nil
+  (emit-set-gpr dstreg (logand addr #xffff0000))
+  (emit-based-load32 dstreg (logand addr #xffff) dstreg))
+(define-emitter emit-load16 (dstreg (addr 32)) nil
+  (emit-set-gpr dstreg (logand addr #xffff0000))
+  (emit-based-load16 dstreg (logand addr #xffff) dstreg))
+(define-emitter emit-load8 (dstreg (addr 32)) nil
+  (emit-set-gpr dstreg (logand addr #xffff0000))
+  (emit-based-load8 dstreg (logand addr #xffff) dstreg))
 
-(defun emit-store-byte (segment basereg offset value &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 16) offset) (type (unsigned-byte 32) value))
-  (emit-set-gpr segment proxy value)
-  (emit-mips segment
-    (:sb proxy offset basereg)))
+;;;
+;;; Masking
+;;;
+(define-emitter emit-mask32 (dstreg srcreg (mask 32)) (gpr :mask)
+  (emit-set-gpr :masker mask)
+  (emit* :and dstreg :mask srcreg))
+(define-emitter emit-mask16 (dstreg srcreg (mask 16)) nil
+  (emit* :andi dstreg srcreg mask))
 
-(defun emit-load-byte (segment reg addr &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 32) addr))
-  (emit-set-gpr segment proxy addr)
-  (emit-mips segment
-    (:nop)
-    (:lb reg 0 proxy)))
+(define-emitter emit-long-jump ((address 32)) (gpr :proxy)
+  (emit-set-gpr :proxy address)
+  (emit* :nop)
+  (emit* :jr :proxy)
+  (emit* :nop))
 
-(defun emit-register-jump (segment address &optional (proxy :t3))
-  (declare (type segment segment) (type (unsigned-byte 32) address))
-  (emit-set-gpr segment proxy address)
-  (emit-mips segment
-    (:nop)
-    (:jr proxy)
-    (:nop)))
+(define-emitter emit-busyloop (count) (gpr :counter)
+  (emit-set-gpr :counter count)
+  (emit* :bne :counter :zero #xffff)
+  (emit* :addiu :counter :counter #xffff))
 
-(defun emit-busyloop (segment count reg)
-  (emit-set-gpr segment reg count)
-  (emit-mips segment
-    (:bne reg :zero #xffff)
-    (:addiu reg reg #xffff)))
+(define-emitter emit-set-cp0 (cp0 (value 32)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :nop)
+  (emit* :mtc0 :proxy cp0))
 
-(defun emit-set-cp0 (segment cp0 value &optional (proxy :t3))
-  (declare (type segment segment))
-  (emit-set-gpr segment proxy value)
-  (emit-mips segment
-    (:nop)
-    (:mtc0 proxy cp0)))
-
-(defun emit-set-tlb-entry (segment i value &optional (proxy :t3))
-  (declare (type segment segment))
-  (emit-set-cp0 segment :index i proxy)
-  (emit-set-cp0 segment :entryhi (first value) proxy)
-  (emit-set-cp0 segment :entrylo0 (second value) proxy)
-  (emit-set-cp0 segment :entrylo1 (third value) proxy)
-  (emit-mips segment
-    (:nop)
-    (:tlbwi)))
+(define-emitter emit-set-tlb-entry (i value) nil
+  (emit-set-cp0 :index i)
+  (emit-set-cp0 :entryhi (first value))
+  (emit-set-cp0 :entrylo0 (second value))
+  (emit-set-cp0 :entrylo1 (third value))
+  (emit* :nop)
+  (emit* :tlbwi))

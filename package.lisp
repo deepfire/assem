@@ -7,7 +7,7 @@
   (:export
    #:assembly-condition #:assembly-error #:simple-assembly-error
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param
-   #:optype #:optype-name #:optype-width #:optype-set #:optype-unallocatables #:optype-allocatables
+   #:optype #:optype-name #:optype-width #:optype-set #:optype-rset #:optype-unallocatables #:optype-allocatables #:optype-mask
    #:define-optype #:define-enumerated-optype
    #:insn-optype-params #:insn-optype-variables #:encode-insn
    #:param-type-alist

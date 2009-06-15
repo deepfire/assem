@@ -1,6 +1,6 @@
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: ASSEMBLY; Base: 10 -*-
 ;;;
-;;;  (c) copyright 2007-2008 by
+;;;  (c) copyright 2007-2009 by
 ;;;           Samium Gromoff (_deepfire@feelingofgreen.ru)
 ;;;
 ;;; This library is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@
 (define-optype brkcode 10)
 (define-optype im16 16)
 (define-optype im5 5)
+(define-optype c1cond 3)
 
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
@@ -104,32 +105,24 @@
 (defmethod param-type-alist ((isa mips-isa) type)
   (ecase type
     ((im26 im16 im5 c1cond))
-    (gpr *gpr*)
-    (fpr *fpr*)
-    (cpsel *cpsel*)
-    (cacheop *cacheop*)
-    (prefop *prefop*)))
+    ((gpr fpr cpsel cacheop prefop)
+     (hash-table-alist (optype-set (optype type))))))
 
 (defmethod encode-insn-param ((isa mips-isa) val type)
   (ecase type
-    ((im26 im16 im5 c1cond) val)
-    (gpr (if (integerp val) val (cadr (assoc val *gpr*))))
-    (fpr (if (integerp val) val (cadr (assoc val *fpr*))))
-    (cpsel (if (integerp val) val (cadr (assoc val *cpsel*))))
-    (cacheop (if (integerp val) val (cadr (assoc val *cacheop*))))
-    (prefop (if (integerp val) val (cadr (assoc val *prefop*))))))
+    ((im26 syscode brkcode im16 im5 c1cond)
+     val)
+    ((gpr fpr cpsel cacheop prefop)
+     (if (integerp val)
+         val
+         (gethash val (optype-set (optype type)))))))
 
-(defmethod decode-insn-param ((isa mips-isa) val type)
+(defmethod decode-insn-param ((isa mips-isa) val type &aux (optype (optype type)))
   (case type
-    (im26 (logand val #x3ffffff))
-    (im16 (logand val #xffff))
-    (im5 (logand val #x1f))
-    (c1cond (logand val #x7))
-    (gpr (car (rassoc (logand val #x1f) *gpr* :key #'car)))
-    (fpr (car (rassoc (logand val #x1f) *fpr* :key #'car)))
-    (cpsel (car (rassoc (logand val #x1f) *cpsel* :key #'car)))
-    (cacheop (car (rassoc (logand val #x1f) *cacheop* :key #'car)))
-    (prefop (car (rassoc (logand val #x1f) *prefop* :key #'car)))))
+    ((im26 im16 im5 c1cond)
+     (logand val (optype-mask optype)))
+    ((gpr fpr cpsel cacheop prefop)
+     (gethash (logand val (optype-mask optype)) (optype-rset optype)))))
 
 (defmacro defmipsparamtype (id spec)
   `(defparamtype *mips-isa* ',id ,spec))

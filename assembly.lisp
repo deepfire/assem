@@ -213,6 +213,7 @@
 
 (defstruct (enumerated-optype (:include optype) (:conc-name optype-))
   (set nil :type hash-table)
+  (rset nil :type hash-table)
   (unallocatables nil :type list))
 
 (defvar *optypes* (make-hash-table :test 'eq))
@@ -230,11 +231,18 @@
                                                    :set ,(alist-hash-table (iter (for (name value) in set)
                                                                                  (collect (cons name value)))
                                                                            :test 'eq)
+                                                   :rset ,(alist-hash-table (iter (for (name value) in set)
+                                                                                  (collect (cons value name)))
+                                                                            :test 'eq)
                                                    :unallocatables ',unallocatables))))
 
 (defun optype-allocatables (optype)
-  "Compute the set of allocatable optype values."
+  "Compute the set of allocatable OPTYPE values."
   (set-difference (mapcar #'car (hash-table-keys (optype-set optype))) (optype-unallocatables optype)))
+
+(defun optype-mask (optype)
+  "Compute the OPTYPE mask."
+  (1- (ash 1 (optype-width optype))))
 
 (defclass isa ()
   ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)

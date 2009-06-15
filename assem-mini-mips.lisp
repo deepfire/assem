@@ -20,9 +20,6 @@
 
 (in-package :assem-mini)
 
-(defmacro emit-mips (segment &body body)
-  `(emit mips-assembly:*mips-isa* ,segment ,@body))
-
 (defun emit-nops (segment count)
   (dotimes (i count)
     (emit-mips segment (:nop))))

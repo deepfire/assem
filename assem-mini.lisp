@@ -78,11 +78,11 @@
 
 (defun emit (insn)
   (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (eval-insn *isa* *optype* insn)))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn))))
 
 (defun emit* (&rest insn)
   (declare (special *isa* *optype* *segment* *lexicals*))
-  (%emit32le *segment* (eval-insn *isa* *optype* insn)))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn))))
 
 (defun segment-active-vector (segment)
   (declare (type segment segment))

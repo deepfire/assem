@@ -66,7 +66,7 @@
     (asm:assembly-error "~@<Requested to bind allocatables with no pool specified.~:@>"))
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*isa* ,isa)
-            (*optype* ,optype)
+            (*optype* ',optype)
             (*segment* ,segment))
        (declare (special *isa* *optype* *segment*))
        (with-optype-allocator ,optype

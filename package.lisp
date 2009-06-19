@@ -31,8 +31,8 @@
   (:nicknames #:assem)
   (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:export
-    #:segment #:segment-active-vector #:segment-disassemble #:segment-instruction-count
-    #:eval-insn #:emit #:emit* #:with-segment-emission #:*segment* #:emitted-insn-count
+    #:segment #:pinned-segment #:segment-active-vector #:segment-disassemble #:segment-instruction-count
+    #:eval-insn #:emit #:emit* #:with-segment-emission #:*segment* #:emitted-insn-count #:current-insn-count #:current-insn-addr
     #:extent-list-adjoin-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
     #:with-extentable-mips-segment

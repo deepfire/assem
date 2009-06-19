@@ -24,6 +24,9 @@
   ((data :accessor segment-data :initform (make-array 1024 :element-type '(unsigned-byte 8) :adjustable t :initial-element 0))
    (current-index :type (unsigned-byte 32) :initform 0)))
 
+(defclass pinned-segment (segment)
+  ((base :accessor pinned-segment-base :type (integer 0) :initarg :base)))
+
 (defun segment-current-index (segment)
   (declare (type segment segment))
   (slot-value segment 'current-index))
@@ -36,6 +39,17 @@
             (adjust-array (segment-data segment)
                           (ash current (- (integer-length new-value) (integer-length current) -1))))))
   (setf (slot-value segment 'current-index) new-value))
+
+(defun segment-active-vector (segment)
+  (declare (type segment segment))
+  (subseq (segment-data segment) 0 (segment-current-index segment)))
+
+(defun segment-disassemble (isa segment)
+  (declare (type segment segment))
+  (asm:disassemble isa (segment-active-vector segment)))
+
+(defun segment-instruction-count (segment)
+  (ash (segment-current-index segment) -2))
 
 (defun %emit32le (segment insn)
   (declare (type segment segment))
@@ -84,22 +98,21 @@
   (declare (special *isa* *optype* *segment* *lexicals*))
   (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn))))
 
-(defun segment-active-vector (segment)
-  (declare (type segment segment))
-  (subseq (segment-data segment) 0 (segment-current-index segment)))
+(defun current-insn-count ()
+  (segment-instruction-count *segment*))
 
-(defun segment-disassemble (isa segment)
-  (declare (type segment segment))
-  (asm:disassemble isa (segment-active-vector segment)))
+(defun current-insn-addr ()
+  (+ (pinned-segment-base *segment*) (segment-instruction-count *segment*)))
 
-(defun segment-instruction-count (segment)
-  (ash (segment-current-index segment) -2))
-
+;;;
+;;; Misc
+;;;
 (defun extent-list-adjoin-segment (extent-list address segment)
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
 (defmacro with-extentable-segment ((isa extentable addr) (optype &rest bound-set) &body body)
   (with-gensyms (segment)
-    `(lret ((,segment (with-segment-emission (,isa) (,optype ,@bound-set)
-                        ,@body)))
-       (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment)))))
+    (once-only (addr)
+      `(lret ((,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) (,optype ,@bound-set)
+                          ,@body)))
+         (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment))))))

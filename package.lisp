@@ -40,7 +40,9 @@
     #:emit-based-store8 #:emit-based-store16 #:emit-based-store32 #:emit-store8 #:emit-store16 #:emit-store32
     #:emit-based-load8 #:emit-based-load16 #:emit-based-load32 #:emit-load8 #:emit-load16 #:emit-load32
     #:emit-mask16 #:emit-mask32
-    #:emit-long-jump #:emit-busyloop #:emit-set-cp0 #:emit-set-tlb-entry))
+    #:emit-long-jump
+    #:with-tags #:with-tag-domain #:emit-tag #:emit-ref #:emitting-iteration
+    #:emit-set-cp0 #:emit-set-tlb-entry))
 
 (defpackage #:mips-assembly
   (:nicknames :asm-mips) 

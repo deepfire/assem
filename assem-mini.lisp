@@ -70,7 +70,7 @@
             (*segment* ,segment))
        (declare (special *isa* *optype* *segment*))
        (with-optype-allocator ,optype
-         (allocate-let (',optype ,@bound-set)
+         (allocate-let (,optype ,@bound-set)
            ,@(when decls `((declare ,@decls)))
            (flet ((emitted-insn-count () (/ (segment-current-index *segment*) 4)))
              (declare (ignorable #'emitted-insn-count))

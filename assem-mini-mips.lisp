@@ -31,18 +31,19 @@
 (defmacro define-emitter (name lambda-list binding-spec &body body)
   (multiple-value-bind (docstring decls body) (destructure-def-body body)
     (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
-      (emit-defun
-       name (mapcar (compose #'car #'ensure-cons) lambda-list)
-       `((allocate-let ,(when binding-spec `(',(car binding-spec) ,@(cdr binding-spec))) ,@special-decls ,@body))
-       :documentation docstring
-       :declarations (append nonspecial-decls
-                             (iter (for paramspec in lambda-list)
-                                   (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
-                                     (when paramwidth
-                                       (unless (typep paramwidth '(unsigned-byte 6))
-                                         (asm:assembly-error "~@<Error in DEFINE-LET-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
-                                                             name paramwidth paramname))
-                                       (collect `(type (unsigned-byte ,paramwidth) ,paramname))))))))))
+      (destructuring-bind (&optional (optype 'gpr) &rest binding-set) binding-spec
+        (emit-defun
+         name (mapcar (compose #'car #'ensure-cons) lambda-list)
+         `((allocate-let (,optype ,@binding-set) ,@special-decls ,@body))
+         :documentation docstring
+         :declarations (append nonspecial-decls
+                               (iter (for paramspec in lambda-list)
+                                     (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
+                                       (when paramwidth
+                                         (unless (typep paramwidth '(unsigned-byte 6))
+                                           (asm:assembly-error "~@<Error in DEFINE-LET-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
+                                                               name paramwidth paramname))
+                                         (collect `(type (unsigned-byte ,paramwidth) ,paramname)))))))))))
 
 (define-emitter emit-set-gpr (gpr (value 32)) nil
   (let ((hi (ldb (byte 16 16) value))
@@ -117,10 +118,50 @@
   (emit* :jr :proxy)
   (emit* :nop))
 
-(define-emitter emit-busyloop (count) (gpr :counter)
-  (emit-set-gpr :counter count)
-  (emit* :bne :counter :zero #xffff)
-  (emit* :addiu :counter :counter #xffff))
+(defmacro with-tags ((&rest tags) &body body)
+  `(tracker-let (tags ,@tags)
+     ,@body))
+
+(defmacro with-tag-domain ((&rest tags) &body body)
+  `(with-tracker tags
+     (with-tags ,tags
+       ,@body)))
+
+(defun make-tag-backpatcher (tag-name)
+  (lambda (tag-insn-nr)
+    (map-tracker-key-references
+     'tags tag-name
+     (lambda (reference-value)
+       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
+         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
+               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
+
+(defun emit-tag (name)
+  (tracker-set-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (segment-instruction-count *segment*)))
+
+(defmacro emit-ref (name (delta-var-name) &body insn)
+  (with-gensyms (delta)
+    `(progn (tracker-reference-key 'tags ',name (cons (segment-instruction-count *segment*)
+                                                      (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
+                                                        (declare (type (signed-byte 16) ,delta))
+                                                        (asm:encode-insn *isa* (list ,@insn)))))
+            (emit* :nop))))
+
+(defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg '(pool-allocate-lexical 'asm-mips:gpr :counter))) &body body)
+  (with-gensyms (counter)
+    (once-only (iterations)
+      `(let ((,counter ,counter-reg))
+         (with-tags (:loop-begin ,@(when exit-tag `(,exit-tag)))
+           (if (integerp ,iterations)
+               (emit-set-gpr ,counter ,iterations)
+               (emit* :or  ,counter ,iterations :zero))
+           (emit-tag :loop-begin)
+           ,@body
+           (emit-ref :loop-begin (delta) :bne ,counter :zero delta)
+           (emit* :addiu ,counter ,counter #xffff)
+           ,@(when exit-tag
+                   `((emit-tag ,exit-tag))))))))
+
 
 (define-emitter emit-set-cp0 (cp0 (value 32)) (gpr :proxy)
   (emit-set-gpr :proxy value)

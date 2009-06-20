@@ -205,6 +205,15 @@
                                                        (asm:encode-insn *isa* (list ,@insn)))))
             (emit* :nop))))
 
+(defun emit-jump (name)
+  (emit-ref name (delta) :beq :zero :zero delta))
+
+(defun emit-jump-if-eq (name r1 r2)
+  (emit-ref name (delta) :beq r1 r2 delta))
+
+(defun emit-jump-if-ne (name r1 r2)
+  (emit-ref name (delta) :beq r1 r2 delta))
+
 (defun backpatch-outstanding-global-tag-references ()
   (map-tracked-keys 'tags (curry #'tracker-release-key-and-process-references 'tags)))
 

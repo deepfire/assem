@@ -260,10 +260,10 @@
         (for argreg in '(:arg0-ret :arg1 :arg2))
         (emit-set-cell argreg arg))
   (emit-stack-push (+ 8 (current-insn-addr)))
-  (emit-ref name (delta) :beq :zero :zero delta)
+  (emit-jump name)
   (emit* :nop))
 
-(defmacro emitting-function ((name &optional (return-tag :return)) &body body)
+(defmacro emitting-function (name (&key (return-tag :return)) &body body)
   `(allocate-let (asm-mips:gpr :ret-reg)
      (with-tags (,return-tag)
        (emit-new-global-tag ,name)
@@ -274,3 +274,13 @@
        (emit* :nop)
        (emit* :jr :ret-reg)
        (emit* :nop))))
+
+(defmacro emitting-predicate-function (name (&key (return-tag :return) (return-zero-tag :return-zero) (return-one-tag :return-one)) &body body)
+  `(emitting-function ,name ()
+     (with-tags (,return-tag ,return-zero-tag ,return-one-tag)
+       ,@body
+       (emit-tag ,return-one-tag)
+       (emit-set-cell :arg0-ret 1)
+       (emit-jump ,return-tag)
+       (emit-tag ,return-zero-tag)
+       (emit-set-cell :arg0-ret 0))))

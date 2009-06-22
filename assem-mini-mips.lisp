@@ -20,9 +20,20 @@
 
 (in-package :assem-mini)
 
-(defmacro with-extentable-mips-segment ((extentable addr) (optype &rest bound-set) &body body)
-  `(with-extentable-segment (asm-mips:*mips-isa* ,extentable ,addr) (,optype ,@bound-set)
+(defmacro with-mips-assem ((&rest tags) &body body)
+  `(with-assem asm-mips:gpr (,@tags)
      ,@body))
+
+(defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
+  `(with-extentable-segment (asm-mips:*mips-isa* ,extentable ,addr) asm-mips:gpr (,@tags)
+     ,@body))
+
+(defmacro with-mips-gpri ((&rest gprs) &body body)
+  `(allocate-let (asm-mips:gpr ,@gprs)
+     ,@body))
+
+(defun allocate-mips-gpr (name)
+  (pool-allocate 'asm-mips:gpr name))
 
 (defun emit-nops (count)
   (dotimes (i count)
@@ -31,7 +42,7 @@
 (defmacro define-emitter (name lambda-list binding-spec &body body)
   (multiple-value-bind (docstring decls body) (destructure-def-body body)
     (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
-      (destructuring-bind (&optional (optype 'gpr) &rest binding-set) binding-spec
+      (destructuring-bind (&optional (optype 'asm-mips:gpr) &rest binding-set) binding-spec
         (emit-defun
          name (mapcar (compose #'car #'ensure-cons) lambda-list)
          `((allocate-let (,optype ,@binding-set) ,@special-decls ,@body))
@@ -45,38 +56,42 @@
                                                                name paramwidth paramname))
                                          (collect `(type (unsigned-byte ,paramwidth) ,paramname)))))))))))
 
-(define-emitter emit-set-gpr (gpr (value 32)) nil
-  (let ((hi (ldb (byte 16 16) value))
-        (lo (ldb (byte 16 0) value)))
-    ;; The first case also takes care of (ZEROP VALUE)
-    (cond ((zerop hi) (emit* :ori gpr :zero lo))
-          ((zerop lo) (emit* :lui gpr hi))
-          (t          (emit* :lui gpr hi)
-                      (emit* :ori gpr gpr lo)))))
+(define-emitter emit-set-gpr (gpr value) nil
+  (etypecase value
+    (integer
+     (let ((hi (ldb (byte 16 16) value))
+           (lo (ldb (byte 16 0) value)))
+       ;; The first case also takes care of (ZEROP VALUE)
+       (cond ((zerop hi) (emit* :ori gpr :zero lo))
+             ((zerop lo) (emit* :lui gpr hi))
+             (t          (emit* :lui gpr hi)
+                         (emit* :ori gpr gpr lo)))))
+    (keyword
+     (emit* :or gpr :zero value))))
 
 ;;;
 ;;; Register-based memory stores
 ;;;
-(define-emitter emit-based-store32 ((value 32) basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-store32 ((value 32) basereg (offset 16)) (asm-mips:gpr :proxy)
   (emit-set-gpr :proxy value)
   (emit* :sw :proxy offset basereg))
-(define-emitter emit-based-store16 ((value 16) basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-store16 ((value 16) basereg (offset 16)) (asm-mips:gpr :proxy)
   (emit-set-gpr :proxy value)
   (emit* :sh :proxy offset basereg))
-(define-emitter emit-based-store8 ((value 8) basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-store8 ((value 8) basereg (offset 16)) (asm-mips:gpr :proxy)
   (emit-set-gpr :proxy value)
   (emit* :sb :proxy offset basereg))
 
 ;;;
 ;;; Absolute memory stores
 ;;;
-(define-emitter emit-store32 ((value 32) address) (gpr :base)
+(define-emitter emit-store32 ((value 32) address) (asm-mips:gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store32 value :base (logand #xffff address)))
-(define-emitter emit-store16 ((value 32) address) (gpr :base)
+(define-emitter emit-store16 ((value 32) address) (asm-mips:gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store16 value :base (logand #xffff address)))
-(define-emitter emit-store8 ((value 32) address) (gpr :base)
+(define-emitter emit-store8 ((value 32) address) (asm-mips:gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store8 value :base (logand #xffff address)))
 
@@ -106,7 +121,7 @@
 ;;;
 ;;; Masking
 ;;;
-(define-emitter emit-mask32 (dstreg srcreg (mask 32)) (gpr :mask)
+(define-emitter emit-mask32 (dstreg srcreg (mask 32)) (asm-mips:gpr :mask)
   (emit-set-gpr :masker mask)
   (emit* :and dstreg :mask srcreg))
 (define-emitter emit-mask16 (dstreg srcreg (mask 16)) nil
@@ -115,7 +130,7 @@
 ;;;
 ;;; Miscellaneous complex accesses
 ;;;
-(define-emitter emit-set-cp0 (cp0 (value 32)) (gpr :proxy)
+(define-emitter emit-set-cp0 (cp0 (value 32)) (asm-mips:gpr :proxy)
   (emit-set-gpr :proxy value)
   (emit* :nop)
   (emit* :mtc0 :proxy cp0))
@@ -131,7 +146,7 @@
 ;;;
 ;;; Jumps
 ;;;
-(define-emitter emit-long-jump ((address 32)) (gpr :proxy)
+(define-emitter emit-long-jump ((address 32)) (asm-mips:gpr :proxy)
   (emit-set-gpr :proxy address)
   (emit* :nop)
   (emit* :jr :proxy)
@@ -140,29 +155,41 @@
 ;;;
 ;;; Beginnings of cell machinery
 ;;;
-(defun emit-copy-cell (dest src)
-  (emit* :or dest src :zero))
+(defun ensure-cell (name val)
+  "Should not exist: must be taken care of by LET-alikes."
+  (cond
+    ;; already a register? rebind lexically.
+    ((keywordp val)
+     (allocate-lexical-binding 'asm-mips:gpr name)
+     (setf (lexical-binding 'asm-mips:gpr name)
+           (if (lexical-p 'asm-mips:gpr val)
+               (lexical-binding 'asm-mips:gpr val)
+               val)))
+    ;; no? allocate, bind lexically and set.
+    (t
+     (let ((cell (allocate-lexically-bound-global 'asm-mips:gpr name)))
+       (emit-set-gpr cell val)))))
 
-(defun emit-set-cell (cell value)
-  (if (integerp value)
-      (emit-set-gpr cell value)
-      (emit-copy-cell cell value)))
+(defun release-cell (name)
+  "Shouldn't exist, likewise."
+  (if (lexical-p 'asm-mips:gpr name)
+      (undo-lexical-binding 'asm-mips:gpr name)))
 
-(define-emitter emit-based-cell-store32 (value basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-cell-store32 (value basereg (offset 16)) (asm-mips:gpr :proxy)
   (etypecase value
     (integer
      (emit-set-gpr :proxy value)
      (emit* :sw :proxy offset basereg))
     (keyword
      (emit* :sw value offset basereg))))
-(define-emitter emit-based-cell-store16 (value basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-cell-store16 (value basereg (offset 16)) (asm-mips:gpr :proxy)
   (etypecase value
     (integer
      (emit-set-gpr :proxy value)
      (emit* :sh :proxy offset basereg))
     (keyword
      (emit* :sh value offset basereg))))
-(define-emitter emit-based-cell-store8 (value basereg (offset 16)) (gpr :proxy)
+(define-emitter emit-based-cell-store8 (value basereg (offset 16)) (asm-mips:gpr :proxy)
   (etypecase value
     (integer
      (emit-set-gpr :proxy value)
@@ -171,40 +198,8 @@
      (emit* :sb value offset basereg))))
 
 ;;;
-;;; Tags
+;;; Jumps
 ;;;
-(defmacro with-tags ((&rest tags) &body body)
-  `(tracker-let (tags ,@tags)
-     ,@body))
-
-(defmacro with-tag-domain ((&rest tags) &body body)
-  `(with-tracker tags
-     (with-tags ,tags
-       ,@body)))
-
-(defun make-tag-backpatcher (tag-name)
-  (lambda (tag-insn-nr)
-    (map-tracker-key-references
-     'tags tag-name
-     (lambda (reference-value)
-       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
-         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
-               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
-
-(defun emit-new-global-tag (name)
-  (tracker-add-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
-
-(defun emit-tag (name)
-  (tracker-set-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
-
-(defmacro emit-ref (name (delta-var-name) &body insn)
-  (with-gensyms (delta)
-    `(progn (tracker-reference-key 'tags ,name (cons (segment-instruction-count *segment*)
-                                                     (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
-                                                       (declare (type (signed-byte 16) ,delta))
-                                                       (asm:encode-insn *isa* (list ,@insn)))))
-            (emit* :nop))))
-
 (defun emit-jump (name)
   (emit-ref name (delta) :beq :zero :zero delta))
 
@@ -212,41 +207,42 @@
   (emit-ref name (delta) :beq r1 r2 delta))
 
 (defun emit-jump-if-ne (name r1 r2)
-  (emit-ref name (delta) :beq r1 r2 delta))
-
-(defun backpatch-outstanding-global-tag-references ()
-  (map-tracked-keys 'tags (curry #'tracker-release-key-and-process-references 'tags)))
+  (emit-ref name (delta) :bne r1 r2 delta))
 
 ;;;
 ;;; Iteration
 ;;;
-(defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg '(pool-allocate-lexical 'asm-mips:gpr :counter))) &body body)
-  (with-gensyms (counter)
-    (once-only (iterations)
-      `(let ((,counter ,counter-reg))
-         (with-tags (:loop-begin ,@(when exit-tag `(,exit-tag)))
-           (emit-set-cell ,counter ,iterations)
-           (emit-tag :loop-begin)
-           ,@body
-           (emit-ref :loop-begin (delta) :bne ,counter :zero delta)
-           (emit* :addiu ,counter ,counter #xffff)
-           ,@(when exit-tag
-                   `((emit-tag ,exit-tag))))))))
+(defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg :counter)) &body body)
+  (once-only (iterations)
+    `(progn
+       (ensure-cell ,counter-reg ,iterations)
+       (with-tags (:loop-begin ,@(when exit-tag `(,exit-tag)))
+         (emit-tag :loop-begin)
+         ,@body
+         (emit-ref :loop-begin (delta) :bne ,counter-reg :zero delta)
+         (emit* :addiu ,counter-reg ,counter-reg #xffff)
+         ,@(when exit-tag
+                 `((emit-tag ,exit-tag))))
+       (release-cell ,counter-reg))))
 
 ;;;
 ;;; Function call machinery
 ;;;
 (defparameter *initial-stack-top* nil)
 
-(defmacro with-function-definitions-and-call-stack (initial-stack-top &body body)
-  `(let ((*initial-stack-top* ,initial-stack-top))
-     (declare (special *initial-stack-top*))
+(defmacro with-function-calls (initial-stack-top &body body)
+  `(let (,@(when initial-stack-top `((*initial-stack-top* ,initial-stack-top))))
+     ,@(when initial-stack-top `((declare (special *initial-stack-top*))))
      (allocate-let (asm-mips:gpr :stack-top :arg0-ret :arg1 :arg2)
        (declare (special :stack-top))
-       (emit-set-gpr :stack-top *initial-stack-top*)
-       (progn-1
-         ,@body
-         (backpatch-outstanding-global-tag-references)))))
+       ,@(when initial-stack-top `((emit-set-gpr :stack-top *initial-stack-top*)))
+       ,@body)))
+
+(defmacro with-function-definitions-and-calls ((&optional initial-stack-top) &body body)
+  `(with-function-calls ,initial-stack-top
+     (progn-1
+       ,@body
+       (backpatch-outstanding-global-tag-references))))
 
 (defun emit-stack-push (value)
   (emit-based-cell-store32 value :stack-top 0)
@@ -258,7 +254,8 @@
 (defun emit-near-function-call (name &rest args)
   (iter (for arg in args)
         (for argreg in '(:arg0-ret :arg1 :arg2))
-        (emit-set-cell argreg arg))
+        (unless (eq arg argreg)
+          (emit-set-gpr argreg arg)))
   (emit-stack-push (+ 8 (current-insn-addr)))
   (emit-jump name)
   (emit* :nop))
@@ -266,7 +263,7 @@
 (defmacro emitting-function (name (&key (return-tag :return)) &body body)
   `(allocate-let (asm-mips:gpr :ret-reg)
      (with-tags (,return-tag)
-       (emit-new-global-tag ,name)
+       (emit-global-tag ,name)
        ,@body
        (emit-tag ,return-tag)
        (emit-stack-pop)
@@ -275,16 +272,79 @@
        (emit* :jr :ret-reg)
        (emit* :nop))))
 
+;;;
+;;; Predicate functions
+;;;
 (defmacro emitting-predicate-function (name (&key (return-tag :return) (return-zero-tag :return-zero) (return-one-tag :return-one)) &body body)
   `(emitting-function ,name ()
      (with-tags (,return-tag ,return-zero-tag ,return-one-tag)
        ,@body
        (emit-tag ,return-one-tag)
-       (emit-set-cell :arg0-ret 1)
+       (emit-set-gpr :arg0-ret 1)
        (emit-jump ,return-tag)
        (emit* :nop)
        (emit-tag ,return-zero-tag)
-       (emit-set-cell :arg0-ret 0))))
+       (emit-set-gpr :arg0-ret 0))))
+
+(defun emit-succeed ()
+  (emit-jump-if-eq :return-one :zero :zero))
+
+(defun emit-fail ()
+  (emit-jump-if-eq :return-zero :zero :zero))
+
+(defun emit-succeed-if-eq (val1 val2)
+  "See the ugliness? LET-alike must be here!"
+  (let ((name1 (make-keyword (gensym)))
+        (name2 (make-keyword (gensym))))
+    (ensure-cell name1 val1)
+    (ensure-cell name2 val2)
+    (emit-jump-if-eq :return-one name1 name2)
+    (release-cell name1)
+    (release-cell name2)))
+
+(defun emit-succeed-if-ne (val1 val2)
+  "See the ugliness? LET-alike must be here!"
+  (let ((name1 (make-keyword (gensym)))
+        (name2 (make-keyword (gensym))))
+    (ensure-cell name1 val1)
+    (ensure-cell name2 val2)
+    (emit-jump-if-ne :return-one name1 name2)
+    (release-cell name1)
+    (release-cell name2)))
+
+(defun emit-fail-if-eq (val1 val2)
+  "See the ugliness? LET-alike must be here!"
+  (let ((name1 (make-keyword (gensym)))
+        (name2 (make-keyword (gensym))))
+    (ensure-cell name1 val1)
+    (ensure-cell name2 val2)
+    (emit-jump-if-eq :return-zero name1 name2)
+    (release-cell name1)
+    (release-cell name2)))
+
+(defun emit-fail-if-ne (val1 val2)
+  "See the ugliness? LET-alike must be here!"
+  (let ((name1 (make-keyword (gensym)))
+        (name2 (make-keyword (gensym))))
+    (ensure-cell name1 val1)
+    (ensure-cell name2 val2)
+    (emit-jump-if-ne :return-zero name1 name2)
+    (release-cell name1)
+    (release-cell name2)))
+
+(defun emit-test-eq (val1 val2)
+  "See the predicate explosion? Name and compose them."
+  (emit-succeed-if-eq val1 val2)
+  (emit* :nop)
+  (emit-fail)
+  (emit* :nop))
+
+(defun emit-test-ne (val1 val2)
+  "See the predicate explosion? Name and compose them."
+  (emit-succeed-if-ne val1 val2)
+  (emit* :nop)
+  (emit-fail)
+  (emit* :nop))
 
 (defun emit-jump-if (tag predicate &rest args)
   (apply #'emit-near-function-call predicate args)

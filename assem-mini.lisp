@@ -65,30 +65,80 @@
   `(with-allocator (,optype ',(asm:optype-allocatables (asm:optype optype)))
      ,@body))
 
+(defun optype-key-allocation (optype optype-var)
+  (eval-allocated optype optype-var))
+
 (defun eval-insn (isa optype insn)
   (flet ((subst-variable (iargs iargvar)
            (subst (eval-allocated optype iargvar) iargvar iargs)))
     (destructuring-bind (opcode &rest iargs) insn
       (cons opcode (reduce #'subst-variable (asm:insn-optype-variables isa optype insn) :initial-value iargs)))))
 
+(defmacro with-tags ((&rest tags) &body body)
+  `(tracker-let (tags ,@tags)
+     ,@body))
+
+(defmacro with-tag-domain ((&rest tags) &body body)
+  `(with-tracker tags
+     (with-tags ,tags
+       ,@body)))
+
 (defvar *isa* nil)
 (defvar *optype* nil)
 (defvar *segment* nil)
 
-(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (optype &rest bound-set) &body body)
-  (when (and bound-set (not optype))
-    (asm:assembly-error "~@<Requested to bind allocatables with no pool specified.~:@>"))
+(defun make-tag-backpatcher (tag-name)
+  (declare (special *segment*))
+  (lambda (tag-insn-nr)
+    (map-tracker-key-references
+     'tags tag-name
+     (lambda (reference-value)
+       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
+         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
+               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
+
+(defun add-global-tag (name address)
+  (tracker-add-global-key-value-and-finalizer 'tags name #'values address))
+
+(defun emit-global-tag (name)
+  (tracker-add-global-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
+
+(defun backpatch-outstanding-global-tag-references ()
+  (map-tracked-keys 'tags (curry #'tracker-release-key-and-process-references 'tags)))
+
+(defun emit-tag (name)
+  (tracker-set-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
+
+(defun map-tags (fn)
+  (map-tracked-keys 'tags fn))
+
+(defmacro emit-ref (name (delta-var-name) &body insn)
+  (with-gensyms (delta)
+    `(tracker-reference-key 'tags ,name (cons (segment-instruction-count *segment*)
+                                              (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
+                                                (declare (type (signed-byte 16) ,delta))
+                                                (asm:encode-insn *isa* (list ,@insn)))))))
+
+(defmacro with-assem (optype (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
-    `(lret ((*isa* ,isa)
-            (*optype* ',optype)
-            (*segment* ,segment))
-       (declare (special *isa* *optype* *segment*))
+    `(let ((*optype* ',optype))
+       (declare (special *optype*))
        (with-optype-allocator ,optype
-         (allocate-let (,optype ,@bound-set)
+         (allocate-let (,optype)
            ,@(when decls `((declare ,@decls)))
-           (flet ((emitted-insn-count () (/ (segment-current-index *segment*) 4)))
-             (declare (ignorable #'emitted-insn-count))
+           (with-tag-domain (,@tags)
              ,@body))))))
+
+(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) optype (&rest tags) &body body)
+  (multiple-value-bind (decls body) (destructure-binding-form-body body)
+    `(with-assem ,optype (,@tags)
+       ,@(when decls `((declare ,@decls)))
+       (lret ((*isa* ,isa)
+              (*segment* ,segment))
+         (declare (special *isa* *segment*))
+         (flet ((emitted-insn-count () (/ (segment-current-index *segment*) 4)))
+           (declare (ignorable #'emitted-insn-count))
+           ,@body)))))
 
 (defun emit (insn)
   (declare (special *isa* *optype* *segment*))
@@ -110,9 +160,9 @@
 (defun extent-list-adjoin-segment (extent-list address segment)
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
-(defmacro with-extentable-segment ((isa extentable addr) (optype &rest bound-set) &body body)
+(defmacro with-extentable-segment ((isa extentable addr) optype (&rest tags) &body body)
   (with-gensyms (segment)
     (once-only (addr)
-      `(lret ((,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) (,optype ,@bound-set)
+      `(lret ((,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) ,optype (,@tags)
                           ,@body)))
          (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment))))))

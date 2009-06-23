@@ -21,7 +21,7 @@
 (in-package :assem-mini)
 
 (defmacro with-mips-assem ((&rest tags) &body body)
-  `(with-assem asm-mips:gpr (,@tags)
+  `(with-assem (asm-mips:*mips-isa* asm-mips:gpr)
      ,@body))
 
 (defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)

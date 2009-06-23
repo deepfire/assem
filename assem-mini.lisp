@@ -152,7 +152,7 @@
   (segment-emitted-insn-count *segment*))
 
 (defun current-insn-addr ()
-  (+ (pinned-segment-base *segment*) (segment-instruction-count *segment*)))
+  (+ (pinned-segment-base *segment*) (length (segment-active-vector *segment*))))
 
 ;;;
 ;;; Misc

@@ -20,17 +20,26 @@
 
 (in-package :mips-assembly)
 
-(define-optype im26 26)
-(define-optype syscode 20)
-(define-optype brkcode 10)
-(define-optype im16 16)
-(define-optype im5 5)
-(define-optype c1cond 3)
+(defclass mips-isa (isa)
+  ()
+  (:default-initargs
+   :delay-slots 1
+   :insn-defines-format-p t
+   :root-shift 26 :root-mask #x3f))
+
+(defparameter *mips-isa* (make-instance 'mips-isa))
+
+(define-optype *mips-isa* im26 26)
+(define-optype *mips-isa* syscode 20)
+(define-optype *mips-isa* brkcode 10)
+(define-optype *mips-isa* im16 16)
+(define-optype *mips-isa* im5 5)
+(define-optype *mips-isa* c1cond 3)
 
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
-(define-enumerated-optype gpr 5
+(define-enumerated-optype *mips-isa* gpr 5
   ((:zero 0) (:at 1)   (:v0 2)   (:v1 3)   (:a0 4)
    (:a1 5)   (:a2 6)   (:a3 7)   (:t0 8)   (:t1 9)
    (:t2 10)  (:t3 11)  (:t4 12)  (:t5 13)  (:t6 14)
@@ -47,7 +56,7 @@
    (:r30 30) (:r31 31))
   :unallocatables (:zero :r0))
 
-(define-enumerated-optype fpr 5
+(define-enumerated-optype *mips-isa* fpr 5
   ((:f0 0)   (:f1 1)   (:f2 2)   (:f3 3)   (:f4 4)
    (:f5 5)   (:f6 6)   (:f7 7)   (:f8 8)   (:f9 9)
    (:f10 10) (:f11 11) (:f12 12) (:f13 13) (:f14 14)
@@ -56,7 +65,7 @@
    (:f25 25) (:f26 26) (:f27 27) (:f28 28) (:f29 29)
    (:f30 30) (:f31 31)))
 
-(define-enumerated-optype cpsel 5
+(define-enumerated-optype *mips-isa* cpsel 5
   ((:index 0) (:random 1) (:entrylo0 2) (:entrylo1 3)
    (:context 4) (:pagemask 5) (:wired 6) (:badvaddr 8)
    (:count 9) (:entryhi 10) (:compare 11) (:status 12)
@@ -65,7 +74,7 @@
    (:debugepc 24) (:perfcnt 25) (:ecc 26) (:cacheerr 27)
    (:taglo 28) (:taghi 29) (:errorepc 30) (:desave 31)))
 
-(define-enumerated-optype cacheop 5
+(define-enumerated-optype *mips-isa* cacheop 5
   ((:index-inv-i #x0) (:index-wbinv-d #x1) (:index-inv-si #x2) (:index-wbinv-sd #x3)
    (:index-load-tag-i #x4) (:index-load-tag-d #x5) (:index-load-tag-si #x6) (:index-load-tag-sd #x7)
    (:index-store-tag-i #x8) (:index-store-tag-d #x9) (:index-store-tag-si #xa) (:index-store-tag-sd #xb)
@@ -76,17 +85,8 @@
    (:index-wb-i #x18) (:index-wb-d #x19) (:index-wb-sd #x1b)
    (:index-set-virt-si #x1e) (:index-set-virt-sd #x1f)))
 
-(define-enumerated-optype prefop 5
+(define-enumerated-optype *mips-isa* prefop 5
   ())
-
-(defclass mips-isa (isa)
-  ()
-  (:default-initargs
-   :delay-slots 1
-   :insn-defines-format-p t
-   :root-shift 26 :root-mask #x3f))
-
-(defparameter *mips-isa* (make-instance 'mips-isa))
 
 (defmethod validate-insn-parameter-spec ((isa mips-isa) mnemonics params)
   (assert (<= (length params) 3))
@@ -106,7 +106,7 @@
   (ecase type
     ((im26 im16 im5 c1cond))
     ((gpr fpr cpsel cacheop prefop)
-     (hash-table-alist (optype-set (optype type))))))
+     (hash-table-alist (optype-set (optype isa type))))))
 
 (defmethod encode-insn-param ((isa mips-isa) val type)
   (ecase type
@@ -115,17 +115,14 @@
     ((gpr fpr cpsel cacheop prefop)
      (if (integerp val)
          val
-         (gethash val (optype-set (optype type)))))))
+         (gethash val (optype-set (optype isa type)))))))
 
-(defmethod decode-insn-param ((isa mips-isa) val type &aux (optype (optype type)))
+(defmethod decode-insn-param ((isa mips-isa) val type &aux (optype (optype isa type)))
   (case type
     ((im26 im16 im5 c1cond)
      (logand val (optype-mask optype)))
     ((gpr fpr cpsel cacheop prefop)
      (gethash (logand val (optype-mask optype)) (optype-rset optype)))))
-
-(defmacro defmipsparamtype (id spec)
-  `(defparamtype *mips-isa* ',id ,spec))
 
 (defclass rel-imm-cond-pure      (branch-insn branch-rel branch-imm branch-cond) ())
 (defclass rel-imm-cond-depcont   (branch-insn branch-rel branch-imm branch-cond dep-continue-mixin) ())
@@ -157,18 +154,6 @@
 
 (defmacro defmipsformat (id &rest param-spec)
   `(defformat *mips-isa* ,id () ,param-spec))
-
-(defmipsparamtype gpr 5)
-(defmipsparamtype fpr 5)
-(defmipsparamtype cpsel 5)
-(defmipsparamtype cacheop 5)
-(defmipsparamtype prefop 5)
-(defmipsparamtype c1cond 3)
-(defmipsparamtype im5 5)
-(defmipsparamtype im16 16)
-(defmipsparamtype brkcode 10)
-(defmipsparamtype syscode 20)
-(defmipsparamtype im26 26)
 
 (defmipsformat :empty)
 (defmipsformat :togpr-fromgpr-im5shift     (gpr 11 :dst) (gpr 16 :src) (im5 6))

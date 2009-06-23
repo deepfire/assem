@@ -216,25 +216,42 @@
   (rset nil :type hash-table)
   (unallocatables nil :type list))
 
-(defvar *optypes* (make-hash-table :test 'eq))
-(define-container-hash-accessor *optypes* optype :type optype :if-exists :continue)
+(defclass isa ()
+  ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
+   (insn-root :accessor isa-insn-root)
+   (iformat-root :accessor isa-iformat-root)
+   (optype# :accessor isa-optype# :initarg :optype#)
+   (insn# :accessor isa-insn# :initarg :insn#)
+   (final-discriminator :accessor isa-final-discriminator :initarg :final-discriminator)
+   (iformat# :accessor isa-iformat# :initarg :iformat#)
+   (delay-slots :accessor isa-delay-slots :initarg :delay-slots))
+  (:default-initargs
+   :insn-defines-format-p nil
+   :final-discriminator #'values
+   :optype# (make-hash-table :test #'eq)
+   :insn# (make-hash-table :test #'equal)
+   :iformat# (make-hash-table :test #'eq)))
 
-(defmacro define-optype (name bit-width)
+(define-container-hash-accessor :i optype    :container-transform isa-optype#     :parametrize-container t :if-exists :continue)
+(define-container-hash-accessor :i insn      :container-transform isa-insn#       :parametrize-container t :if-exists :continue)
+(define-container-hash-accessor :i iformat   :container-transform isa-iformat#    :parametrize-container t :if-exists :continue)
+
+(defmacro define-optype (isa name bit-width)
   `(progn
      (deftype ,name () '(unsigned-byte ,bit-width))
-     (setf (optype ',name) (make-optype :name ',name :width ,bit-width))))
+     (setf (optype ,isa ',name) (make-optype :name ',name :width ,bit-width))))
 
-(defmacro define-enumerated-optype (name bit-width (&rest set) &key unallocatables)
+(defmacro define-enumerated-optype (isa name bit-width (&rest set) &key unallocatables)
   `(progn
      (deftype ,name () '(or (unsigned-byte ,bit-width) (member ,@(mapcar #'car set))))
-     (setf (optype ',name) (make-enumerated-optype :name ',name :width ,bit-width
-                                                   :set ,(alist-hash-table (iter (for (name value) in set)
-                                                                                 (collect (cons name value)))
-                                                                           :test 'eq)
-                                                   :rset ,(alist-hash-table (iter (for (name value) in set)
-                                                                                  (collect (cons value name)))
-                                                                            :test 'eq)
-                                                   :unallocatables ',unallocatables))))
+     (setf (optype ,isa ',name) (make-enumerated-optype :name ',name :width ,bit-width
+                                                        :set ,(alist-hash-table (iter (for (name value) in set)
+                                                                                      (collect (cons name value)))
+                                                                                :test 'eq)
+                                                        :rset ,(alist-hash-table (iter (for (name value) in set)
+                                                                                       (collect (cons value name)))
+                                                                                 :test 'eq)
+                                                        :unallocatables ',unallocatables))))
 
 (defun optype-allocatables (optype)
   "Compute the set of allocatable OPTYPE values."
@@ -243,22 +260,6 @@
 (defun optype-mask (optype)
   "Compute the OPTYPE mask."
   (1- (ash 1 (optype-width optype))))
-
-(defclass isa ()
-  ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
-   (insn-root :accessor isa-insn-root)
-   (iformat-root :accessor isa-iformat-root)
-   (paramtype# :accessor isa-paramtype# :initarg :paramtype#)
-   (insn# :accessor isa-insn# :initarg :insn#)
-   (final-discriminator :accessor isa-final-discriminator :initarg :final-discriminator)
-   (iformat# :accessor isa-iformat# :initarg :iformat#)
-   (delay-slots :accessor isa-delay-slots :initarg :delay-slots))
-  (:default-initargs
-   :insn-defines-format-p nil
-   :final-discriminator #'values
-   :paramtype# (make-hash-table :test #'eq)
-   :insn# (make-hash-table :test #'equal)
-   :iformat# (make-hash-table :test #'eq)))
 
 (defmethod initialize-instance :after ((isa isa) &key insn-defines-format-p root-shift root-mask format-root-shift format-root-mask &allow-other-keys)
   (declare (type unsigned-byte root-shift root-mask))
@@ -271,10 +272,6 @@
 (defgeneric encode-insn-param (isa val type))
 (defgeneric decode-insn-param (isa val type))
 
-(defun paramtype-width (isa mnemonics) (or (gethash mnemonics (isa-paramtype# isa)) (assembly-error "~@<unknown PARAMTYPE ~S~:@>" mnemonics)))
-(defun iformat (isa mnemonics) (gethash mnemonics (isa-iformat# isa)))
-(defun insn (isa mnemonics) (gethash mnemonics (isa-insn# isa)))
-
 (defun define-iformat (isa mnemonics spec params &key dont-coalesce)
   (let* ((iformat (make-instance 'iformat :mnemonics mnemonics :params params))
          (node (if (isa-insn-defines-format-p isa)
@@ -283,8 +280,9 @@
     (multiple-value-bind (opcode discrim-width) (assemble-bitree-node-value node)
       (setf (node iformat) node
             (opcode iformat) opcode
-            (width iformat) (max discrim-width (or (first (sort (mapcar (lambda (p) (+ (paramtype-width isa (car p)) (cadr p))) params) #'>)) 0))
-            (gethash mnemonics (isa-iformat# isa)) iformat))))
+            (width iformat) (max discrim-width
+                                 (or (first (sort (mapcar (lambda (p) (+ (optype-width (optype isa (car p))) (cadr p))) params) #'>)) 0))
+            (iformat isa mnemonics) iformat))))
 
 ;; opcode spec is a list of:
 ;;	either (PARENT-CONTEXT-VALUE CHILD-CONTEXT-SHIFT . CHILD-CONTEXT-MASK)
@@ -311,9 +309,6 @@
                                                        (node iformat)
                                                        (isa-iformat-root isa))))))
 
-(defun defparamtype (isa mnemonics width)
-  (setf (gethash mnemonics (isa-paramtype# isa)) width))
-
 (defmacro defformat (isa mnemonics format-spec param-spec &key dont-coalesce)
   `(define-iformat ,isa ,mnemonics ,format-spec (list ,@(iter (for (type . rest) in param-spec)
                                                               (collect `(list ',type ,@rest))))
@@ -332,7 +327,7 @@
                                (node-contribution (first (node-childs (node insn))))
                                (iformat isa :empty))))
               (iter (for (type offt . nil) in (iformat-params iformat))
-                    (collect (cons (byte (optype-width (optype type)) offt)
+                    (collect (cons (byte (optype-width (optype isa type)) offt)
                                    (param-type-alist isa type))))))))
 
 (defun insn-optype-params (isa optype insn)
@@ -351,7 +346,7 @@
 
 (defun insn-optype-variables (isa optype insn)
   (let ((allocatable-params (remove-duplicates (insn-optype-params isa optype insn))))
-    (set-difference allocatable-params (hash-table-keys (optype-set (optype optype))))))
+    (set-difference allocatable-params (hash-table-keys (optype-set (optype isa optype))))))
 
 (defun encode-insn (isa insn)
   (destructuring-bind (id &rest params) insn

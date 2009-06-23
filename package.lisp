@@ -9,9 +9,11 @@
    #:isa #:isa-final-discriminator #:isa-delay-slots #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param
    #:optype #:optype-name #:optype-width #:optype-set #:optype-rset #:optype-unallocatables #:optype-allocatables #:optype-mask
    #:define-optype #:define-enumerated-optype
+   ;; Take over the GPR symbol!
+   #:gpr
    #:insn-optype-params #:insn-optype-variables #:encode-insn
    #:param-type-alist
-   #:lookup-insn #:decode-insn #:disassemble #:defparamtype #:define-iformat-root #:defformat
+   #:lookup-insn #:decode-insn #:disassemble #:define-iformat-root #:defformat
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec
    #:unknown-insn #:pseudo-insn #:branch-insn #:nonbranch-insn #:branch-destination-fn #:make-pseudo-insn
    #:continue-mixin #:pure-continue-mixin #:dep-continue-mixin #:noncontinue-mixin

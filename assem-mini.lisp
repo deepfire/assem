@@ -22,7 +22,8 @@
 
 (defclass segment ()
   ((data :accessor segment-data :initform (make-array 1024 :element-type '(unsigned-byte 8) :adjustable t :initial-element 0))
-   (current-index :type (unsigned-byte 32) :initform 0)))
+   (current-index :type (unsigned-byte 32) :initform 0)
+   (emitted-insn-count :accessor segment-emitted-insn-count :initform 0)))
 
 (defclass pinned-segment (segment)
   ((base :accessor pinned-segment-base :type (integer 0) :initarg :base)))
@@ -47,9 +48,6 @@
 (defun segment-disassemble (isa segment)
   (declare (type segment segment))
   (asm:disassemble isa (segment-active-vector segment)))
-
-(defun segment-instruction-count (segment)
-  (ash (segment-current-index segment) -2))
 
 (defun %emit32le (segment insn)
   (declare (type segment segment))
@@ -114,7 +112,7 @@
 
 (defmacro emit-ref (name (delta-var-name) &body insn)
   (with-gensyms (delta)
-    `(tracker-reference-key 'tags ,name (cons (segment-instruction-count *segment*)
+    `(tracker-reference-key 'tags ,name (cons (segment-emitted-insn-count *segment*)
                                               (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
                                                 (declare (type (signed-byte 16) ,delta))
                                                 (asm:encode-insn *isa* (list ,@insn)))))))
@@ -142,14 +140,16 @@
 
 (defun emit (insn)
   (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn))))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn)))
+  (incf (segment-emitted-insn-count *segment*)))
 
 (defun emit* (&rest insn)
   (declare (special *isa* *optype* *segment* *lexicals*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn))))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn)))
+  (incf (segment-emitted-insn-count *segment*)))
 
 (defun current-insn-count ()
-  (segment-instruction-count *segment*))
+  (segment-emitted-insn-count *segment*))
 
 (defun current-insn-addr ()
   (+ (pinned-segment-base *segment*) (segment-instruction-count *segment*)))

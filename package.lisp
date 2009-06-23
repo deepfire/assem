@@ -33,7 +33,7 @@
   (:nicknames #:assem)
   (:use :common-lisp :alexandria :iterate :pergamum :allocation-pool)
   (:export
-    #:segment #:pinned-segment #:segment-active-vector #:segment-disassemble #:segment-instruction-count
+    #:segment #:pinned-segment #:segment-active-vector #:segment-disassemble #:segment-emitted-insn-count
     #:with-optype-allocator #:optype-key-allocation
     #:with-tags #:with-tag-domain #:add-global-tag #:emit-global-tag #:backpatch-outstanding-global-tag-references #:emit-tag #:map-tags #:emit-ref
     #:eval-insn

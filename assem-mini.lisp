@@ -158,8 +158,11 @@
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
 (defmacro with-extentable-segment ((isa extentable addr) optype (&rest tags) &body body)
-  (with-gensyms (segment)
+  (with-gensyms (retcell segment ret)
     (once-only (addr)
-      `(lret ((,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) ,optype (,@tags)
-                          ,@body)))
+      `(lret* (,retcell
+               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) ,optype (,@tags)
+                           ,@(butlast body)
+                           (setf ,retcell ,(lastcar body))))
+               (,ret ,retcell))
          (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment))))))

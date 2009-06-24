@@ -279,12 +279,12 @@
   `(emitting-function ,name ()
      (with-tags (,return-tag ,return-zero-tag ,return-one-tag)
        ,@body
-       (emit-tag ,return-one-tag)
-       (emit-set-gpr :arg0-ret 1)
+       (emit-tag ,return-zero-tag)
+       (emit-set-gpr :arg0-ret 0)
        (emit-jump ,return-tag)
        (emit* :nop)
-       (emit-tag ,return-zero-tag)
-       (emit-set-gpr :arg0-ret 0))))
+       (emit-tag ,return-one-tag)
+       (emit-set-gpr :arg0-ret 1))))
 
 (defun emit-succeed ()
   (emit-jump-if-eq :return-one :zero :zero))

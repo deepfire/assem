@@ -59,93 +59,92 @@
   (setf (u8-vector-word64le (segment-data segment) (segment-current-index segment)) insn)
   (incf (segment-current-index segment) 8))
 
-(defmacro with-optype-allocator ((isa optype) &body body)
-  `(with-allocator (,optype (asm:optype-allocatables (asm:optype ,isa ',optype)))
-     ,@body))
-
-(defun optype-key-allocation (optype optype-var)
-  (eval-allocated optype optype-var))
-
-(defun eval-insn (isa optype insn)
-  (flet ((subst-variable (iargs iargvar)
-           (subst (eval-allocated optype iargvar) iargvar iargs)))
-    (destructuring-bind (opcode &rest iargs) insn
-      (cons opcode (reduce #'subst-variable (asm:insn-optype-variables isa optype insn) :initial-value iargs)))))
-
-(defmacro with-tags ((&rest tags) &body body)
-  `(tracker-let (tags ,@tags)
-     ,@body))
-
-(defmacro with-tag-domain ((&rest tags) &body body)
-  `(with-tracker tags
-     (with-tags ,tags
-       ,@body)))
-
+;;;
+;;; Environment-based evaluation and emission
+;;;
 (defvar *isa* nil)
 (defvar *optype* nil)
+(defvar *tag-domain* nil)
 (defvar *segment* nil)
 
-(defun make-tag-backpatcher (tag-name)
-  (declare (special *segment*))
-  (lambda (tag-insn-nr)
-    (map-tracker-key-references
-     'tags tag-name
-     (lambda (reference-value)
-       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
-         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
-               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
+(defmacro with-optype-pool ((isa optype) &body body)
+  `(let* ((*isa* ,isa)
+          (*optype* (asm:optype *isa* ',optype)))
+     (declare (special *isa* *optype*))
+     (with-environment (',optype (make-top-level-pool (asm:optype-allocatables *optype*)))
+       ,@body)))
 
-(defun add-global-tag (name address)
-  (tracker-add-global-key-value-and-finalizer 'tags name #'values address))
+(defun eval-insn (env insn)
+  (flet ((evaluate-and-subst-one-variable (iargs iargvar)
+           (subst (evaluate env iargvar) iargvar iargs)))
+    (destructuring-bind (opcode &rest iargs) insn
+      (cons opcode (reduce #'evaluate-and-subst-one-variable (asm:insn-optype-variables *isa* *optype* insn) :initial-value iargs)))))
 
-(defun emit-global-tag (name)
-  (tracker-add-global-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
+(defmacro with-tag-domain (&body body)
+  `(let ((*tag-domain* (make-top-level-tracker)))
+     (declare (special *tag-domain*))
+     (with-environment ('tags *tag-domain*)
+       ,@body)))
 
-(defun backpatch-outstanding-global-tag-references ()
-  (map-tracked-keys 'tags (curry #'tracker-release-key-and-process-references 'tags)))
+(defmacro with-tags ((tag-env &rest tags) &body body)
+  `(tracker-let (,tag-env ,@tags)
+     ,@body))
 
-(defun emit-tag (name)
-  (tracker-set-key-value-and-finalizer 'tags name (make-tag-backpatcher name) (current-insn-count)))
-
-(defun map-tags (fn)
-  (map-tracked-keys 'tags fn))
-
-(defmacro emit-ref (name (delta-var-name) &body insn)
-  (with-gensyms (delta)
-    `(tracker-reference-key 'tags ,name (cons (segment-emitted-insn-count *segment*)
-                                              (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
-                                                (declare (type (signed-byte 16) ,delta))
-                                                (asm:encode-insn *isa* (list ,@insn)))))))
-
-(defmacro with-assem ((isa optype) &body body)
-  (multiple-value-bind (decls body) (destructure-binding-form-body body)
-    `(let ((*isa* ,isa)
-           (*optype* ',optype))
-       (declare (special *isa* *optype*))
-       (with-optype-allocator (*isa* ,optype)
-         (with-tag-domain ()
-           ,@body)))))
-
-(defun allocated-cells (optype)
-  (allocated-environment optype))
+(defmacro with-assembly ((isa optype) &body body)
+  `(with-metaenvironment
+     (with-optype-pool (,isa ,optype)
+       (with-tag-domain
+           ,@body))))
 
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) optype (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
-       (with-assem (,isa ,optype)
+       (with-assembly (,isa ,optype)
          (with-tags (,@tags)
            ,@(when decls `((declare ,@decls)))
            ,@body)))))
 
-(defun emit (insn)
+(defun make-tag-backpatcher (tag-env tag-name)
+  (declare (special *segment*))
+  (lambda (tag-insn-nr)
+    (map-tracker-key-references
+     tag-env tag-name
+     (lambda (reference-value)
+       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
+         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
+               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
+
+(defun add-global-tag (tag-env name address)
+  (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
+
+(defun emit-global-tag (tag-env name)
+  (tracker-add-global-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
+
+(defun backpatch-outstanding-global-tag-references (tag-env)
+  (map-tracked-keys tag-env (curry #'tracker-release-key-and-process-references tag-env)))
+
+(defun emit-tag (tag-env name)
+  (tracker-set-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
+
+(defun map-tags (tag-env fn)
+  (map-tracked-keys tag-env fn))
+
+(defmacro emit-ref (tag-env name (delta-var-name) &body insn)
+  (with-gensyms (delta)
+    `(tracker-reference-key ,tag-env ',name (cons (segment-emitted-insn-count *segment*)
+                                                  (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
+                                                    (declare (type (signed-byte 16) ,delta))
+                                                    (asm:encode-insn *isa* (list ,@insn)))))))
+
+(defun emit (env insn)
   (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn)))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn env insn)))
   (incf (segment-emitted-insn-count *segment*)))
 
-(defun emit* (&rest insn)
+(defun emit* (env &rest insn)
   (declare (special *isa* *optype* *segment* *lexicals*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn *isa* *optype* insn)))
+  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn env insn)))
   (incf (segment-emitted-insn-count *segment*)))
 
 (defun current-insn-count ()
@@ -160,18 +159,17 @@
 (defclass compilation-environment ()
   ((isa :accessor cenv-isa :initarg :isa)
    (optype :accessor cenv-optype :initarg :optype)
-   (cells :accessor cenv-cells :initarg :cells)
-   (symtable :accessor cenv-symtable :initarg :symtable)
-   (segments :accessor cenv-segments :initarg :segments)))
+   (segments :accessor cenv-segments :initarg :segments)
+   (cellenv :accessor cenv-cellenv :initarg :cellenv)
+   (tagenv :accessor cenv-tagenv :initarg :tagenv)))
 
 (defmacro with-compilation-environment (cenv &body body)
   (once-only (cenv)
     `(let ((*compilation-environment* ,cenv)
            (*isa* (cenv-isa ,cenv))
-           (*optype* (cenv-optype ,cenv))
-           (*symtable* (cenv-symtable ,cenv)))
-       (declare (special *compilation-environment* *isa* *optype* *symtable*))
-       (with-allocator (optype (asm:optype-allocatables (asm:optype *isa* *optype*)))
+           (*optype* (cenv-optype ,cenv)))
+       (declare (special *compilation-environment* *isa* *optype*))
+       (with-environment ((optype-name *optype*) (cenv-env *compilation-environment*))
          ,@body))))
 
 ;;;

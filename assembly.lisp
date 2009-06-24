@@ -340,13 +340,13 @@
                    (for (type offt . nil) in (iformat-params iformat))
                    (unless (or (typep param type) (keywordp param))
                      (assembly-error "~@<Opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
-                   (when (eq type optype)
+                   (when (eq type (optype-name optype))
                      (collect param)))
              (assembly-error "~@<ISA ~S does not specify insn ~S~:@>" isa id))))
 
 (defun insn-optype-variables (isa optype insn)
   (let ((allocatable-params (remove-duplicates (insn-optype-params isa optype insn))))
-    (set-difference allocatable-params (hash-table-keys (optype-set (optype isa optype))))))
+    (set-difference allocatable-params (hash-table-keys (optype-set optype)))))
 
 (defun encode-insn (isa insn)
   (destructuring-bind (id &rest params) insn

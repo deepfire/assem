@@ -20,23 +20,21 @@
 
 (in-package :assem-mini)
 
-(defmacro with-mips-assem ((&rest tags) &body body)
-  `(with-assem (asm-mips:*mips-isa* asm-mips:gpr)
-     ,@body))
+(defmacro with-mips-assembly ((&rest tags) &body body)
+  `(with-assembly (asm-mips:*mips-isa* asm-mips:gpr)
+     (with-tags (*tag-domain* ,@tags)
+       ,@body)))
 
 (defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
   `(with-extentable-segment (asm-mips:*mips-isa* ,extentable ,addr) asm-mips:gpr (,@tags)
      ,@body))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)
-  `(allocate-let (asm-mips:gpr ,@gprs)
+  `(pool-let ((find-environment 'asm-mips:gpr) ,@gprs)
      ,@body))
 
 (defun allocate-mips-gpr (name)
-  (pool-allocate 'asm-mips:gpr name))
-
-(defun allocated-mips-gpri ()
-  (allocated-cells 'asm-mips:gpr))
+  (allocate (find-environment 'asm-mips:gpr) name))
 
 (defun emit-nops (count)
   (dotimes (i count)
@@ -48,14 +46,14 @@
       (destructuring-bind (&optional (optype 'asm-mips:gpr) &rest binding-set) binding-spec
         (emit-defun
          name (mapcar (compose #'car #'ensure-cons) lambda-list)
-         `((allocate-let (,optype ,@binding-set) ,@special-decls ,@body))
+         `((pool-let ((find-environment ',optype) ,@binding-set) ,@special-decls ,@body))
          :documentation docstring
          :declarations (append nonspecial-decls
                                (iter (for paramspec in lambda-list)
                                      (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
                                        (when paramwidth
                                          (unless (typep paramwidth '(unsigned-byte 6))
-                                           (asm:assembly-error "~@<Error in DEFINE-LET-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
+                                           (asm:assembly-error "~@<Error in DEFINE-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
                                                                name paramwidth paramname))
                                          (collect `(type (unsigned-byte ,paramwidth) ,paramname)))))))))))
 

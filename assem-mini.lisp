@@ -155,6 +155,26 @@
   (+ (pinned-segment-base *segment*) (length (segment-active-vector *segment*))))
 
 ;;;
+;;; Compilation environment
+;;;
+(defclass compilation-environment ()
+  ((isa :accessor cenv-isa :initarg :isa)
+   (optype :accessor cenv-optype :initarg :optype)
+   (cells :accessor cenv-cells :initarg :cells)
+   (symtable :accessor cenv-symtable :initarg :symtable)
+   (segments :accessor cenv-segments :initarg :segments)))
+
+(defmacro with-compilation-environment (cenv &body body)
+  (once-only (cenv)
+    `(let ((*compilation-environment* ,cenv)
+           (*isa* (cenv-isa ,cenv))
+           (*optype* (cenv-optype ,cenv))
+           (*symtable* (cenv-symtable ,cenv)))
+       (declare (special *compilation-environment* *isa* *optype* *symtable*))
+       (with-allocator (optype (asm:optype-allocatables (asm:optype *isa* *optype*)))
+         ,@body))))
+
+;;;
 ;;; Misc
 ;;;
 (defun extent-list-adjoin-segment (extent-list address segment)

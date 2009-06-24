@@ -39,6 +39,7 @@
     #:eval-insn
     #:*isa* #:*optype* #:*segment* #:with-assem #:allocated-cells #:with-segment-emission #:emitted-insn-count
     #:emit #:emit* #:current-insn-count #:current-insn-addr
+    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-cells #:cenv-symtable #:cenv-segments
     #:extent-list-adjoin-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
     #:with-mips-assem #:with-extentable-mips-segment #:with-mips-gpri #:allocate-mips-gpr #:allocated-mips-gpri

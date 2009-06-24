@@ -35,6 +35,9 @@
 (defun allocate-mips-gpr (name)
   (pool-allocate 'asm-mips:gpr name))
 
+(defun allocated-mips-gpri ()
+  (allocated-cells 'asm-mips:gpr))
+
 (defun emit-nops (count)
   (dotimes (i count)
     (emit* :nop)))

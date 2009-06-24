@@ -37,11 +37,11 @@
     #:with-optype-allocator #:optype-key-allocation
     #:with-tags #:with-tag-domain #:add-global-tag #:emit-global-tag #:backpatch-outstanding-global-tag-references #:emit-tag #:map-tags #:emit-ref
     #:eval-insn
-    #:*isa* #:*optype* #:*segment* #:with-assem #:with-segment-emission #:emitted-insn-count
+    #:*isa* #:*optype* #:*segment* #:with-assem #:allocated-cells #:with-segment-emission #:emitted-insn-count
     #:emit #:emit* #:current-insn-count #:current-insn-addr
     #:extent-list-adjoin-segment #:with-extentable-segment
     ;; assem-mini-mips.lisp
-    #:with-mips-assem #:with-extentable-mips-segment #:with-mips-gpri #:allocate-mips-gpr
+    #:with-mips-assem #:with-extentable-mips-segment #:with-mips-gpri #:allocate-mips-gpr #:allocated-mips-gpri
     #:emit-nops #:emit-set-gpr
     #:emit-based-store8 #:emit-based-store16 #:emit-based-store32 #:emit-store8 #:emit-store16 #:emit-store32
     #:emit-based-load8 #:emit-based-load16 #:emit-based-load32 #:emit-load8 #:emit-load16 #:emit-load32

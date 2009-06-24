@@ -126,6 +126,9 @@
          (with-tag-domain ()
            ,@body)))))
 
+(defun allocated-cells (optype)
+  (allocated-environment optype))
+
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) optype (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))

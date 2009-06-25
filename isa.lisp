@@ -254,6 +254,11 @@
                                                                                  :test 'eq)
                                                         :unallocatables ',unallocatables))))
 
+(defmacro define-enumerated-gpr-optype (isa name bit-width (&rest set) &key unallocatables)
+  `(progn
+     (define-enumerated-optype ,isa ,name ,bit-width ,set ,@(when unallocatables `((:unallocatables ,unallocatables))))
+     (setf (isa-gpr-optype ,isa) (optype ,isa ',name))))
+
 (defun optype-allocatables (optype)
   "Compute the set of allocatable OPTYPE values."
   (set-difference (hash-table-keys (optype-set optype)) (optype-unallocatables optype)))

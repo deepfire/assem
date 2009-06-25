@@ -39,7 +39,7 @@
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
-(define-enumerated-optype *mips-isa* gpr 5
+(define-enumerated-gpr-optype *mips-isa* gpr 5
   ((:zero 0) (:at 1)   (:v0 2)   (:v1 3)   (:a0 4)
    (:a1 5)   (:a2 6)   (:a3 7)   (:t0 8)   (:t1 9)
    (:t2 10)  (:t3 11)  (:t4 12)  (:t5 13)  (:t6 14)

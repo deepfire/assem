@@ -221,6 +221,7 @@
    (insn-root :accessor isa-insn-root)
    (iformat-root :accessor isa-iformat-root)
    (optype# :accessor isa-optype# :initarg :optype#)
+   (gpr-optype :accessor isa-gpr-optype)
    (insn# :accessor isa-insn# :initarg :insn#)
    (final-discriminator :accessor isa-final-discriminator :initarg :final-discriminator)
    (iformat# :accessor isa-iformat# :initarg :iformat#)

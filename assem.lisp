@@ -172,6 +172,14 @@
        (with-environment ((optype-name *optype*) (cenv-env *compilation-environment*))
          ,@body))))
 
+(defun save-compilation-environment (cellenv tagenv)
+  (make-instance 'compilation-environment
+                 :isa *isa*
+                 :optype *optype*
+                 :segments (list *segment*)
+                 :cellenv cellenv
+                 :tagenv tagenv))
+
 ;;;
 ;;; Misc
 ;;;

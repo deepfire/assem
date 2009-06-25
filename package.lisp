@@ -34,7 +34,8 @@
    #:with-segment-emission    ; binds *segment*
    #:add-global-tag #:emit-global-tag #:backpatch-outstanding-global-tag-references #:emit-tag #:map-tags #:emit-ref
    #:emit #:emit* #:current-insn-count #:current-insn-addr
-   #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv #:with-compilation-environment
+   #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
+   #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))
 
 (defpackage #:unturing

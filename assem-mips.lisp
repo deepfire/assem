@@ -18,44 +18,74 @@
 ;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :assem-mini)
+(in-package :assem-mips)
+
+(defvar *mips-gpr-environment*)
 
 (defmacro with-mips-assembly ((&rest tags) &body body)
-  `(with-assembly (asm-mips:*mips-isa* asm-mips:gpr)
+  `(with-assembly (*mips-isa* gpr)
      (with-tags (*tag-domain* ,@tags)
-       ,@body)))
+       (let ((*mips-gpr-environment* (find-environment 'gpr)))
+         (declare (special *mips-gpr-environment*))
+         ,@body))))
 
+;;;
+;;; Override ASSEM for happiness
+;;;
+(defun emit (insn)
+  (assem:emit *mips-gpr-environment* insn))
+
+(defun emit* (opcode &rest insn-args)
+  (emit (cons opcode insn-args)))
+
+(defun emit-global-tag (name)
+  (assem:emit-global-tag *mips-gpr-environment* name))
+
+(defun emit-tag (name)
+  (assem:emit-tag *mips-gpr-environment* name))
+
+(defmacro emit-ref (name (delta-var-name) &body insn)
+  `(assem:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))
+
+;;;
+;;; Specialize ASSEM
+;;;
 (defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
-  `(with-extentable-segment (asm-mips:*mips-isa* ,extentable ,addr) asm-mips:gpr (,@tags)
+  `(with-extentable-segment (*mips-isa* ,extentable ,addr) gpr (,@tags)
      ,@body))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)
-  `(pool-let ((find-environment 'asm-mips:gpr) ,@gprs)
+  `(with-pool-subset (*mips-gpr-environment* ,@gprs)
      ,@body))
 
 (defun allocate-mips-gpr (name)
-  (allocate (find-environment 'asm-mips:gpr) name))
+  (allocate *mips-gpr-environment* name))
+
+(defun release-mips-gpr (gpr)
+  (release *mips-gpr-environment* gpr))
+
+;;;
+;;; Extend ASSEM...
+;;;
+(defmacro define-emitter (name lambda-list binding-set &body body)
+  (multiple-value-bind (docstring decls body) (destructure-def-body body)
+    (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
+      (emit-defun
+       name (mapcar (compose #'car #'ensure-cons) lambda-list)
+       `((with-mips-gpri (,@binding-set) ,@special-decls ,@body))
+       :documentation docstring
+       :declarations (append nonspecial-decls
+                             (iter (for paramspec in lambda-list)
+                                   (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
+                                     (when paramwidth
+                                       (unless (typep paramwidth '(unsigned-byte 6))
+                                         (assembly-error "~@<Error in DEFINE-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
+                                                         name paramwidth paramname))
+                                       (collect `(type (unsigned-byte ,paramwidth) ,paramname))))))))))
 
 (defun emit-nops (count)
   (dotimes (i count)
     (emit* :nop)))
-
-(defmacro define-emitter (name lambda-list binding-spec &body body)
-  (multiple-value-bind (docstring decls body) (destructure-def-body body)
-    (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
-      (destructuring-bind (&optional (optype 'asm-mips:gpr) &rest binding-set) binding-spec
-        (emit-defun
-         name (mapcar (compose #'car #'ensure-cons) lambda-list)
-         `((pool-let ((find-environment ',optype) ,@binding-set) ,@special-decls ,@body))
-         :documentation docstring
-         :declarations (append nonspecial-decls
-                               (iter (for paramspec in lambda-list)
-                                     (destructuring-bind (paramname &optional paramwidth) (ensure-cons paramspec)
-                                       (when paramwidth
-                                         (unless (typep paramwidth '(unsigned-byte 6))
-                                           (asm:assembly-error "~@<Error in DEFINE-EMITTER ~A: bad parameter width ~S for parameter ~S.~:@>"
-                                                               name paramwidth paramname))
-                                         (collect `(type (unsigned-byte ,paramwidth) ,paramname)))))))))))
 
 (define-emitter emit-set-gpr (gpr value) nil
   (etypecase value
@@ -73,26 +103,38 @@
 ;;;
 ;;; Register-based memory stores
 ;;;
-(define-emitter emit-based-store32 ((value 32) basereg (offset 16)) (asm-mips:gpr :proxy)
-  (emit-set-gpr :proxy value)
-  (emit* :sw :proxy offset basereg))
-(define-emitter emit-based-store16 ((value 16) basereg (offset 16)) (asm-mips:gpr :proxy)
-  (emit-set-gpr :proxy value)
-  (emit* :sh :proxy offset basereg))
-(define-emitter emit-based-store8 ((value 8) basereg (offset 16)) (asm-mips:gpr :proxy)
-  (emit-set-gpr :proxy value)
-  (emit* :sb :proxy offset basereg))
+(define-emitter emit-based-store32 (value basereg (offset 16)) (gpr :proxy)
+  (etypecase value
+    (integer
+     (emit-set-gpr :proxy value)
+     (emit* :sw :proxy offset basereg))
+    (keyword
+     (emit* :sw value offset basereg))))
+(define-emitter emit-based-store16 (value basereg (offset 16)) (gpr :proxy)
+  (etypecase value
+    (integer
+     (emit-set-gpr :proxy value)
+     (emit* :sh :proxy offset basereg))
+    (keyword
+     (emit* :sh value offset basereg))))
+(define-emitter emit-based-store8 (value basereg (offset 16)) (gpr :proxy)
+  (etypecase value
+    (integer
+     (emit-set-gpr :proxy value)
+     (emit* :sb :proxy offset basereg))
+    (keyword
+     (emit* :sb value offset basereg))))
 
 ;;;
 ;;; Absolute memory stores
 ;;;
-(define-emitter emit-store32 ((value 32) address) (asm-mips:gpr :base)
+(define-emitter emit-store32 ((value 32) address) (gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store32 value :base (logand #xffff address)))
-(define-emitter emit-store16 ((value 32) address) (asm-mips:gpr :base)
+(define-emitter emit-store16 ((value 32) address) (gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store16 value :base (logand #xffff address)))
-(define-emitter emit-store8 ((value 32) address) (asm-mips:gpr :base)
+(define-emitter emit-store8 ((value 32) address) (gpr :base)
   (emit-set-gpr :base (logand #xffff0000 address))
   (emit-based-store8 value :base (logand #xffff address)))
 
@@ -122,7 +164,7 @@
 ;;;
 ;;; Masking
 ;;;
-(define-emitter emit-mask32 (dstreg srcreg (mask 32)) (asm-mips:gpr :mask)
+(define-emitter emit-mask32 (dstreg srcreg (mask 32)) (gpr :mask)
   (emit-set-gpr :masker mask)
   (emit* :and dstreg :mask srcreg))
 (define-emitter emit-mask16 (dstreg srcreg (mask 16)) nil
@@ -131,7 +173,7 @@
 ;;;
 ;;; Miscellaneous complex accesses
 ;;;
-(define-emitter emit-set-cp0 (cp0 (value 32)) (asm-mips:gpr :proxy)
+(define-emitter emit-set-cp0 (cp0 (value 32)) (gpr :proxy)
   (emit-set-gpr :proxy value)
   (emit* :nop)
   (emit* :mtc0 :proxy cp0))
@@ -147,56 +189,11 @@
 ;;;
 ;;; Jumps
 ;;;
-(define-emitter emit-long-jump ((address 32)) (asm-mips:gpr :proxy)
+(define-emitter emit-long-jump ((address 32)) (gpr :proxy)
   (emit-set-gpr :proxy address)
   (emit* :nop)
   (emit* :jr :proxy)
   (emit* :nop))
-
-;;;
-;;; Beginnings of cell machinery
-;;;
-(defun ensure-cell (name val)
-  "Should not exist: must be taken care of by LET-alikes."
-  (cond
-    ;; already a register? rebind lexically.
-    ((keywordp val)
-     (allocate-lexical-binding 'asm-mips:gpr name)
-     (setf (lexical-binding 'asm-mips:gpr name)
-           (if (lexical-p 'asm-mips:gpr val)
-               (lexical-binding 'asm-mips:gpr val)
-               val)))
-    ;; no? allocate, bind lexically and set.
-    (t
-     (let ((cell (allocate-lexically-bound-global 'asm-mips:gpr name)))
-       (emit-set-gpr cell val)))))
-
-(defun release-cell (name)
-  "Shouldn't exist, likewise."
-  (if (lexical-p 'asm-mips:gpr name)
-      (undo-lexical-binding 'asm-mips:gpr name)))
-
-(define-emitter emit-based-cell-store32 (value basereg (offset 16)) (asm-mips:gpr :proxy)
-  (etypecase value
-    (integer
-     (emit-set-gpr :proxy value)
-     (emit* :sw :proxy offset basereg))
-    (keyword
-     (emit* :sw value offset basereg))))
-(define-emitter emit-based-cell-store16 (value basereg (offset 16)) (asm-mips:gpr :proxy)
-  (etypecase value
-    (integer
-     (emit-set-gpr :proxy value)
-     (emit* :sh :proxy offset basereg))
-    (keyword
-     (emit* :sh value offset basereg))))
-(define-emitter emit-based-cell-store8 (value basereg (offset 16)) (asm-mips:gpr :proxy)
-  (etypecase value
-    (integer
-     (emit-set-gpr :proxy value)
-     (emit* :sb :proxy offset basereg))
-    (keyword
-     (emit* :sb value offset basereg))))
 
 ;;;
 ;;; Jumps
@@ -209,22 +206,56 @@
 
 (defun emit-jump-if-ne (name r1 r2)
   (emit-ref name (delta) :bne r1 r2 delta))
+;;;
+;;; Lexical register allocation
+;;;
+(defun ensure-cell (env name val)
+  "Ensure that NAME is lexically bound to whatever is signified by VAL.
+In any case the active lexical frame is extended with NAME. The value
+of that new lexical binding is either a newly allocated register, if VAL
+designates an immediate value, or if VAL designates a lexical or global
+binding, the value of that binding.
+The primary value returned specifies whether a new register was allocated."
+  (etypecase val
+    (keyword ;; already a register? rebind lexically.
+     (allocate-lexical env name)
+     (setf (lexical env name)
+           (if (name-lexical-p env val)
+               (lexical env val)
+               val))
+     nil)
+    (integer ;; no? allocate, bind lexically and set.
+     (let ((cell (pool-allocate-lexical env name)))
+       (emit-set-gpr cell val))
+     t)))
+
+(defmacro cell-let (bindings &body body)
+  "Execute BODY with freshly established lexical BINDINGS."
+  (if bindings
+      (destructuring-bind ((name value) &rest more-bindings) bindings
+        (with-gensyms (reg-allocated-p)
+          `(let ((,reg-allocated-p (ensure-cell *mips-gpr-environment* ,name ,value)))
+             (unwind-protect
+                  (cell-let ,more-bindings
+                    ,@body)
+               (when ,reg-allocated-p
+                 (release *mips-gpr-environment* (evaluate *mips-gpr-environment* ,name)))
+               (undo-lexical *mips-gpr-environment* ,name)))))
+      `(progn ,@body)))
 
 ;;;
 ;;; Iteration
 ;;;
 (defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg :counter)) &body body)
   (once-only (iterations)
-    `(progn
-       (ensure-cell ,counter-reg ,iterations)
+    `(cell-let ((,counter-reg ,iterations))
        (with-tags (:loop-begin ,@(when exit-tag `(,exit-tag)))
          (emit-tag :loop-begin)
          ,@body
          (emit-ref :loop-begin (delta) :bne ,counter-reg :zero delta)
          (emit* :addiu ,counter-reg ,counter-reg #xffff)
          ,@(when exit-tag
-                 `((emit-tag ,exit-tag))))
-       (release-cell ,counter-reg))))
+                 `((emit-tag ,exit-tag)))))))
 
 ;;;
 ;;; Function call machinery
@@ -234,8 +265,8 @@
 (defmacro with-function-calls (initial-stack-top &body body)
   `(let (,@(when initial-stack-top `((*initial-stack-top* ,initial-stack-top))))
      ,@(when initial-stack-top `((declare (special *initial-stack-top*))))
-     (allocate-let (asm-mips:gpr :stack-top :arg0-ret :arg1 :arg2)
-       (declare (special :stack-top))
+     (with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
+       (declare (special :stack-top :arg0-ret :arg1 :arg2))
        ,@(when initial-stack-top `((emit-set-gpr :stack-top *initial-stack-top*)))
        ,@body)))
 
@@ -246,7 +277,7 @@
        (backpatch-outstanding-global-tag-references))))
 
 (defun emit-stack-push (value)
-  (emit-based-cell-store32 value :stack-top 0)
+  (emit-based-store32 value :stack-top 0)
   (emit* :addiu :stack-top :stack-top #xfffc))
 
 (defun emit-stack-pop ()
@@ -262,7 +293,7 @@
   (emit* :nop))
 
 (defmacro emitting-function (name (&key (return-tag :return)) &body body)
-  `(allocate-let (asm-mips:gpr :ret-reg)
+  `(with-mips-gpri (:ret-reg)
      (with-tags (,return-tag)
        (emit-global-tag ,name)
        ,@body
@@ -277,7 +308,7 @@
 ;;; Predicate functions
 ;;;
 (defmacro emitting-predicate-function (name (&key (return-tag :return) (return-zero-tag :return-zero) (return-one-tag :return-one)) &body body)
-  `(emitting-function ,name ()
+  `(emitting-function ,name (:return-tag ,return-tag)
      (with-tags (,return-tag ,return-zero-tag ,return-one-tag)
        ,@body
        (emit-tag ,return-zero-tag)
@@ -294,44 +325,32 @@
   (emit-jump-if-eq :return-zero :zero :zero))
 
 (defun emit-succeed-if-eq (val1 val2)
-  "See the ugliness? LET-alike must be here!"
   (let ((name1 (make-keyword (gensym)))
         (name2 (make-keyword (gensym))))
-    (ensure-cell name1 val1)
-    (ensure-cell name2 val2)
-    (emit-jump-if-eq :return-one name1 name2)
-    (release-cell name1)
-    (release-cell name2)))
+    (cell-let ((name1 val1)
+               (name2 val2))
+      (emit-jump-if-eq :return-one name1 name2))))
 
 (defun emit-succeed-if-ne (val1 val2)
-  "See the ugliness? LET-alike must be here!"
   (let ((name1 (make-keyword (gensym)))
         (name2 (make-keyword (gensym))))
-    (ensure-cell name1 val1)
-    (ensure-cell name2 val2)
-    (emit-jump-if-ne :return-one name1 name2)
-    (release-cell name1)
-    (release-cell name2)))
+    (cell-let ((name1 val1)
+               (name2 val2))
+      (emit-jump-if-ne :return-one name1 name2))))
 
 (defun emit-fail-if-eq (val1 val2)
-  "See the ugliness? LET-alike must be here!"
   (let ((name1 (make-keyword (gensym)))
         (name2 (make-keyword (gensym))))
-    (ensure-cell name1 val1)
-    (ensure-cell name2 val2)
-    (emit-jump-if-eq :return-zero name1 name2)
-    (release-cell name1)
-    (release-cell name2)))
+    (cell-let ((name1 val1)
+               (name2 val2))
+      (emit-jump-if-eq :return-zero name1 name2))))
 
 (defun emit-fail-if-ne (val1 val2)
-  "See the ugliness? LET-alike must be here!"
   (let ((name1 (make-keyword (gensym)))
         (name2 (make-keyword (gensym))))
-    (ensure-cell name1 val1)
-    (ensure-cell name2 val2)
-    (emit-jump-if-ne :return-zero name1 name2)
-    (release-cell name1)
-    (release-cell name2)))
+    (cell-let ((name1 val1)
+               (name2 val2))
+      (emit-jump-if-ne :return-zero name1 name2))))
 
 (defun emit-test-eq (val1 val2)
   "See the predicate explosion? Name and compose them."

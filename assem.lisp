@@ -18,7 +18,7 @@
 ;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :assem-mini)
+(in-package :assem)
 
 (defclass segment ()
   ((data :accessor segment-data :initform (make-array 1024 :element-type '(unsigned-byte 8) :adjustable t :initial-element 0))
@@ -47,7 +47,7 @@
 
 (defun segment-disassemble (isa segment)
   (declare (type segment segment))
-  (asm:disassemble isa (segment-active-vector segment)))
+  (disassemble isa (segment-active-vector segment)))
 
 (defun %emit32le (segment insn)
   (declare (type segment segment))
@@ -69,16 +69,16 @@
 
 (defmacro with-optype-pool ((isa optype) &body body)
   `(let* ((*isa* ,isa)
-          (*optype* (asm:optype *isa* ',optype)))
+          (*optype* (optype *isa* ',optype)))
      (declare (special *isa* *optype*))
-     (with-environment (',optype (make-top-level-pool (asm:optype-allocatables *optype*)))
+     (with-environment (',optype (make-top-level-pool (optype-allocatables *optype*)))
        ,@body)))
 
 (defun eval-insn (env insn)
   (flet ((evaluate-and-subst-one-variable (iargs iargvar)
            (subst (evaluate env iargvar) iargvar iargs)))
     (destructuring-bind (opcode &rest iargs) insn
-      (cons opcode (reduce #'evaluate-and-subst-one-variable (asm:insn-optype-variables *isa* *optype* insn) :initial-value iargs)))))
+      (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* *optype* insn) :initial-value iargs)))))
 
 (defmacro with-tag-domain (&body body)
   `(let ((*tag-domain* (make-top-level-tracker)))
@@ -87,7 +87,7 @@
        ,@body)))
 
 (defmacro with-tags ((tag-env &rest tags) &body body)
-  `(tracker-let (,tag-env ,@tags)
+  `(with-tracked-set (,tag-env ,@tags)
      ,@body))
 
 (defmacro with-assembly ((isa optype) &body body)
@@ -135,16 +135,16 @@
     `(tracker-reference-key ,tag-env ',name (cons (segment-emitted-insn-count *segment*)
                                                   (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
                                                     (declare (type (signed-byte 16) ,delta))
-                                                    (asm:encode-insn *isa* (list ,@insn)))))))
+                                                    (encode-insn *isa* (list ,@insn)))))))
 
 (defun emit (env insn)
   (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn env insn)))
+  (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
   (incf (segment-emitted-insn-count *segment*)))
 
 (defun emit* (env &rest insn)
   (declare (special *isa* *optype* *segment* *lexicals*))
-  (%emit32le *segment* (asm:encode-insn *isa* (eval-insn env insn)))
+  (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
   (incf (segment-emitted-insn-count *segment*)))
 
 (defun current-insn-count ()

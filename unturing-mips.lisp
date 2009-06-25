@@ -18,7 +18,7 @@
 ;;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;;; Boston, MA  02111-1307  USA.
 
-(in-package :asm-mips)
+(in-package :isa-mips)
 
 (defparameter *load-list* '(:lb :lh :lw :lbu :lhu :lwu :lwl :lwr :ll :l.s :l.d))
 

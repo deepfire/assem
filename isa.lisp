@@ -42,7 +42,7 @@
 ;;      where the dash-marks mean lack of specification.
 ;;      In fact the 32..infinity bits are unspecified just as well.
 ;;
-(in-package :assembly)
+(in-package :isa)
 
 (defstruct (node (:copier bitree-node-copy))
   parent

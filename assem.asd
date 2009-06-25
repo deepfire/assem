@@ -10,11 +10,11 @@
   :components
   ((:file "package")
    ;;;
-   (:file "assembly" :depends-on ("package"))
+   (:file "isa" :depends-on ("package"))
    ;;;
-   (:file "unturing" :depends-on ("assembly"))
-   (:file "mips-assembly" :depends-on ("assembly"))
-   (:file "assem-mini" :depends-on ("assembly"))
+   (:file "unturing" :depends-on ("isa"))
+   (:file "isa-mips" :depends-on ("isa"))
+   (:file "assem" :depends-on ("isa"))
    ;;;
-   (:file "assem-mini-mips" :depends-on ("mips-assembly" "assem-mini"))
-   (:file "unturing-mips" :depends-on ("unturing" "mips-assembly"))))
+   (:file "assem-mips" :depends-on ("isa-mips" "assem"))
+   (:file "unturing-mips" :depends-on ("unturing" "isa-mips"))))

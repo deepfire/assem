@@ -256,7 +256,7 @@
 
 (defmacro define-enumerated-gpr-optype (isa name bit-width (&rest set) &key unallocatables)
   `(progn
-     (define-enumerated-optype ,isa ,name ,bit-width ,set ,@(when unallocatables `((:unallocatables ,unallocatables))))
+     (define-enumerated-optype ,isa ,name ,bit-width ,set ,@(when unallocatables `(:unallocatables ,unallocatables)))
      (setf (isa-gpr-optype ,isa) (optype ,isa ',name))))
 
 (defun optype-allocatables (optype)

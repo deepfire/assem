@@ -7,7 +7,7 @@
    #:assembly-condition #:assembly-error #:simple-assembly-error
    #:isa #:isa-final-discriminator #:isa-gpr-optype #:isa-delay-slots
    #:validate-insn-parameter-spec #:encode-insn-param #:decode-insn-param
-   #:optype #:optype-name #:optype-width #:optype-set #:optype-rset #:optype-unallocatables #:optype-allocatables #:optype-mask
+   #:optype #:optype-name #:optype-width #:optype-set #:optype-rset #:optype-unallocatables #:optype-allocatables #:optype-mask #:optype-evaluate
    #:define-optype #:define-enumerated-optype #:define-enumerated-gpr-optype
    ;; Take over the GPR symbol!
    #:gpr

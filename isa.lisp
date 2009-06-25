@@ -269,6 +269,10 @@
   "Compute the OPTYPE mask."
   (1- (ash 1 (optype-width optype))))
 
+(defun optype-evaluate (optype name)
+  (or (gethash name (optype-set optype))
+      (assembly-error "~@<Optype ~S does not define value ~S.~:@>" (optype-name optype) name)))
+
 (defmethod initialize-instance :after ((isa isa) &key insn-defines-format-p root-shift root-mask format-root-shift format-root-mask &allow-other-keys)
   (declare (type unsigned-byte root-shift root-mask))
   (setf (isa-insn-root isa) (make-node :val 0 :shift root-shift :mask root-mask))

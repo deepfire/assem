@@ -261,7 +261,9 @@
 
 (defun optype-allocatables (optype)
   "Compute the set of allocatable OPTYPE values."
-  (set-difference (hash-table-keys (optype-set optype)) (optype-unallocatables optype)))
+  (let* ((alist (hash-table-alist (optype-set optype)))
+         (uniques (remove-duplicates alist :key #'cdr)))
+    (set-difference (mapcar #'car uniques) (optype-unallocatables optype))))
 
 (defun optype-mask (optype)
   "Compute the OPTYPE mask."

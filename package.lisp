@@ -27,10 +27,10 @@
    #:segment #:segment-data #:segment-current-index #:segment-emitted-insn-count
    #:pinned-segment #:pinned-segment-base
    #:segment-active-vector #:segment-disassemble
-   #:*isa* #:*optype* #:*tag-domain* #:*segment*
-   #:with-optype-pool #:eval-insn       ; binds *isa* and *optype*
+   #:*isa* #:*tag-domain* #:*segment*
+   #:with-optype-pool #:eval-insn       ; binds *isa*
    #:with-tag-domain #:add-global-tag #:emit-global-tag #:emit-tag #:map-tags #:with-tags ; binds *tag-domain*
-   #:with-assembly            ; binds *isa*, *optype* and *tag-domain*
+   #:with-assembly            ; binds *isa* and *tag-domain*
    #:with-segment-emission    ; binds *segment*
    #:backpatch-outstanding-global-tag-references #:current-insn-count #:current-insn-addr
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv

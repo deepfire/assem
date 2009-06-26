@@ -53,22 +53,21 @@
 ;;; Environment-based evaluation and emission
 ;;;
 (defvar *isa* nil)
-(defvar *optype* nil)
 (defvar *tag-domain* nil)
 (defvar *segment* nil)
 
 (defmacro with-optype-pool ((isa optype) &body body)
-  `(let* ((*isa* ,isa)
-          (*optype* (optype *isa* ',optype)))
-     (declare (special *isa* *optype*))
-     (with-environment (',optype (make-top-level-pool (optype-allocatables *optype*)))
+  "The only custom optype syntactic hook."
+  `(let* ((*isa* ,isa))
+     (declare (special *isa*))
+     (with-environment (',optype (make-top-level-pool (optype-allocatables (optype *isa* ',optype))))
        ,@body)))
 
 (defun eval-insn (env insn)
   (flet ((evaluate-and-subst-one-variable (iargs iargvar)
            (subst (evaluate env iargvar) iargvar iargs)))
     (destructuring-bind (opcode &rest iargs) insn
-      (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* *optype* insn) :initial-value iargs)))))
+      (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
 (defmacro with-tag-domain (&body body)
   `(let ((*tag-domain* (make-top-level-tracker)))
@@ -104,17 +103,18 @@
   `(with-tracked-set (,tag-env ,@tags)
      ,@body))
 
-(defmacro with-assembly ((isa optype) &body body)
-  `(with-metaenvironment
-     (with-optype-pool (,isa ,optype)
-       (with-tag-domain
-           ,@body))))
+(defmacro with-assembly (isa &body body)
+  (once-only (isa)
+    `(with-metaenvironment
+       (with-optype-pool (,isa (isa-gpr-optype ,isa))
+         (with-tag-domain
+           ,@body)))))
 
-(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) optype (&rest tags) &body body)
+(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
-       (with-assembly (,isa ,optype)
+       (with-assembly ,isa
          (with-tags (*tag-domain* ,@tags)
            ,@(when decls `((declare ,@decls)))
            ,@body)))))
@@ -143,24 +143,23 @@
 ;;;
 (defclass compilation-environment ()
   ((isa :accessor cenv-isa :initarg :isa)
-   (optype :accessor cenv-optype :initarg :optype)
    (segments :accessor cenv-segments :initarg :segments)
    (cellenv :accessor cenv-cellenv :initarg :cellenv)
    (tagenv :accessor cenv-tagenv :initarg :tagenv)))
 
 (defmacro with-compilation-environment (cenv &body body)
-  (once-only (cenv)
-    `(let ((*compilation-environment* ,cenv)
-           (*isa* (cenv-isa ,cenv))
-           (*optype* (cenv-optype ,cenv)))
-       (declare (special *compilation-environment* *isa* *optype*))
-       (with-environment ((optype-name *optype*) (cenv-env *compilation-environment*))
-         ,@body))))
+  `(let* ((*compilation-environment* ,cenv)
+          (*isa* (cenv-isa *compilation-environment*))
+          (*tag-domain* (cenv-tagenv *compilation-environment*)))
+     (declare (special *compilation-environment* *isa*))
+     (with-metaenvironment
+       (with-environment ('tags (cenv-tagenv *compilation-environment*))
+         (with-environment ((optype-name (isa-gpr-optype *isa*)) (cenv-cellenv *compilation-environment*))
+           ,@body)))))
 
 (defun save-compilation-environment (cellenv tagenv)
   (make-instance 'compilation-environment
                  :isa *isa*
-                 :optype *optype*
                  :segments (list *segment*)
                  :cellenv cellenv
                  :tagenv tagenv))
@@ -171,11 +170,11 @@
 (defun extent-list-adjoin-segment (extent-list address segment)
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
-(defmacro with-extentable-segment ((isa extentable addr) optype (&rest tags) &body body)
+(defmacro with-extentable-segment ((isa extentable addr) (&rest tags) &body body)
   (with-gensyms (retcell segment ret)
     (once-only (addr)
       `(lret* (,retcell
-               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) ,optype (,@tags)
+               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) (,@tags)
                            ,@(butlast body)
                            (setf ,retcell ,(lastcar body))))
                (,ret ,retcell))

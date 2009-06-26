@@ -49,16 +49,6 @@
   (declare (type segment segment))
   (disassemble isa (segment-active-vector segment)))
 
-(defun %emit32le (segment insn)
-  (declare (type segment segment))
-  (setf (u8-vector-word32le (segment-data segment) (segment-current-index segment)) insn)
-  (incf (segment-current-index segment) 4))
-
-(defun %emit64le (segment insn)
-  (declare (type segment segment))
-  (setf (u8-vector-word64le (segment-data segment) (segment-current-index segment)) insn)
-  (incf (segment-current-index segment) 8))
-
 ;;;
 ;;; Environment-based evaluation and emission
 ;;;

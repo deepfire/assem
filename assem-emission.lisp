@@ -20,7 +20,15 @@
 
 (in-package :assem-emission)
 
+(defun %emit32le (segment insn)
+  (declare (type segment segment))
+  (setf (u8-vector-word32le (segment-data segment) (segment-current-index segment)) insn)
+  (incf (segment-current-index segment) 4))
 
+(defun %emit64le (segment insn)
+  (declare (type segment segment))
+  (setf (u8-vector-word64le (segment-data segment) (segment-current-index segment)) insn)
+  (incf (segment-current-index segment) 8))
 
 (defmacro emit-ref (tag-env name (delta-var-name) &body insn)
   (with-gensyms (delta)

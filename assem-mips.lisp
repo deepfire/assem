@@ -269,7 +269,7 @@ The primary value returned specifies whether a new register was allocated."
   `(with-function-calls ,initial-stack-top
      (progn-1
        ,@body
-       (backpatch-outstanding-global-tag-references))))
+       (backpatch-outstanding-global-tag-references *tag-domain*))))
 
 (defun emit-stack-push (value)
   (emit-based-store32 value :stack-top 0)

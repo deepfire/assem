@@ -255,15 +255,10 @@ The primary value returned specifies whether a new register was allocated."
 ;;;
 ;;; Function call machinery
 ;;;
-(defparameter *initial-stack-top* nil)
-
-(defmacro with-function-calls (initial-stack-top &body body)
-  `(let (,@(when initial-stack-top `((*initial-stack-top* ,initial-stack-top))))
-     ,@(when initial-stack-top `((declare (special *initial-stack-top*))))
-     (with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
-       (declare (special :stack-top :arg0-ret :arg1 :arg2))
-       ,@(when initial-stack-top `((emit-set-gpr :stack-top *initial-stack-top*)))
-       ,@body)))
+(defmacro with-function-calls (&body body)
+  `(with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
+     (declare (special :stack-top :arg0-ret :arg1 :arg2))
+     ,@body))
 
 (defmacro with-function-definitions-and-calls ((&optional initial-stack-top) &body body)
   `(with-function-calls ,initial-stack-top

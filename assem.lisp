@@ -74,6 +74,19 @@
 
 (defclass tag-environment (top-level-environment hash-table-environment) ())
 
+(defmacro with-tag-domain (&body body)
+  `(let ((*tag-domain* (make-instance 'tag-environment)))
+     (declare (special *tag-domain*))
+     (with-environment ('tags *tag-domain*)
+       ,@body)))
+
+(defmacro with-assem (isa &body body)
+  (once-only (isa)
+    `(with-metaenvironment
+       (with-optype-pool (,isa (isa-gpr-optype ,isa))
+         (with-tag-domain
+           ,@body)))))
+
 (defmethod bind :around ((o tag-environment) (name symbol) value)
   (when (name-bound-p o name)
     (error 'environment-name-already-bound :name name :env o))
@@ -94,19 +107,6 @@
                   (mapcar (rcurry (curry #'bind ,tag-env) nil) ,globals)
                   ,@body)
              (mapcar (curry #'do-unbind ,tag-env) ,globals)))))))
-
-(defmacro with-tag-domain (&body body)
-  `(let ((*tag-domain* (make-instance 'tag-environment)))
-     (declare (special *tag-domain*))
-     (with-environment ('tags *tag-domain*)
-       ,@body)))
-
-(defmacro with-assem (isa &body body)
-  (once-only (isa)
-    `(with-metaenvironment
-       (with-optype-pool (,isa (isa-gpr-optype ,isa))
-         (with-tag-domain
-           ,@body)))))
 
 ;;;
 ;;; Segment emission

@@ -153,8 +153,8 @@
           (*tag-domain* (cenv-tagenv *compilation-environment*)))
      (declare (special *compilation-environment* *isa*))
      (with-metaenvironment
-       (with-environment ('tags (cenv-tagenv *compilation-environment*))
-         (with-environment ((optype-name (isa-gpr-optype *isa*)) (cenv-cellenv *compilation-environment*))
+       (with-environment ((optype-name (isa-gpr-optype *isa*)) (cenv-cellenv *compilation-environment*))
+         (with-environment ('tags (cenv-tagenv *compilation-environment*))
            ,@body)))))
 
 (defun save-compilation-environment (cellenv tagenv)

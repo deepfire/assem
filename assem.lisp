@@ -58,7 +58,7 @@
   "The only custom optype syntactic hook."
   `(let* ((*isa* ,isa))
      (declare (special *isa*))
-     (with-environment (',optype (make-top-level-pool (optype-allocatables (optype *isa* ',optype))))
+     (with-environment ((optype-name ,optype) (make-top-level-pool (optype-allocatables ,optype)))
        ,@body)))
 
 (defun eval-insn (env insn)

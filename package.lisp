@@ -34,6 +34,7 @@
    #:with-segment-emission              ; binds *segment*
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
    #:segpoint #:make-segpoint #:copy-segpoint #:segpoint-name #:segpoint-env #:segpoint-segment #:segpoint-offset #:segpoint-insn-nr
+   #:segpoint-address
    #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr
    #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
    #:backpatch-tag-reference #:backpatch-tag-references

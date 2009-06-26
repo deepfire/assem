@@ -119,9 +119,13 @@
 (defstruct segpoint
   (name nil :type symbol)
   (env nil :type environment)
-  (segment nil :type segment)
+  (segment nil :type pinned-segment)
   (offset nil :type unsigned-byte)
   (insn-nr nil :type unsigned-byte))
+
+(defun segpoint-address (segpoint)
+  (declare (type segpoint segpoint))
+  (+ (pinned-segment-base (segpoint-segment segpoint)) (segpoint-offset segpoint)))
 
 (defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr))))
 (defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter)))

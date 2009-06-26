@@ -101,7 +101,7 @@
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
        (with-assembly (,isa ,optype)
-         (with-tags (,@tags)
+         (with-tags (*tag-domain* ,@tags)
            ,@(when decls `((declare ,@decls)))
            ,@body)))))
 

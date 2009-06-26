@@ -31,13 +31,14 @@
   (incf (segment-current-index segment) 8))
 
 (defmacro emit-ref (tag-env name (delta-var-name) &body insn)
-  (with-gensyms (offset-delta insn-nr-delta)
+  (with-gensyms (tag offset-delta insn-nr-delta)
     (once-only (tag-env name)
-      `(tracker-reference-key ,tag-env ,name
-                              (make-ref ,name ,tag-env *segment* (current-segment-offset) (current-insn-count)
-                                        (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
-                                          (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))
-                                          (encode-insn *isa* (list ,@insn))))))))
+      `(let ((,tag (evaluate ,tag-env ,name)))
+         (push (make-ref ,name ,tag-env *segment* (current-segment-offset) (current-insn-count)
+                         (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
+                           (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))
+                           (encode-insn *isa* (list ,@insn))))
+               (tag-references ,tag))))))
 
 (defun emit (env insn)
   (declare (special *isa* *optype* *segment*))

@@ -53,8 +53,6 @@
 ;;; Environment-based evaluation and emission
 ;;;
 (defvar *isa* nil)
-(defvar *tag-domain* nil)
-(defvar *segment* nil)
 
 (defmacro with-optype-pool ((isa optype) &body body)
   "The only custom optype syntactic hook."
@@ -69,27 +67,39 @@
     (destructuring-bind (opcode &rest iargs) insn
       (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
+;;;
+;;; Tag environment
+;;;
+(defvar *tag-domain* nil)
+
+(defclass tag-environment (top-level-environment hash-table-environment) ())
+
+(defmethod bind :around ((o tag-environment) (name symbol) value)
+  (when (name-bound-p o name)
+    (error 'environment-name-already-bound :name name :env o))
+  (call-next-method))
+
+(defmethod do-unbind ((o tag-environment) (name symbol))
+  (let ((tag (lookup-value o name)))
+    (funcall (tag-finalizer tag) tag))
+  (call-next-method))
+
+(defmacro with-tags ((tag-env &rest tags) &body body)
+  (with-gensyms (specials lexical-renames globals)
+    (once-only (tag-env)
+      `(with-lexical-frame-bindings (,tag-env ,@tags) (,specials ,lexical-renames)
+         (let ((,globals (append ,specials ,lexical-renames)))
+           (unwind-protect
+                (progn
+                  (mapcar (rcurry (curry #'bind ,tag-env) nil) ,globals)
+                  ,@body)
+             (mapcar (curry #'do-unbind ,tag-env) ,globals)))))))
+
 (defmacro with-tag-domain (&body body)
-  `(let ((*tag-domain* (make-top-level-tracker)))
+  `(let ((*tag-domain* (make-instance 'tag-environment)))
      (declare (special *tag-domain*))
      (with-environment ('tags *tag-domain*)
        ,@body)))
-
-(defun %add-global-tag (tag-env name address)
-  (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
-
-(defun %map-tags (tag-env fn)
-  (map-tracked-keys tag-env fn))
-
-(defun add-global-tag (name address)
-  (tracker-add-global-key-value-and-finalizer *tag-domain* name #'values address))
-
-(defun map-tags (fn)
-  (map-tracked-keys *tag-domain* fn))
-
-(defmacro with-tags ((tag-env &rest tags) &body body)
-  `(with-tracked-set (,tag-env ,@tags)
-     ,@body))
 
 (defmacro with-assem (isa &body body)
   (once-only (isa)
@@ -97,6 +107,11 @@
        (with-optype-pool (,isa (isa-gpr-optype ,isa))
          (with-tag-domain
            ,@body)))))
+
+;;;
+;;; Segment emission
+;;;
+(defvar *segment* nil)
 
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
@@ -127,7 +142,9 @@
   (declare (type segpoint segpoint))
   (+ (pinned-segment-base (segpoint-segment segpoint)) (segpoint-offset segpoint)))
 
-(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr))))
+(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr finalizer)))
+  (finalizer nil :type (function (tag) (values)))
+  (references nil :type list))
 (defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter)))
   (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
 
@@ -136,24 +153,30 @@
         (funcall (ref-emitter ref) (- (ref-offset ref) (tag-offset tag)) (- (ref-insn-nr ref) (tag-insn-nr tag)))))
 
 (defun backpatch-tag-references (tag)
-  (map-tracker-key-references (tag-env tag) (tag-name tag) (curry #'backpatch-tag-reference tag)))
+  (mapc (curry #'backpatch-tag-reference tag) (tag-references tag)))
+
+(defun backpatch-outstanding-global-tag-references (tag-env)
+  (map-environment tag-env #'backpatch-tag-references))
 
 (defun %emit-global-tag (tag-env name)
-  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count))))
-    (tracker-add-global-key-value-and-finalizer tag-env name #'backpatch-tag-references tag)))
+  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'values)))
+    (bind tag-env name tag)))
 
 (defun %emit-tag (tag-env name)
-  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count))))
-    (tracker-set-key-value-and-finalizer tag-env name #'backpatch-tag-references tag)))
+  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
+    (set-lexical tag-env name tag)))
 
+;;;
+;;; Environment-relative tag
+;;;
 (defun emit-global-tag (name)
   (%emit-global-tag *tag-domain* name))
 
 (defun emit-tag (name)
   (%emit-tag *tag-domain* name))
 
-(defun backpatch-outstanding-global-tag-references (tag-env)
-  (map-tracked-keys tag-env (curry #'tracker-release-key-and-process-references tag-env)))
+(defun tag-address (name)
+  (segpoint-address (evaluate *tag-domain* name)))
 
 ;;;
 ;;; Compilation environment

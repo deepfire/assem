@@ -192,9 +192,6 @@
   (emit* :jr :proxy)
   (emit* :nop))
 
-;;;
-;;; Jumps
-;;;
 (defun emit-jump (name)
   (emit-ref name (delta) :beq :zero :zero delta))
 
@@ -203,6 +200,7 @@
 
 (defun emit-jump-if-ne (name r1 r2)
   (emit-ref name (delta) :bne r1 r2 delta))
+
 ;;;
 ;;; Lexical register allocation
 ;;;

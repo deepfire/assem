@@ -21,7 +21,7 @@
 
 (defpackage #:assem
   (:nicknames #:assem)
-  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa)
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa)
   (:shadowing-import-from :isa #:disassemble)
   (:export
    #:segment #:segment-data #:segment-current-index #:segment-emitted-insn-count
@@ -29,24 +29,23 @@
    #:segment-active-vector #:segment-disassemble
    #:*isa* #:*tag-domain* #:*segment*
    #:with-optype-pool #:eval-insn       ; binds *isa*
-   #:with-tag-domain #:add-global-tag #:map-tags #:with-tags ; binds *tag-domain*
+   #:with-tag-domain #:add-global-tag #:with-tags ; binds *tag-domain*
    #:with-assem                         ; binds *isa* and *tag-domain*
    #:with-segment-emission              ; binds *segment*
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
    #:segpoint #:make-segpoint #:copy-segpoint #:segpoint-name #:segpoint-env #:segpoint-segment #:segpoint-offset #:segpoint-insn-nr
    #:segpoint-address
-   #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr
+   #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr #:tag-finalizer #:tag-references
    #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
-   #:backpatch-tag-reference #:backpatch-tag-references
-   #:emit-global-tag #:emit-tag
-   #:backpatch-outstanding-global-tag-references
+   #:backpatch-tag-reference #:backpatch-tag-references #:backpatch-outstanding-global-tag-references
+   #:emit-global-tag #:emit-tag #:tag-address
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))
 
 (defpackage #:assem-emission
   (:nicknames :assem-emit)
-  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :assem)
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa :assem)
   (:shadowing-import-from :isa #:disassemble)
   (:export
    #:emit-ref #:emit #:emit*))
@@ -68,7 +67,7 @@
    #:*mips-isa* #:encode-mips-insn #:decode-mips-insn))
 
 (defpackage #:assem-mips
-  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :isa-mips :assem)
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa :isa-mips :assem)
   (:shadowing-import-from :isa #:disassemble)
   (:export
     #:with-mips-assem #:evaluate-mips-gpr

@@ -32,10 +32,10 @@
 
 (defmacro emit-ref (tag-env name (delta-var-name) &body insn)
   (with-gensyms (delta)
-    `(tracker-reference-key ,tag-env ',name (cons (segment-emitted-insn-count *segment*)
-                                                  (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
-                                                    (declare (type (signed-byte 16) ,delta))
-                                                    (encode-insn *isa* (list ,@insn)))))))
+    `(tracker-reference-key ,tag-env ,name (cons (segment-emitted-insn-count *segment*)
+                                                 (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
+                                                   (declare (type (signed-byte 16) ,delta))
+                                                   (encode-insn *isa* (list ,@insn)))))))
 
 (defun emit (env insn)
   (declare (special *isa* *optype* *segment*))

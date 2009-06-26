@@ -22,15 +22,40 @@
 
 (defvar *mips-gpr-environment*)
 
+;;;
+;;; Top levels for emission
+;;;
+(defmacro with-mips-gpr-environment (&body body)
+  `(let ((*mips-gpr-environment* (find-environment 'gpr)))
+     (declare (special *mips-gpr-environment*))
+     ,@body))
+
 (defmacro with-mips-assem ((&rest tags) &body body)
   `(with-assem *mips-isa*
      (with-tags (*tag-domain* ,@tags)
-       (let ((*mips-gpr-environment* (find-environment 'gpr)))
-         (declare (special *mips-gpr-environment*))
+       (with-mips-gpr-environment
          ,@body))))
 
+(defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
+  `(with-extentable-segment (*mips-isa* ,extentable ,addr) (,@tags)
+     (with-mips-gpr-environment
+       ,@body)))
+
+;;;
+;;; GPR yayity
+;;;
 (defun evaluate-mips-gpr (name)
   (evaluate *mips-gpr-environment* name))
+
+(defmacro with-mips-gpri ((&rest gprs) &body body)
+  `(with-pool-subset (*mips-gpr-environment* ,@gprs)
+     ,@body))
+
+(defun allocate-mips-gpr (name)
+  (allocate *mips-gpr-environment* name))
+
+(defun release-mips-gpr (gpr)
+  (release *mips-gpr-environment* gpr))
 
 ;;;
 ;;; Override ASSEM-EMISSION for happiness
@@ -45,23 +70,6 @@
   `(assem-emit:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))
 
 ;;;
-;;; Specialize ASSEM
-;;;
-(defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
-  `(with-extentable-segment (*mips-isa* ,extentable ,addr) (,@tags)
-     ,@body))
-
-(defmacro with-mips-gpri ((&rest gprs) &body body)
-  `(with-pool-subset (*mips-gpr-environment* ,@gprs)
-     ,@body))
-
-(defun allocate-mips-gpr (name)
-  (allocate *mips-gpr-environment* name))
-
-(defun release-mips-gpr (gpr)
-  (release *mips-gpr-environment* gpr))
-
-;;;
 ;;; Extend ASSEM...
 ;;;
 (defmacro define-emitter (name lambda-list binding-set &body body)
@@ -69,7 +77,10 @@
     (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
       (emit-defun
        name (mapcar (compose #'car #'ensure-cons) lambda-list)
-       `((with-mips-gpri (,@binding-set) ,@special-decls ,@body))
+       `((with-mips-gpr-environment
+           (with-mips-gpri (,@binding-set)
+             ,@special-decls
+             ,@body)))
        :documentation docstring
        :declarations (append nonspecial-decls
                              (iter (for paramspec in lambda-list)

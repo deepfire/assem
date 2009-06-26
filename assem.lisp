@@ -115,43 +115,14 @@
          (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
                (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
 
-(defun add-global-tag (tag-env name address)
-  (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
-
-(defun emit-global-tag (tag-env name)
-  (tracker-add-global-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
-(defun backpatch-outstanding-global-tag-references (tag-env)
-  (map-tracked-keys tag-env (curry #'tracker-release-key-and-process-references tag-env)))
-
-(defun emit-tag (tag-env name)
-  (tracker-set-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
-(defun map-tags (tag-env fn)
-  (map-tracked-keys tag-env fn))
-
-(defmacro emit-ref (tag-env name (delta-var-name) &body insn)
-  (with-gensyms (delta)
-    `(tracker-reference-key ,tag-env ',name (cons (segment-emitted-insn-count *segment*)
-                                                  (lambda (,delta &aux (,delta-var-name (logand (- #xffff ,delta) #xffff)))
-                                                    (declare (type (signed-byte 16) ,delta))
-                                                    (encode-insn *isa* (list ,@insn)))))))
-
-(defun emit (env insn)
-  (declare (special *isa* *optype* *segment*))
-  (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
-  (incf (segment-emitted-insn-count *segment*)))
-
-(defun emit* (env &rest insn)
-  (declare (special *isa* *optype* *segment* *lexicals*))
-  (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
-  (incf (segment-emitted-insn-count *segment*)))
-
 (defun current-insn-count ()
   (segment-emitted-insn-count *segment*))
 
 (defun current-insn-addr ()
   (+ (pinned-segment-base *segment*) (length (segment-active-vector *segment*))))
+
+(defun backpatch-outstanding-global-tag-references (tag-env)
+  (map-tracked-keys tag-env (curry #'tracker-release-key-and-process-references tag-env)))
 
 ;;;
 ;;; Compilation environment

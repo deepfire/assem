@@ -32,11 +32,17 @@
    #:with-tag-domain #:with-tags        ; binds *tag-domain*
    #:with-assembly            ; binds *isa*, *optype* and *tag-domain*
    #:with-segment-emission    ; binds *segment*
-   #:add-global-tag #:emit-global-tag #:backpatch-outstanding-global-tag-references #:emit-tag #:map-tags #:emit-ref
-   #:emit #:emit* #:current-insn-count #:current-insn-addr
+   #:backpatch-outstanding-global-tag-references #:current-insn-count #:current-insn-addr
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))
+
+(defpackage #:assem-emission
+  (:nicknames :assem-emit)
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :assem)
+  (:shadowing-import-from :isa #:disassemble)
+  (:export
+   #:add-global-tag #:emit-global-tag #:emit-tag #:map-tags #:emit-ref #:emit #:emit*))
 
 (defpackage #:unturing
   (:use :common-lisp :alexandria :iterate :pergamum :isa)
@@ -55,7 +61,7 @@
    #:*mips-isa* #:encode-mips-insn #:decode-mips-insn))
 
 (defpackage #:assem-mips
-  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :isa-mips :assem)
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :isa-mips :assem :assem-emission)
   (:shadowing-import-from :isa #:disassemble)
   (:shadow #:emit #:emit* #:emit-tag #:emit-global-tag #:emit-ref)
   (:export

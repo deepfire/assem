@@ -23,7 +23,7 @@
 (defvar *mips-gpr-environment*)
 
 (defmacro with-mips-assem ((&rest tags) &body body)
-  `(with-assem (*mips-isa* gpr)
+  `(with-assem *mips-isa*
      (with-tags (*tag-domain* ,@tags)
        (let ((*mips-gpr-environment* (find-environment 'gpr)))
          (declare (special *mips-gpr-environment*))
@@ -45,7 +45,7 @@
 ;;; Specialize ASSEM
 ;;;
 (defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
-  `(with-extentable-segment (*mips-isa* ,extentable ,addr) gpr (,@tags)
+  `(with-extentable-segment (*mips-isa* ,extentable ,addr) (,@tags)
      ,@body))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)

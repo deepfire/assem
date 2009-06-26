@@ -273,12 +273,14 @@ The primary value returned specifies whether a new register was allocated."
 (defun emit-stack-pop ()
   (emit* :addiu :stack-top :stack-top #x4))
 
+
+;;; Everything is position-independent, whereas function return addresses aren't.
 (defun emit-near-function-call (name &rest args)
   (iter (for arg in args)
         (for argreg in '(:arg0-ret :arg1 :arg2))
         (unless (eq arg argreg)
           (emit-set-gpr argreg arg)))
-  (emit-stack-push (+ 8 (current-insn-addr)))
+  (emit-stack-push (+ 8 (current-absolute-addr)))
   (emit-jump name)
   (emit* :nop))
 

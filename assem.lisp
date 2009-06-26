@@ -78,23 +78,11 @@
 (defun %add-global-tag (tag-env name address)
   (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
 
-(defun %emit-global-tag (tag-env name)
-  (tracker-add-global-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
-(defun %emit-tag (tag-env name)
-  (tracker-set-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
 (defun %map-tags (tag-env fn)
   (map-tracked-keys tag-env fn))
 
 (defun add-global-tag (name address)
   (tracker-add-global-key-value-and-finalizer *tag-domain* name #'values address))
-
-(defun emit-global-tag (name)
-  (tracker-add-global-key-value-and-finalizer *tag-domain* name (make-tag-backpatcher *tag-domain* name) (current-insn-count)))
-
-(defun emit-tag (name)
-  (tracker-set-key-value-and-finalizer *tag-domain* name (make-tag-backpatcher *tag-domain* name) (current-insn-count)))
 
 (defun map-tags (fn)
   (map-tracked-keys *tag-domain* fn))
@@ -119,21 +107,46 @@
            ,@(when decls `((declare ,@decls)))
            ,@body)))))
 
-(defun make-tag-backpatcher (tag-env tag-name)
-  (declare (special *segment*))
-  (lambda (tag-insn-nr)
-    (map-tracker-key-references
-     tag-env tag-name
-     (lambda (reference-value)
-       (destructuring-bind (referencer-insn-nr . reference-emitter) reference-value
-         (setf (u8-vector-word32le (segment-data *segment*) (* 4 referencer-insn-nr))
-               (funcall reference-emitter (- referencer-insn-nr tag-insn-nr))))))))
-
 (defun current-insn-count ()
   (segment-emitted-insn-count *segment*))
 
-(defun current-insn-addr ()
+(defun current-segment-offset ()
+  (length (segment-active-vector *segment*)))
+
+(defun current-absolute-addr ()
   (+ (pinned-segment-base *segment*) (length (segment-active-vector *segment*))))
+
+(defstruct segpoint
+  (name nil :type symbol)
+  (env nil :type environment)
+  (segment nil :type segment)
+  (offset nil :type unsigned-byte)
+  (insn-nr nil :type unsigned-byte))
+
+(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr))))
+(defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter)))
+  (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
+
+(defun backpatch-tag-reference (tag ref)
+  (setf (u8-vector-word32le (segment-data (ref-segment ref)) (ref-offset ref))
+        (funcall (ref-emitter ref) (- (ref-offset ref) (tag-offset tag)) (- (ref-insn-nr ref) (tag-insn-nr tag)))))
+
+(defun backpatch-tag-references (tag)
+  (map-tracker-key-references (tag-env tag) (tag-name tag) (curry #'backpatch-tag-reference tag)))
+
+(defun %emit-global-tag (tag-env name)
+  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count))))
+    (tracker-add-global-key-value-and-finalizer tag-env name #'backpatch-tag-references tag)))
+
+(defun %emit-tag (tag-env name)
+  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count))))
+    (tracker-set-key-value-and-finalizer tag-env name #'backpatch-tag-references tag)))
+
+(defun emit-global-tag (name)
+  (%emit-global-tag *tag-domain* name))
+
+(defun emit-tag (name)
+  (%emit-tag *tag-domain* name))
 
 (defun backpatch-outstanding-global-tag-references (tag-env)
   (map-tracked-keys tag-env (curry #'tracker-release-key-and-process-references tag-env)))

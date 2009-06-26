@@ -22,7 +22,7 @@
 
 (defvar *mips-gpr-environment*)
 
-(defmacro with-mips-assembly ((&rest tags) &body body)
+(defmacro with-mips-assem ((&rest tags) &body body)
   `(with-assembly (*mips-isa* gpr)
      (with-tags (*tag-domain* ,@tags)
        (let ((*mips-gpr-environment* (find-environment 'gpr)))

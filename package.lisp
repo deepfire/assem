@@ -64,7 +64,7 @@
   (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :tracker :isa :isa-mips :assem)
   (:shadowing-import-from :isa #:disassemble)
   (:export
-    #:with-mips-assembly
+    #:with-mips-assem
     #:emit #:emit* #:emit-ref
     #:with-extentable-mips-segment #:with-mips-gpri #:allocate-mips-gpr #:release-mips-gpr
     #:emit-nops #:emit-set-gpr

@@ -86,6 +86,30 @@
      (with-environment ('tags *tag-domain*)
        ,@body)))
 
+(defun %add-global-tag (tag-env name address)
+  (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
+
+(defun %emit-global-tag (tag-env name)
+  (tracker-add-global-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
+
+(defun %emit-tag (tag-env name)
+  (tracker-set-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
+
+(defun %map-tags (tag-env fn)
+  (map-tracked-keys tag-env fn))
+
+(defun add-global-tag (name address)
+  (tracker-add-global-key-value-and-finalizer *tag-domain* name #'values address))
+
+(defun emit-global-tag (name)
+  (tracker-add-global-key-value-and-finalizer *tag-domain* name (make-tag-backpatcher *tag-domain* name) (current-insn-count)))
+
+(defun emit-tag (name)
+  (tracker-set-key-value-and-finalizer *tag-domain* name (make-tag-backpatcher *tag-domain* name) (current-insn-count)))
+
+(defun map-tags (fn)
+  (map-tracked-keys *tag-domain* fn))
+
 (defmacro with-tags ((tag-env &rest tags) &body body)
   `(with-tracked-set (,tag-env ,@tags)
      ,@body))

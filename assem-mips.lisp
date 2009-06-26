@@ -30,19 +30,13 @@
          ,@body))))
 
 ;;;
-;;; Override ASSEM for happiness
+;;; Override ASSEM-EMISSION for happiness
 ;;;
 (defun emit (insn)
   (assem-emit:emit *mips-gpr-environment* insn))
 
 (defun emit* (opcode &rest insn-args)
   (emit (cons opcode insn-args)))
-
-(defun emit-global-tag (name)
-  (assem-emit:emit-global-tag *mips-gpr-environment* name))
-
-(defun emit-tag (name)
-  (assem-emit:emit-tag *mips-gpr-environment* name))
 
 (defmacro emit-ref (name (delta-var-name) &body insn)
   `(assem-emit:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))

@@ -20,17 +20,7 @@
 
 (in-package :assem-emission)
 
-(defun add-global-tag (tag-env name address)
-  (tracker-add-global-key-value-and-finalizer tag-env name #'values address))
 
-(defun emit-global-tag (tag-env name)
-  (tracker-add-global-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
-(defun emit-tag (tag-env name)
-  (tracker-set-key-value-and-finalizer tag-env name (make-tag-backpatcher tag-env name) (current-insn-count)))
-
-(defun map-tags (tag-env fn)
-  (map-tracked-keys tag-env fn))
 
 (defmacro emit-ref (tag-env name (delta-var-name) &body insn)
   (with-gensyms (delta)

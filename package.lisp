@@ -30,8 +30,8 @@
    #:*isa* #:*tag-domain* #:*segment*
    #:with-optype-pool #:eval-insn       ; binds *isa*
    #:with-tag-domain #:add-global-tag #:emit-global-tag #:emit-tag #:map-tags #:with-tags ; binds *tag-domain*
-   #:with-assembly            ; binds *isa* and *tag-domain*
-   #:with-segment-emission    ; binds *segment*
+   #:with-assem                         ; binds *isa* and *tag-domain*
+   #:with-segment-emission              ; binds *segment*
    #:backpatch-outstanding-global-tag-references #:current-insn-count #:current-insn-addr
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment

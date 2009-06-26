@@ -103,7 +103,7 @@
   `(with-tracked-set (,tag-env ,@tags)
      ,@body))
 
-(defmacro with-assembly (isa &body body)
+(defmacro with-assem (isa &body body)
   (once-only (isa)
     `(with-metaenvironment
        (with-optype-pool (,isa (isa-gpr-optype ,isa))
@@ -114,7 +114,7 @@
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
-       (with-assembly ,isa
+       (with-assem ,isa
          (with-tags (*tag-domain* ,@tags)
            ,@(when decls `((declare ,@decls)))
            ,@body)))))

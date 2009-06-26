@@ -29,6 +29,9 @@
          (declare (special *mips-gpr-environment*))
          ,@body))))
 
+(defun evaluate-mips-gpr (name)
+  (evaluate *mips-gpr-environment* name))
+
 ;;;
 ;;; Override ASSEM-EMISSION for happiness
 ;;;

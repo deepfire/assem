@@ -255,7 +255,7 @@ The primary value returned specifies whether a new register was allocated."
 (defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg :counter)) &body body)
   (once-only (iterations)
     `(cell-let ((,counter-reg ,iterations))
-       (with-tags (:loop-begin ,@(when exit-tag `(,exit-tag)))
+       (with-tags (*tag-domain* :loop-begin ,@(when exit-tag `(,exit-tag)))
          (emit-tag :loop-begin)
          ,@body
          (emit-ref :loop-begin (delta) :bne ,counter-reg :zero delta)
@@ -297,7 +297,7 @@ The primary value returned specifies whether a new register was allocated."
 
 (defmacro emitting-function (name (&key (return-tag :return)) &body body)
   `(with-mips-gpri (:ret-reg)
-     (with-tags (,return-tag)
+     (with-tags (*tag-domain* ,return-tag)
        (emit-global-tag ,name)
        ,@body
        (emit-tag ,return-tag)
@@ -312,7 +312,7 @@ The primary value returned specifies whether a new register was allocated."
 ;;;
 (defmacro emitting-predicate-function (name (&key (return-tag :return) (return-zero-tag :return-zero) (return-one-tag :return-one)) &body body)
   `(emitting-function ,name (:return-tag ,return-tag)
-     (with-tags (,return-tag ,return-zero-tag ,return-one-tag)
+     (with-tags (*tag-domain* ,return-tag ,return-zero-tag ,return-one-tag)
        ,@body
        (emit-tag ,return-zero-tag)
        (emit-set-gpr :arg0-ret 0)
@@ -371,7 +371,7 @@ The primary value returned specifies whether a new register was allocated."
 
 (defun emit-jump-if (tag predicate &rest args)
   (apply #'emit-near-function-call predicate args)
-  (with-tags (:skip)
+  (with-tags (*tag-domain* :skip)
     (emit-jump-if-eq :skip :arg0-ret :zero)
     (emit* :nop)
     (emit-jump tag)

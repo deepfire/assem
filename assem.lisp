@@ -52,7 +52,7 @@
 ;;;
 ;;; Environment-based evaluation and emission
 ;;;
-(defvar *isa* nil)
+(defvar *isa*)
 
 (defmacro with-optype-pool ((isa optype) &body body)
   "The only custom optype syntactic hook."
@@ -70,7 +70,7 @@
 ;;;
 ;;; Tag environment
 ;;;
-(defvar *tag-domain* nil)
+(defvar *tag-domain*)
 
 (defclass tag-environment (top-level-environment hash-table-environment) ())
 
@@ -111,7 +111,7 @@
 ;;;
 ;;; Segment emission
 ;;;
-(defvar *segment* nil)
+(defvar *segment*)
 
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (&rest tags) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)

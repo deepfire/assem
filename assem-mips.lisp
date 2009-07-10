@@ -45,7 +45,7 @@
 ;;; GPR yayity
 ;;;
 (defun evaluate-mips-gpr (name)
-  (evaluate *mips-gpr-environment* name))
+  (evaluate-dynamic *mips-gpr-environment* name))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)
   `(with-pool-subset (*mips-gpr-environment* ,@gprs)
@@ -213,30 +213,30 @@
   (emit-ref name (delta) :bne r1 r2 delta))
 
 ;;;
-;;; Lexical register allocation
+;;; Dynamic register allocation
 ;;;
 (defun ensure-cell (env name val)
-  "Ensure that NAME is lexically bound to whatever is signified by VAL.
-In any case the active lexical frame is extended with NAME. The value
-of that new lexical binding is either a newly allocated register, if VAL
-designates an immediate value, or if VAL designates a lexical or global
+  "Ensure that NAME is dynamically bound to whatever is signified by VAL.
+In any case the active dynamic frame is extended with NAME. The value
+of that new dynamic binding is either a newly allocated register, if VAL
+designates an immediate value, or if VAL designates a dynamic or global
 binding, the value of that binding.
 The primary value returned specifies whether a new register was allocated."
   (etypecase val
-    (keyword ;; already a register? rebind lexically.
-     (allocate-lexical env name)
-     (setf (lexical env name)
-           (if (name-lexical-p env val)
-               (lexical env val)
+    (keyword ;; already a register? rebind dynamicly.
+     (allocate-dynamic env name)
+     (setf (dynamic env name)
+           (if (name-dynamic-p env val)
+               (dynamic env val)
                val))
      nil)
-    (integer ;; no? allocate, bind lexically and set.
-     (let ((cell (pool-allocate-lexical env name)))
+    (integer ;; no? allocate, bind dynamicly and set.
+     (let ((cell (pool-allocate-dynamic env name)))
        (emit-set-gpr cell val))
      t)))
 
 (defmacro cell-let (bindings &body body)
-  "Execute BODY with freshly established lexical BINDINGS."
+  "Execute BODY with freshly established dynamic BINDINGS."
   (if bindings
       (destructuring-bind ((name value) &rest more-bindings) bindings
         (with-gensyms (reg-allocated-p)
@@ -245,8 +245,8 @@ The primary value returned specifies whether a new register was allocated."
                   (cell-let ,more-bindings
                     ,@body)
                (when ,reg-allocated-p
-                 (release *mips-gpr-environment* (evaluate *mips-gpr-environment* ,name)))
-               (undo-lexical *mips-gpr-environment* ,name)))))
+                 (release *mips-gpr-environment* (evaluate-dynamic *mips-gpr-environment* ,name)))
+               (undo-dynamic *mips-gpr-environment* ,name)))))
       `(progn ,@body)))
 
 ;;;

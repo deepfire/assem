@@ -58,12 +58,12 @@
   "The only custom optype syntactic hook."
   `(let* ((*isa* ,isa))
      (declare (special *isa*))
-     (with-environment ((optype-name ,optype) (make-top-level-pool (optype-allocatables ,optype)))
+     (with-environment ((optype-name ,optype) (make-dynamic-pool (optype-allocatables ,optype)))
        ,@body)))
 
 (defun eval-insn (env insn)
   (flet ((evaluate-and-subst-one-variable (iargs iargvar)
-           (subst (evaluate env iargvar) iargvar iargs)))
+           (subst (evaluate-dynamic env iargvar) iargvar iargs)))
     (destructuring-bind (opcode &rest iargs) insn
       (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
@@ -72,7 +72,7 @@
 ;;;
 (defvar *tag-domain*)
 
-(defclass tag-environment (top-level-environment hash-table-environment) ())
+(defclass tag-environment (dynamic-environment hash-table-environment) ())
 
 (defmacro with-tag-domain (&body body)
   `(let ((*tag-domain* (make-instance 'tag-environment)))
@@ -98,10 +98,10 @@
   (call-next-method))
 
 (defmacro with-tags ((tag-env &rest tags) &body body)
-  (with-gensyms (specials lexical-renames globals)
+  (with-gensyms (specials dynamic-renames globals)
     (once-only (tag-env)
-      `(with-lexical-frame-bindings (,tag-env ,@tags) (,specials ,lexical-renames)
-         (let ((,globals (append ,specials ,lexical-renames)))
+      `(with-dynamic-frame-bindings (,tag-env ,@tags) (,specials ,dynamic-renames)
+         (let ((,globals (append ,specials ,dynamic-renames)))
            (unwind-protect
                 (progn
                   (mapcar (rcurry (curry #'bind ,tag-env) nil) ,globals)
@@ -164,7 +164,7 @@
 
 (defun %emit-tag (tag-env name)
   (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
-    (set-lexical tag-env name tag)))
+    (set-dynamic tag-env name tag)))
 
 ;;;
 ;;; Environment-relative tag
@@ -176,7 +176,7 @@
   (%emit-tag *tag-domain* name))
 
 (defun tag-address (name)
-  (segpoint-address (evaluate *tag-domain* name)))
+  (segpoint-address (evaluate-dynamic *tag-domain* name)))
 
 ;;;
 ;;; Compilation environment

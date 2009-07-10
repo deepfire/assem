@@ -33,7 +33,7 @@
 (defmacro emit-ref (tag-env name (delta-var-name) &body insn)
   (with-gensyms (tag offset-delta insn-nr-delta)
     (once-only (tag-env name)
-      `(let ((,tag (evaluate ,tag-env ,name)))
+      `(let ((,tag (evaluate-dynamic ,tag-env ,name)))
          (push (make-ref ,name ,tag-env *segment* (current-segment-offset) (current-insn-count)
                          (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
                            (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))

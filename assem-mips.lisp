@@ -45,17 +45,17 @@
 ;;; GPR yayity
 ;;;
 (defun evaluate-mips-gpr (name)
-  (evaluate-dynamic *mips-gpr-environment* name))
+  (pool-evaluate *mips-gpr-environment* name))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)
   `(with-pool-subset (*mips-gpr-environment* ,@gprs)
      ,@body))
 
 (defun allocate-mips-gpr (name)
-  (allocate *mips-gpr-environment* name))
+  (pool-allocate *mips-gpr-environment* name))
 
 (defun release-mips-gpr (gpr)
-  (release *mips-gpr-environment* gpr))
+  (pool-release *mips-gpr-environment* gpr))
 
 ;;;
 ;;; Override ASSEM-EMISSION for happiness
@@ -213,40 +213,39 @@
   (emit-ref name (delta) :bne r1 r2 delta))
 
 ;;;
-;;; Dynamic register allocation
+;;; Scoped register allocation
 ;;;
 (defun ensure-cell (env name val)
-  "Ensure that NAME is dynamically bound to whatever is signified by VAL.
-In any case the active dynamic frame is extended with NAME. The value
-of that new dynamic binding is either a newly allocated register, if VAL
-designates an immediate value, or if VAL designates a dynamic or global
-binding, the value of that binding.
-The primary value returned specifies whether a new register was allocated."
+  "Ensure that NAME is bound to whatever is signified by VAL.
+In any case the bottom frame is extended with NAME. The value of that new
+binding is either a newly allocated register, if VAL designates an
+immediate value, or if VAL designates a binding, the backing register
+of that binding. The returned primary value specifies whether
+a new register was allocated."
   (etypecase val
-    (keyword ;; already a register? rebind dynamicly.
-     (allocate-dynamic env name)
-     (setf (dynamic env name)
-           (if (name-dynamic-p env val)
-               (dynamic env val)
-               val))
+    (keyword ;; already a register? rebind.
+     (bind (bottom-frame env) name
+           (cond ((name-bound-p env val) (lookup env val))
+                 ((name-bound-p (env-pool env) val) val)
+                 (t (allocation-error "~@<Attempt to rebind and unbound name ~S in ~S.~:@>" val env))))
      nil)
     (integer ;; no? allocate, bind dynamicly and set.
-     (let ((cell (pool-allocate-dynamic env name)))
+     (let ((cell (pool-allocate-binding env name)))
        (emit-set-gpr cell val))
      t)))
 
 (defmacro cell-let (bindings &body body)
   "Execute BODY with freshly established dynamic BINDINGS."
   (if bindings
-      (destructuring-bind ((name value) &rest more-bindings) bindings
+      (destructuring-bind ((name value) &rest maybe-more-bindings) bindings
         (with-gensyms (reg-allocated-p)
           `(let ((,reg-allocated-p (ensure-cell *mips-gpr-environment* ,name ,value)))
              (unwind-protect
-                  (cell-let ,more-bindings
+                  (cell-let ,maybe-more-bindings
                     ,@body)
                (when ,reg-allocated-p
-                 (release *mips-gpr-environment* (evaluate-dynamic *mips-gpr-environment* ,name)))
-               (undo-dynamic *mips-gpr-environment* ,name)))))
+                 (pool-release *mips-gpr-environment* (pool-evaluate *mips-gpr-environment* ,name)))
+               (unbind (bottom-frame *mips-gpr-environment*) ,name)))))
       `(progn ,@body)))
 
 ;;;
@@ -270,12 +269,6 @@ The primary value returned specifies whether a new register was allocated."
   `(with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
      (declare (special :stack-top :arg0-ret :arg1 :arg2))
      ,@body))
-
-(defmacro with-function-definitions-and-calls ((&optional initial-stack-top) &body body)
-  `(with-function-calls ,initial-stack-top
-     (progn-1
-       ,@body
-       (backpatch-outstanding-global-tag-references *tag-domain*))))
 
 (defun emit-stack-push (value)
   (emit-based-store32 value :stack-top 0)

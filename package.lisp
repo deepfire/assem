@@ -29,7 +29,7 @@
    #:segment-active-vector #:segment-disassemble
    #:*isa* #:*tag-domain* #:*segment*
    #:with-optype-pool #:eval-insn       ; binds *isa*
-   #:with-tag-domain #:add-global-tag #:with-tags ; binds *tag-domain*
+   #:with-tag-domain #:env-global-frame #:with-tags ; binds *tag-domain*
    #:with-assem                         ; binds *isa* and *tag-domain*
    #:with-segment-emission              ; binds *segment*
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
@@ -37,8 +37,8 @@
    #:segpoint-address
    #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr #:tag-finalizer #:tag-references
    #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
-   #:backpatch-tag-reference #:backpatch-tag-references #:backpatch-outstanding-global-tag-references
-   #:emit-global-tag #:emit-tag #:tag-address
+   #:backpatch-tag-reference #:backpatch-tag-references
+   #:emit-tag #:emit-global-tag #:tag-address
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))
@@ -83,7 +83,7 @@
     #:ensure-cell #:cell-let
     #:emitting-iteration
     #:*initial-stack-top*
-    #:with-function-calls #:with-function-definitions-and-calls #:emit-stack-push #:emit-stack-pop
+    #:with-function-calls #:emit-stack-push #:emit-stack-pop
     #:emit-near-function-call #:emitting-function #:emitting-predicate-function
     #:emit-succeed #:emit-fail #:emit-succeed-if-eq #:emit-succeed-if-ne #:emit-fail-if-eq #:emit-fail-if-ne #:emit-test-eq #:emit-test-ne
     #:emit-jump-if))

@@ -58,12 +58,13 @@
   "The only custom optype syntactic hook."
   `(let* ((*isa* ,isa))
      (declare (special *isa*))
-     (with-environment ((optype-name ,optype) (make-dynamic-pool (optype-allocatables ,optype)))
+     (with-environment ((optype-name ,optype) (make-pool-backed-frame-chain (optype-allocatables ,optype)))
        ,@body)))
 
 (defun eval-insn (env insn)
   (flet ((evaluate-and-subst-one-variable (iargs iargvar)
-           (subst (evaluate-dynamic env iargvar) iargvar iargs)))
+           (syncformat t "~&e-i ~S: ~S -> ~S~%" insn iargvar (pool-evaluate env iargvar))
+           (subst (pool-evaluate env iargvar) iargvar iargs)))
     (destructuring-bind (opcode &rest iargs) insn
       (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
@@ -72,13 +73,28 @@
 ;;;
 (defvar *tag-domain*)
 
-(defclass tag-environment (dynamic-environment hash-table-environment) ())
+(defclass tag-environment (frame-chain immutable-environment hash-table-environment)
+  ((global-frame :accessor env-global-frame)))
 
 (defmacro with-tag-domain (&body body)
-  `(let ((*tag-domain* (make-instance 'tag-environment)))
-     (declare (special *tag-domain*))
-     (with-environment ('tags *tag-domain*)
-       ,@body)))
+  (with-gensyms (global-frame)
+    `(let ((*tag-domain* (make-instance 'tag-environment)))
+       (declare (special *tag-domain*))
+       (with-environment ('tags *tag-domain*)
+         (with-fresh-frame (*tag-domain* ,global-frame)
+           (setf (env-global-frame *tag-domain*) ,global-frame)
+           ,@body)))))
+
+(defmacro with-tags ((tag-env &rest tags) &body body)
+  (with-gensyms (frame)
+    (once-only (tag-env)
+      `(with-fresh-frame (,tag-env ,frame)
+         (unwind-protect (progn
+                           ,@body)
+           (syncformat t "~&Finalizing tags in frame: ~S~%" (env-alist ,frame))
+           (do-frame-bindings (nil tag) ,frame
+             (assert tag)
+             (funcall (tag-finalizer tag) tag)))))))
 
 (defmacro with-assem (isa &body body)
   (once-only (isa)
@@ -86,27 +102,6 @@
        (with-optype-pool (,isa (isa-gpr-optype ,isa))
          (with-tag-domain
            ,@body)))))
-
-(defmethod bind :around ((o tag-environment) (name symbol) value)
-  (when (name-bound-p o name)
-    (error 'environment-name-already-bound :name name :env o))
-  (call-next-method))
-
-(defmethod do-unbind ((o tag-environment) (name symbol))
-  (let ((tag (lookup-value o name)))
-    (funcall (tag-finalizer tag) tag))
-  (call-next-method))
-
-(defmacro with-tags ((tag-env &rest tags) &body body)
-  (with-gensyms (specials dynamic-renames globals)
-    (once-only (tag-env)
-      `(with-dynamic-frame-bindings (,tag-env ,@tags) (,specials ,dynamic-renames)
-         (let ((,globals (append ,specials ,dynamic-renames)))
-           (unwind-protect
-                (progn
-                  (mapcar (rcurry (curry #'bind ,tag-env) nil) ,globals)
-                  ,@body)
-             (mapcar (curry #'do-unbind ,tag-env) ,globals)))))))
 
 ;;;
 ;;; Segment emission
@@ -155,28 +150,25 @@
 (defun backpatch-tag-references (tag)
   (mapc (curry #'backpatch-tag-reference tag) (tag-references tag)))
 
-(defun backpatch-outstanding-global-tag-references (tag-env)
-  (map-environment tag-env #'backpatch-tag-references))
-
-(defun %emit-global-tag (tag-env name)
-  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'values)))
-    (bind tag-env name tag)))
-
 (defun %emit-tag (tag-env name)
   (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
-    (set-dynamic tag-env name tag)))
+    (bind tag-env name tag)))
+
+(defun %emit-global-tag (tag-env name)
+  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
+    (bind (env-global-frame tag-env) name tag)))
 
 ;;;
 ;;; Environment-relative tag
 ;;;
-(defun emit-global-tag (name)
-  (%emit-global-tag *tag-domain* name))
-
 (defun emit-tag (name)
   (%emit-tag *tag-domain* name))
 
+(defun emit-global-tag (name)
+  (%emit-global-tag *tag-domain* name))
+
 (defun tag-address (name)
-  (segpoint-address (evaluate-dynamic *tag-domain* name)))
+  (segpoint-address (lookup *tag-domain* name)))
 
 ;;;
 ;;; Compilation environment

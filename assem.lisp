@@ -61,40 +61,131 @@
      (with-environment ((optype-name ,optype) (make-pool-backed-frame-chain (optype-allocatables ,optype)))
        ,@body)))
 
-(defun eval-insn (env insn)
-  (flet ((evaluate-and-subst-one-variable (iargs iargvar)
-           (syncformat t "~&e-i ~S: ~S -> ~S~%" insn iargvar (pool-evaluate env iargvar))
-           (subst (pool-evaluate env iargvar) iargvar iargs)))
-    (destructuring-bind (opcode &rest iargs) insn
-      (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
-
 ;;;
 ;;; Tag environment
 ;;;
 (defvar *tag-domain*)
 
 (defclass tag-environment (frame-chain immutable-environment hash-table-environment)
-  ((global-frame :accessor env-global-frame)))
+  ((global-frame :accessor env-global-frame)
+   (functions :accessor env-functions :initform (make-hash-table :test 'eq))
+   (forward-references :accessor env-forward-references :initform nil)))
+
+(defstruct envobject
+  (name nil :type symbol)
+  (env nil :type environment))
+
+(defstruct (segpoint (:include envobject))
+  (segment nil :type pinned-segment)
+  (offset nil :type unsigned-byte)
+  (insn-nr nil :type unsigned-byte))
+
+(defun segpoint-address (segpoint)
+  (declare (type segpoint segpoint))
+  (+ (pinned-segment-base (segpoint-segment segpoint)) (segpoint-offset segpoint)))
+
+(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr finalizer)))
+  (finalizer nil :type (function (tag) (values)))
+  (references nil :type list))
+
+(defstruct (func (:include envobject))
+  (tag nil :type (or null tag))
+  (emitter nil :type (or null function)))
+
+(defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter func)))
+  (func nil :type (or null func))
+  (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
+
+(define-container-hash-accessor :i func :container-transform env-functions :parametrize-container t :if-exists :error)
+
+(defvar *function*)
+
+(defun define-function (tag-env name emitter)
+  (lret ((func (make-func :name name :env tag-env)))
+    (setf (func-emitter func) (lambda ()
+                                (let ((*function* func))
+                                  (declare (special *function*))
+                                  (funcall emitter)))
+          (func tag-env name) func)))
+
+(defun current-function ()
+  (when (boundp '*function*)
+    *function*))
+
+(defun emit-function (tag-env func)
+  (syncformat t "~&Emitting function ~S.~%" (func-name func))
+  (setf (func-tag func) (%emit-global-tag tag-env (func-name func)))
+  (funcall (func-emitter func)))
+
+(defmacro with-function-definition-and-emission (tag-env name &body body)
+  `(emit-function ,tag-env (define-function ,tag-env ,name (lambda () ,@body))))
+
+(defun eval-insn (env insn)
+  (flet ((evaluate-and-subst-one-variable (iargs iargvar)
+           (format t "~&e-i ~S: ~S -> ~S~%" insn iargvar (pool-evaluate env iargvar))
+           (multiple-value-bind (result bound-p) (pool-evaluate env iargvar)
+             (unless bound-p
+               (error "~@<In definition of ~:[#<ANONYMOUS-CODE>~;~:*~S~]: ~S is not bound.~:@>" (current-function) iargvar))
+             (subst result iargvar iargs))))
+    (destructuring-bind (opcode &rest iargs) insn
+      (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
+
+(defun %emit-ref (tag-env segment name insn-emitter)
+  (let ((ref (make-ref name tag-env segment (current-segment-offset) (current-insn-count) insn-emitter (current-function))))
+    (if-let ((tag (do-lookup tag-env name)))
+      (push ref (tag-references tag))
+      (push ref (env-forward-references tag-env)))))
+
+(defun relink-forward-references (tag-env)
+  "Find tag matches for outstanding forward references in TAG-ENV, 
+thus clearing them."
+  (iter (for ref in (env-forward-references tag-env))
+        (for tag = (do-lookup tag-env (ref-name ref)))
+        (when tag
+          (push ref (tag-references tag))
+          (collect ref into defined-refs))
+        (finally
+         (nset-differencef (env-forward-references tag-env) defined-refs))))
+
+(defun note-tag-domain-forward-references (tag-env)
+  "Warn about forward references outstanding in TAG-ENV."
+  (when-let ((undefined-refs (env-forward-references tag-env)))
+    (when-let ((anons (remove nil undefined-refs :key #'ref-func :test-not #'eq)))
+      (format t "~@<WARNING: In anonymous code: undefined referred tags were referred:~{ ~S~}.~:@>" (mapcar #'ref-name anons)))
+    (dolist (referrer-func (remove-duplicates (mapcar #'ref-func undefined-refs)))
+      (format t "~@<WARNING: In definition of ~S: undefined tags were referred:~{ ~S~}.~:@>"
+              (func-name referrer-func) (mapcar #'ref-name (remove referrer-func undefined-refs :key #'ref-func :test-not #'eq))))))
+
+(defun finalize-frame (tag-env frame warn-on-forward-refs)
+  ;; The line below could be sped up by tracking forward refs locally, only
+  ;; promoting them to global forwards here.
+  (relink-forward-references tag-env)
+  (when warn-on-forward-refs
+    (note-tag-domain-forward-references tag-env))
+  (do-frame-bindings (nil tag) frame
+    (assert tag)
+    (funcall (tag-finalizer tag) tag)))
 
 (defmacro with-tag-domain (&body body)
   (with-gensyms (global-frame)
     `(let ((*tag-domain* (make-instance 'tag-environment)))
        (declare (special *tag-domain*))
-       (with-environment ('tags *tag-domain*)
-         (with-fresh-frame (*tag-domain* ,global-frame)
-           (setf (env-global-frame *tag-domain*) ,global-frame)
-           ,@body)))))
+       (multiple-value-prog1
+           (with-environment ('tags *tag-domain*)
+             (with-fresh-frame (*tag-domain* ,global-frame)
+               (setf (env-global-frame *tag-domain*) ,global-frame)
+               (progn-1
+                 ,@body
+                 (finalize-frame *tag-domain* ,global-frame t))))))))
 
-(defmacro with-tags ((tag-env &rest tags) &body body)
+(defmacro with-tags (tag-env &body body)
   (with-gensyms (frame)
     (once-only (tag-env)
       `(with-fresh-frame (,tag-env ,frame)
-         (unwind-protect (progn
-                           ,@body)
+         (syncformat t "~&Entering frame.~%")
+         (unwind-protect (progn ,@body)
            (syncformat t "~&Finalizing tags in frame: ~S~%" (env-alist ,frame))
-           (do-frame-bindings (nil tag) ,frame
-             (assert tag)
-             (funcall (tag-finalizer tag) tag)))))))
+           (finalize-frame ,tag-env ,frame nil))))))
 
 (defmacro with-assem (isa &body body)
   (once-only (isa)
@@ -108,12 +199,12 @@
 ;;;
 (defvar *segment*)
 
-(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) (&rest tags) &body body)
+(defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
        (with-assem ,isa
-         (with-tags (*tag-domain* ,@tags)
+         (with-tags *tag-domain*
            ,@(when decls `((declare ,@decls)))
            ,@body)))))
 
@@ -125,23 +216,6 @@
 
 (defun current-absolute-addr ()
   (+ (pinned-segment-base *segment*) (length (segment-active-vector *segment*))))
-
-(defstruct segpoint
-  (name nil :type symbol)
-  (env nil :type environment)
-  (segment nil :type pinned-segment)
-  (offset nil :type unsigned-byte)
-  (insn-nr nil :type unsigned-byte))
-
-(defun segpoint-address (segpoint)
-  (declare (type segpoint segpoint))
-  (+ (pinned-segment-base (segpoint-segment segpoint)) (segpoint-offset segpoint)))
-
-(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr finalizer)))
-  (finalizer nil :type (function (tag) (values)))
-  (references nil :type list))
-(defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter)))
-  (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
 
 (defun backpatch-tag-reference (tag ref)
   (setf (u8-vector-word32le (segment-data (ref-segment ref)) (ref-offset ref))
@@ -202,11 +276,11 @@
 (defun extent-list-adjoin-segment (extent-list address segment)
   (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
 
-(defmacro with-extentable-segment ((isa extentable addr) (&rest tags) &body body)
+(defmacro with-extentable-segment ((isa extentable addr) &body body)
   (with-gensyms (retcell segment ret)
     (once-only (addr)
       `(lret* (,retcell
-               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr)) (,@tags)
+               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr))
                            ,@(butlast body)
                            (setf ,retcell ,(lastcar body))))
                (,ret ,retcell))

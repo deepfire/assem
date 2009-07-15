@@ -29,14 +29,18 @@
    #:segment-active-vector #:segment-disassemble
    #:*isa* #:*tag-domain* #:*segment*
    #:with-optype-pool #:eval-insn       ; binds *isa*
-   #:with-tag-domain #:env-global-frame #:with-tags ; binds *tag-domain*
+   #:tag-environment #:env-global-frame #:env-forward-references
+   #:envobject #:envobject-name #:envobject-env
+   #:segpoint #:make-segpoint #:copy-segpoint #:segpoint-name #:segpoint-env #:segpoint-segment #:segpoint-offset #:segpoint-insn-nr
+   #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr #:tag-finalizer #:tag-references
+   #:func #:func-tag #:func-emitter
+   #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
+   #:define-function #:current-function #:emit-function #:with-function-definition-and-emission
+   #:with-tag-domain #:with-tags ; binds *tag-domain*
    #:with-assem                         ; binds *isa* and *tag-domain*
    #:with-segment-emission              ; binds *segment*
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
-   #:segpoint #:make-segpoint #:copy-segpoint #:segpoint-name #:segpoint-env #:segpoint-segment #:segpoint-offset #:segpoint-insn-nr
    #:segpoint-address
-   #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr #:tag-finalizer #:tag-references
-   #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
    #:backpatch-tag-reference #:backpatch-tag-references
    #:emit-tag #:emit-global-tag #:tag-address
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv

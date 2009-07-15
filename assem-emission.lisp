@@ -30,16 +30,6 @@
   (setf (u8-vector-word64le (segment-data segment) (segment-current-index segment)) insn)
   (incf (segment-current-index segment) 8))
 
-(defmacro emit-ref (tag-env name (delta-var-name) &body insn)
-  (with-gensyms (tag offset-delta insn-nr-delta)
-    (once-only (tag-env name)
-      `(let ((,tag (lookup ,tag-env ,name)))
-         (push (make-ref ,name ,tag-env *segment* (current-segment-offset) (current-insn-count)
-                         (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
-                           (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))
-                           (encode-insn *isa* (list ,@insn))))
-               (tag-references ,tag))))))
-
 (defun emit (env insn)
   (declare (special *isa* *optype* *segment*))
   (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
@@ -49,3 +39,10 @@
   (declare (special *isa* *optype* *segment* *lexicals*))
   (%emit32le *segment* (encode-insn *isa* (eval-insn env insn)))
   (incf (segment-emitted-insn-count *segment*)))
+
+(defmacro emit-ref (env name (delta-var-name) &body insn)
+  (with-gensyms (offset-delta insn-nr-delta)
+    `(assem::%emit-ref *tag-domain* *segment* ,name
+                       (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
+                         (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))
+                         (encode-insn *isa* (eval-insn ,env (list ,@insn)))))))

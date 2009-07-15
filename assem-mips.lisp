@@ -30,14 +30,14 @@
      (declare (special *mips-gpr-environment*))
      ,@body))
 
-(defmacro with-mips-assem ((&rest tags) &body body)
+(defmacro with-mips-assem (&body body)
   `(with-assem *mips-isa*
-     (with-tags (*tag-domain* ,@tags)
+     (with-tags *tag-domain*
        (with-mips-gpr-environment
          ,@body))))
 
-(defmacro with-extentable-mips-segment ((extentable addr) (&rest tags) &body body)
-  `(with-extentable-segment (*mips-isa* ,extentable ,addr) (,@tags)
+(defmacro with-extentable-mips-segment ((extentable addr) &body body)
+  `(with-extentable-segment (*mips-isa* ,extentable ,addr)
      (with-mips-gpr-environment
        ,@body)))
 
@@ -52,10 +52,10 @@
      ,@body))
 
 (defun allocate-mips-gpr (name)
-  (pool-allocate *mips-gpr-environment* name))
+  (pool-allocate (env-pool *mips-gpr-environment*) name))
 
 (defun release-mips-gpr (gpr)
-  (pool-release *mips-gpr-environment* gpr))
+  (pool-release (env-pool *mips-gpr-environment*) gpr))
 
 ;;;
 ;;; Override ASSEM-EMISSION for happiness
@@ -67,7 +67,7 @@
   (emit (cons opcode insn-args)))
 
 (defmacro emit-ref (name (delta-var-name) &body insn)
-  `(assem-emit:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))
+  `(assem-emission:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))
 
 ;;;
 ;;; Extend ASSEM...
@@ -244,7 +244,7 @@ a new register was allocated."
                   (cell-let ,maybe-more-bindings
                     ,@body)
                (when ,reg-allocated-p
-                 (pool-release *mips-gpr-environment* (pool-evaluate *mips-gpr-environment* ,name)))
+                 (pool-release (env-pool *mips-gpr-environment*) (pool-evaluate *mips-gpr-environment* ,name)))
                (unbind (bottom-frame *mips-gpr-environment*) ,name)))))
       `(progn ,@body)))
 
@@ -254,7 +254,7 @@ a new register was allocated."
 (defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg :counter)) &body body)
   (once-only (iterations)
     `(cell-let ((,counter-reg ,iterations))
-       (with-tags (*tag-domain* :loop-begin ,@(when exit-tag `(,exit-tag)))
+       (with-tags *tag-domain*
          (emit-tag :loop-begin)
          ,@body
          (emit-ref :loop-begin (delta) :bne ,counter-reg :zero delta)
@@ -289,23 +289,23 @@ a new register was allocated."
   (emit* :nop))
 
 (defmacro emitting-function (name (&key (return-tag :return)) &body body)
-  `(with-mips-gpri (:ret-reg)
-     (with-tags (*tag-domain* ,return-tag)
-       (emit-global-tag ,name)
-       ,@body
-       (emit-tag ,return-tag)
-       (emit-stack-pop)
-       (emit-based-load32 :ret-reg 0 :stack-top)
-       (emit* :nop)
-       (emit* :jr :ret-reg)
-       (emit* :nop))))
+  `(with-function-definition-and-emission *tag-domain* ,name
+     (with-mips-gpri (:ret-reg)
+       (with-tags *tag-domain*
+         ,@body
+         (emit-tag ,return-tag)
+         (emit-stack-pop)
+         (emit-based-load32 :ret-reg 0 :stack-top)
+         (emit* :nop)
+         (emit* :jr :ret-reg)
+         (emit* :nop)))))
 
 ;;;
 ;;; Predicate functions
 ;;;
 (defmacro emitting-predicate-function (name (&key (return-tag :return) (return-zero-tag :return-zero) (return-one-tag :return-one)) &body body)
   `(emitting-function ,name (:return-tag ,return-tag)
-     (with-tags (*tag-domain* ,return-tag ,return-zero-tag ,return-one-tag)
+     (with-tags *tag-domain*
        ,@body
        (emit-tag ,return-zero-tag)
        (emit-set-gpr :arg0-ret 0)
@@ -364,7 +364,7 @@ a new register was allocated."
 
 (defun emit-jump-if (tag predicate &rest args)
   (apply #'emit-near-function-call predicate args)
-  (with-tags (*tag-domain* :skip)
+  (with-tags *tag-domain*
     (emit-jump-if-eq :skip :arg0-ret :zero)
     (emit* :nop)
     (emit-jump tag)

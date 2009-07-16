@@ -73,7 +73,7 @@
 
 (defstruct envobject
   (name nil :type symbol)
-  (env nil :type environment))
+  (cell-env nil :type (or null pool-backed-frame-chain)))
 
 (defstruct (segpoint (:include envobject))
   (segment nil :type pinned-segment)
@@ -84,7 +84,7 @@
   (declare (type segpoint segpoint))
   (+ (pinned-segment-base (segpoint-segment segpoint)) (segpoint-offset segpoint)))
 
-(defstruct (tag (:include segpoint) (:constructor make-tag (name env segment offset insn-nr finalizer)))
+(defstruct (tag (:include segpoint) (:constructor make-tag (name segment offset insn-nr finalizer)))
   (finalizer nil :type (function (tag) (values)))
   (references nil :type list))
 
@@ -92,7 +92,7 @@
   (tag nil :type (or null tag))
   (emitter nil :type (or null function)))
 
-(defstruct (ref (:include segpoint) (:constructor make-ref (name env segment offset insn-nr emitter func)))
+(defstruct (ref (:include segpoint) (:constructor make-ref (name cell-env segment offset insn-nr emitter func)))
   (func nil :type (or null func))
   (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
 
@@ -101,7 +101,7 @@
 (defvar *function*)
 
 (defun define-function (tag-env name emitter)
-  (lret ((func (make-func :name name :env tag-env)))
+  (lret ((func (make-func :name name)))
     (setf (func-emitter func) (lambda ()
                                 (let ((*function* func))
                                   (declare (special *function*))
@@ -130,15 +130,17 @@
     (destructuring-bind (opcode &rest iargs) insn
       (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
-(defun %emit-ref (tag-env segment name insn-emitter)
-  (let ((ref (make-ref name tag-env segment (current-segment-offset) (current-insn-count) insn-emitter (current-function))))
+(defun %emit-ref (tag-env cell-env segment name insn-emitter)
+  (let ((ref (make-ref name (copy-environment cell-env) segment (current-segment-offset) (current-insn-count) insn-emitter (current-function))))
     (if-let ((tag (do-lookup tag-env name)))
       (push ref (tag-references tag))
       (push ref (env-forward-references tag-env)))))
 
 (defun relink-forward-references (tag-env)
   "Find tag matches for outstanding forward references in TAG-ENV, 
-thus clearing them."
+thus clearing them.
+BUG: local tags can overthrow globals: first come first served.
+Will lead to hard-to-diagnose, strange bugs."
   (iter (for ref in (env-forward-references tag-env))
         (for tag = (do-lookup tag-env (ref-name ref)))
         (when tag
@@ -219,17 +221,17 @@ thus clearing them."
 
 (defun backpatch-tag-reference (tag ref)
   (setf (u8-vector-word32le (segment-data (ref-segment ref)) (ref-offset ref))
-        (funcall (ref-emitter ref) (- (ref-offset ref) (tag-offset tag)) (- (ref-insn-nr ref) (tag-insn-nr tag)))))
+        (funcall (ref-emitter ref) (ref-cell-env ref) (- (ref-offset ref) (tag-offset tag)) (- (ref-insn-nr ref) (tag-insn-nr tag)))))
 
 (defun backpatch-tag-references (tag)
   (mapc (curry #'backpatch-tag-reference tag) (tag-references tag)))
 
 (defun %emit-tag (tag-env name)
-  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
+  (lret ((tag (make-tag name *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
     (bind tag-env name tag)))
 
 (defun %emit-global-tag (tag-env name)
-  (lret ((tag (make-tag name tag-env *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
+  (lret ((tag (make-tag name *segment* (current-segment-offset) (current-insn-count) #'backpatch-tag-references)))
     (bind (env-global-frame tag-env) name tag)))
 
 ;;;
@@ -267,8 +269,8 @@ thus clearing them."
   (make-instance 'compilation-environment
                  :isa *isa*
                  :segments (list *segment*)
-                 :cellenv cellenv
-                 :tagenv tagenv))
+                 :cellenv (copy-environment cellenv)
+                 :tagenv (copy-environment tagenv)))
 
 ;;;
 ;;; Misc

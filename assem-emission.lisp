@@ -41,8 +41,8 @@
   (incf (segment-emitted-insn-count *segment*)))
 
 (defmacro emit-ref (env name (delta-var-name) &body insn)
-  (with-gensyms (offset-delta insn-nr-delta)
-    `(assem::%emit-ref *tag-domain* *segment* ,name
-                       (lambda (,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
+  (with-gensyms (cell-env offset-delta insn-nr-delta)
+    `(assem::%emit-ref *tag-domain* ,env *segment* ,name
+                       (lambda (,cell-env ,offset-delta ,insn-nr-delta &aux (,delta-var-name (logand (- #xffff ,insn-nr-delta) #xffff)))
                          (declare (type (signed-byte 16) ,offset-delta ,insn-nr-delta) (ignorable ,offset-delta))
-                         (encode-insn *isa* (eval-insn ,env (list ,@insn)))))))
+                         (encode-insn *isa* (eval-insn ,cell-env (list ,@insn)))))))

@@ -31,10 +31,9 @@
      ,@body))
 
 (defmacro with-mips-assem (&body body)
-  `(with-assem *mips-isa*
-     (with-tags *tag-domain*
-       (with-mips-gpr-environment
-         ,@body))))
+  `(with-ensured-assem *mips-isa*
+     (with-mips-gpr-environment
+       ,@body)))
 
 (defmacro with-extentable-mips-segment ((extentable addr) &body body)
   `(with-extentable-segment (*mips-isa* ,extentable ,addr)

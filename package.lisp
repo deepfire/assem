@@ -37,7 +37,7 @@
    #:ref #:make-ref #:copy-ref #:ref-name #:ref-env #:ref-segment #:ref-offset #:ref-insn-nr #:ref-emitter
    #:define-function #:current-function #:emit-function #:with-function-definition-and-emission
    #:with-tag-domain #:with-tags ; binds *tag-domain*
-   #:with-assem                         ; binds *isa* and *tag-domain*
+   #:with-ensured-assem                 ; binds *isa* and *tag-domain*
    #:with-segment-emission              ; binds *segment*
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
    #:segpoint-address

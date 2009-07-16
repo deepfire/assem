@@ -189,12 +189,19 @@ Will lead to hard-to-diagnose, strange bugs."
            (syncformat t "~&Finalizing tags in frame: ~S~%" (env-alist ,frame))
            (finalize-frame ,tag-env ,frame nil))))))
 
-(defmacro with-assem (isa &body body)
-  (once-only (isa)
-    `(with-metaenvironment
-       (with-optype-pool (,isa (isa-gpr-optype ,isa))
-         (with-tag-domain
-           ,@body)))))
+(defun maybe-invoke-with-assem-ensured (wrap-p isa fn)
+  (if (not wrap-p)
+      (funcall fn)
+      (with-metaenvironment
+        (with-optype-pool (isa (isa-gpr-optype isa))
+          (with-tag-domain
+            (funcall fn))))))
+
+(defun invoke-with-assem-ensured (isa fn)
+  (maybe-invoke-with-assem-ensured (not (boundp '*tag-domain*)) isa fn))
+
+(defmacro with-ensured-assem (isa &body body)
+  `(invoke-with-assem-ensured ,isa (lambda () ,@body)))
 
 ;;;
 ;;; Segment emission
@@ -205,10 +212,9 @@ Will lead to hard-to-diagnose, strange bugs."
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
     `(lret ((*segment* ,segment))
        (declare (special *segment*))
-       (with-assem ,isa
-         (with-tags *tag-domain*
-           ,@(when decls `((declare ,@decls)))
-           ,@body)))))
+       (with-ensured-assem ,isa
+         ,@(when decls `((declare ,@decls)))
+         ,@body))))
 
 (defun current-insn-count ()
   (segment-emitted-insn-count *segment*))

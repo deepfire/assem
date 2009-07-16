@@ -266,7 +266,6 @@ a new register was allocated."
 ;;;
 (defmacro with-function-calls (&body body)
   `(with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
-     (declare (special :stack-top :arg0-ret :arg1 :arg2))
      ,@body))
 
 (defun emit-stack-push (value)

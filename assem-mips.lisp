@@ -44,7 +44,10 @@
 ;;; GPR yayity
 ;;;
 (defun evaluate-mips-gpr (name)
-  (pool-evaluate *mips-gpr-environment* name))
+  (multiple-value-bind (physical bound-p) (pool-evaluate *mips-gpr-environment* name)
+    (unless bound-p
+      (assembly-error "~@<Cell name ~S not bound in ~S.~:@>" name *mips-gpr-environment*))
+    physical))
 
 (defmacro with-mips-gpri ((&rest gprs) &body body)
   `(with-pool-subset (*mips-gpr-environment* ,@gprs)

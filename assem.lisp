@@ -270,7 +270,7 @@ Will lead to hard-to-diagnose, strange bugs."
   `(let* ((*compilation-environment* ,cenv)
           (*isa* (cenv-isa *compilation-environment*))
           (*tag-domain* (cenv-tagenv *compilation-environment*)))
-     (declare (special *compilation-environment* *isa*))
+     (declare (special *compilation-environment* *isa* *tag-domain*))
      (with-metaenvironment
        (with-environment ((optype-name (isa-gpr-optype *isa*)) (cenv-cellenv *compilation-environment*))
          (with-environment ('tags (cenv-tagenv *compilation-environment*))

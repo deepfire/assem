@@ -66,7 +66,7 @@
 ;;;
 (defvar *tag-domain*)
 
-(defclass tag-environment (frame-chain immutable-environment hash-table-environment)
+(defclass tag-environment (frame-chain immutable-environment)
   ((global-frame :accessor env-global-frame)
    (functions :accessor env-functions :initform (make-hash-table :test 'eq))
    (forward-references :accessor env-forward-references :initform nil)))

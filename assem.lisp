@@ -71,6 +71,11 @@
    (functions :accessor env-functions :initform (make-hash-table :test 'eq))
    (forward-references :accessor env-forward-references :initform nil)))
 
+(defmethod copy-environment-to :after ((to tag-environment) (from tag-environment))
+  (setf (env-global-frame to) (env-global-frame from)
+        (env-functions to) (env-functions from)
+        (env-forward-references to) (env-forward-references from)))
+
 (defstruct envobject
   (name nil :type symbol)
   (cell-env nil :type (or null pool-backed-frame-chain)))

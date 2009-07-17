@@ -258,6 +258,7 @@ a new register was allocated."
   (once-only (iterations)
     `(cell-let ((,counter-reg ,iterations))
        (with-tags *tag-domain*
+         (emit* :addiu ,counter-reg ,counter-reg #xffff)
          (emit-tag :loop-begin)
          ,@body
          (emit-ref :loop-begin (delta) :bne ,counter-reg :zero delta)

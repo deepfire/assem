@@ -29,7 +29,7 @@
    #:segment-active-vector #:segment-disassemble
    #:*isa* #:*tag-domain* #:*segment*
    #:with-optype-pool #:eval-insn       ; binds *isa*
-   #:tag-environment #:env-global-frame #:env-forward-references
+   #:tag-environment #:env-global-frame #:env-functions #:env-forward-references
    #:envobject #:envobject-name #:envobject-env
    #:segpoint #:make-segpoint #:copy-segpoint #:segpoint-name #:segpoint-env #:segpoint-segment #:segpoint-offset #:segpoint-insn-nr
    #:tag #:make-tag #:copy-tag #:tag-name #:tag-env #:tag-segment #:tag-offset #:tag-insn-nr #:tag-finalizer #:tag-references

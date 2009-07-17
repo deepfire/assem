@@ -253,8 +253,8 @@ Will lead to hard-to-diagnose, strange bugs."
 (defun find-tag (name)
   (lookup *tag-domain* name))
 
-(defun tag-address (name)
-  (segpoint-address (lookup *tag-domain* name)))
+(defun tag-address (tag-or-name)
+  (segpoint-address (xform-if-not #'tag-p #'find-tag tag-or-name)))
 
 ;;;
 ;;; Compilation environment

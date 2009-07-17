@@ -279,15 +279,25 @@ a new register was allocated."
 (defun emit-stack-pop ()
   (emit* :addiu :stack-top :stack-top #x4))
 
-
-;;; Everything is position-independent, whereas function return addresses aren't.
-(defun emit-near-function-call (name &rest args)
-  (iter (for arg in args)
+(defun emit-function-call-prologue (function-args offset)
+  (iter (for arg in function-args)
         (for argreg in '(:arg0-ret :arg1 :arg2))
         (unless (eq arg argreg)
           (emit-set-gpr argreg arg)))
-  (emit-stack-push (+ 8 (current-absolute-addr)))
-  (emit-jump name)
+  (emit-stack-push (+ offset (current-absolute-addr))))
+
+;;; Everything is position-independent, whereas function return addresses aren't.
+(defun emit-near-function-call (name &rest args)
+  (emit-function-call-prologue args #x18)
+  (let ((ref (emit-jump name)))
+    (when-let ((tag (find-tag name)))
+      (backpatch-tag-reference tag ref)))
+  (emit* :nop))
+
+;;; Everything is position-independent, whereas function return addresses aren't.
+(defun emit-long-function-call (name &rest args)
+  (emit-function-call-prologue args #x24)
+  (emit-long-jump (tag-address name))
   (emit* :nop))
 
 (defmacro emitting-function (name (&key (return-tag :return)) &body body)

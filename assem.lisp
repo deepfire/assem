@@ -99,7 +99,7 @@
 
 (defstruct (ref (:include segpoint) (:constructor make-ref (name cell-env segment offset insn-nr emitter func)))
   (func nil :type (or null func))
-  (emitter nil :type (function (unsigned-byte unsigned-byte) unsigned-byte)))
+  (emitter nil :type (function (pool-backed-frame-chain unsigned-byte unsigned-byte) unsigned-byte)))
 
 (define-container-hash-accessor :i func :container-transform env-functions :parametrize-container t :if-exists :error)
 
@@ -134,7 +134,7 @@
       (cons opcode (reduce #'evaluate-and-subst-one-variable (insn-optype-variables *isa* (isa-gpr-optype *isa*) insn) :initial-value iargs)))))
 
 (defun %emit-ref (tag-env cell-env segment name insn-emitter)
-  (let ((ref (make-ref name (copy-environment cell-env) segment (current-segment-offset) (current-insn-count) insn-emitter (current-function))))
+  (lret ((ref (make-ref name (copy-environment cell-env) segment (current-segment-offset) (current-insn-count) insn-emitter (current-function))))
     (if-let ((tag (do-lookup tag-env name)))
       (push ref (tag-references tag))
       (push ref (env-forward-references tag-env)))))

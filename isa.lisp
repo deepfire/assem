@@ -401,7 +401,7 @@
           (for opcode = (ecase piece
                           (4 (u8-seq-word32le seq offt))
                           (8 (u8-seq-word64le seq offt))))
-          (for (values (mnemonics . params) insn-width) = (decode-insn isa opcode))
+          (for (values (insn . params) insn-width) = (decode-insn isa opcode))
           (for step = (ash (1+ (ash (or (1- insn-width) 32) -5)) 2))
           (incf offt step)
-          (collect (list* (logand (1- (ash 1 (ash step 3))) opcode) step mnemonics params)))))
+          (collect (list* (logand (1- (ash 1 (ash step 3))) opcode) step insn params)))))

@@ -250,6 +250,9 @@ Will lead to hard-to-diagnose, strange bugs."
 (defun emit-global-tag (name)
   (%emit-global-tag *tag-domain* name))
 
+(defun find-tag (name)
+  (lookup *tag-domain* name))
+
 (defun tag-address (name)
   (segpoint-address (lookup *tag-domain* name)))
 

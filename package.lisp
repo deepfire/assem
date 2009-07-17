@@ -42,7 +42,7 @@
    #:current-insn-count #:current-segment-offset #:current-absolute-addr
    #:segpoint-address
    #:backpatch-tag-reference #:backpatch-tag-references
-   #:emit-tag #:emit-global-tag #:tag-address
+   #:emit-tag #:emit-global-tag #:find-tag #:tag-address
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))

@@ -88,6 +88,6 @@
     #:emitting-iteration
     #:*initial-stack-top*
     #:with-function-calls #:emit-stack-push #:emit-stack-pop
-    #:emit-near-function-call #:emitting-function #:emitting-predicate-function
+    #:emit-near-function-call #:emit-long-function-call #:emitting-function #:emitting-predicate-function
     #:emit-succeed #:emit-fail #:emit-succeed-if-eq #:emit-succeed-if-ne #:emit-fail-if-eq #:emit-fail-if-ne #:emit-test-eq #:emit-test-ne
     #:emit-jump-if))

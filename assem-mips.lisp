@@ -69,7 +69,8 @@
   (emit (cons opcode insn-args)))
 
 (defmacro emit-ref (name (delta-var-name) &body insn)
-  `(assem-emission:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn))
+  `(prog1 (assem-emission:emit-ref *mips-gpr-environment* ,name (,delta-var-name) ,@insn)
+     (emit* :nop)))
 
 ;;;
 ;;; Extend ASSEM...

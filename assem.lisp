@@ -118,7 +118,6 @@
     *function*))
 
 (defun emit-function (tag-env func)
-  (syncformat t "~&Emitting function ~S.~%" (func-name func))
   (setf (func-tag func) (%emit-global-tag tag-env (func-name func)))
   (funcall (func-emitter func)))
 
@@ -127,7 +126,6 @@
 
 (defun eval-insn (env insn)
   (flet ((evaluate-and-subst-one-variable (iargs iargvar)
-           (format t "~&e-i ~S: ~S -> ~S~%" insn iargvar (pool-evaluate env iargvar))
            (multiple-value-bind (result bound-p) (pool-evaluate env iargvar)
              (unless bound-p
                (error "~@<In definition of ~:[#<ANONYMOUS-CODE>~;~:*~S~]: ~S is not bound.~:@>" (current-function) iargvar))
@@ -189,9 +187,7 @@ Will lead to hard-to-diagnose, strange bugs."
   (with-gensyms (frame)
     (once-only (tag-env)
       `(with-fresh-frame (,tag-env ,frame)
-         (syncformat t "~&Entering frame.~%")
          (unwind-protect (progn ,@body)
-           (syncformat t "~&Finalizing tags in frame: ~S~%" (env-alist ,frame))
            (finalize-frame ,tag-env ,frame nil))))))
 
 (defun maybe-invoke-with-assem-ensured (wrap-p isa fn)

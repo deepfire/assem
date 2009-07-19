@@ -47,6 +47,12 @@
    #:with-compilation-environment #:save-compilation-environment
    #:extent-list-adjoin-segment #:with-extentable-segment))
 
+(defpackage #:comp
+  (:use :common-lisp :alexandria :iterate :pergamum :environment :isa)
+  (:shadowing-import-from :isa #:disassemble)
+  (:export
+   ))
+
 (defpackage #:assem-emission
   (:nicknames :assem-emit)
   (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa :assem)

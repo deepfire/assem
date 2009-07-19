@@ -16,6 +16,7 @@
    (:file "isa-mips" :depends-on ("isa"))
    (:file "assem" :depends-on ("isa"))
    ;;;
+   (:file "comp" :depends-on ("assem"))
    (:file "assem-emission" :depends-on ("assem"))
    (:file "unturing-mips" :depends-on ("unturing" "isa-mips"))
    ;;;

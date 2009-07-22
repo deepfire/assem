@@ -58,6 +58,9 @@
   (form t :type (or symbol list))
   code)
 
+(define-print-object-method ((o expr) effect-free value-used type code)
+    "~@<#<EXPR ~;pure: ~S, used: ~S, type: ~S~:_~S~;>~:@>" effect-free value-used type code)
+
 (defclass expr-var (var)
   ((expr :accessor var-expr :initarg :expr)))
 

@@ -24,53 +24,66 @@
 (define-condition comp-error (error comp-condition) ())
 (define-simple-error comp-error)
 
-(defconstant +arglist-length-limit+ 5)
-(define-constant +arg-lvar-names+ '(arg0 arg1 arg2 arg3 arg4) :test 'equal)
-
 ;;;
 ;;; IR1
 ;;;
-(defstruct (expr (:constructor make-expr (effect-free value-used env form code)))
-  effect-free
-  value-used
-  env
-  form
-  code)
+(defun comp-typep (x type)
+  (if (consp type)
+      (ecase (first type)
+        (and (not (null (every (curry #'comp-typep x) (rest type)))))
+        (or (not (null (some (curry #'comp-typep x) (rest type))))))
+      (ecase type
+        (boolean (member x '(t nil)))
+        (integer (typep x '(unsigned-byte 32)))
+        (null nil)
+        ((t) t))))
+
+(defun comp-type-of (x)
+  (cond ((member x '(t nil)) 'boolean)
+        ((typep x '(unsigned-byte 32)) 'integer)
+        (t t)))
 
 (defclass var ()
   ((name :accessor var-name :initarg :name)))
-
-(defclass expr-var (var)
-  ((expr :accessor var-expr :initarg :expr)))
 
 (defclass frame ()
   ((dominator :accessor frame-dominator :initarg :dominator)
    (vars :accessor frame-vars :initarg :vars)))
 
+(defstruct expr
+  (effect-free nil :type boolean)
+  (value-used t :type boolean)
+  (env nil :type (or null frame))
+  (type t :type (or symbol list))
+  (form t :type (or symbol list))
+  code)
+
+(defclass expr-var (var)
+  ((expr :accessor var-expr :initarg :expr)))
+
 (defclass func ()
   ((name :accessor func-name :initarg :name)
    (nargs :accessor func-nargs :initarg :nargs)
-   (purep :accessor func-purep :initarg :purep)
-   (leafp :accessor func-leafp :initarg :leafp)))
+   (leafp :accessor func-leafp :initarg :leafp)
+   (expr :accessor func-expr :initarg :expr)))
 
 (defclass expr-func (func)
   ((lambda-list :accessor func-lambda-list :initarg :lambda-list)
-   (expr :accessor func-expr :initarg :expr)))
+   (complete :accessor func-complete-p :initarg :complete))
+  (:default-initargs :complete nil))
 
-(defclass primitive-func (func)
+(defclass primop (func)
   ())
 
-(defclass compenv ()
-  ((primops :accessor compenv-primops :initform (make-hash-table :test 'eq))
-   (functions :accessor compenv-functions :initform (make-hash-table :test 'eq))
-   (macros :accessor compenv-macros :initform (make-hash-table :test 'eq))))
+(defparameter *primops* (make-hash-table :test 'eq))
 
-(define-container-hash-accessor :i primop :container-transform compenv-primops :parametrize-container t :type primitive-func :if-exists :error)
+(define-container-hash-accessor *primops* primop :if-exists :error)
+
+(defclass compenv ()
+  ((functions :accessor compenv-functions :initform (make-hash-table :test 'eq))
+   (macros :accessor compenv-macros :initform (make-hash-table :test 'eq))))
 (define-container-hash-accessor :i func :container-transform compenv-functions :parametrize-container t :type expr-func :if-exists :error)
 (define-container-hash-accessor :i macro :container-transform compenv-macros :parametrize-container t :type function :if-exists :error)
-
-(defun defprimitive (compenv name nargs purep)
-  (setf (primop compenv name) (make-instance 'primitive-func :name name :nargs nargs :purep purep :leafp t)))
 
 (defun frame-boundp (name frame)
   (find name (frame-vars frame) :key #'var-name))
@@ -97,6 +110,7 @@
 ;;; IR2
 ;;;
 (defstruct vop
+  nargs
   code)
 
 (defmethod print-object ((o vop) stream)
@@ -107,31 +121,61 @@
   (list name))
 
 (defun emit-constant (value)
-  (list (make-vop :code `(const ,value))))
+  (list (make-vop :nargs 0 :code `(const ,value))))
 
 (defun emit-lvar-ref (lvar)
-  (list (make-vop :code `(lvar-ref, lvar))))
+  (list (make-vop :nargs 0 :code `(lvar-ref, lvar))))
 
 (defun emit-lvar-set (lvar)
-  (list (make-vop :code `(lvar-set, lvar))))
+  (list (make-vop :nargs 1 :code `(lvar-set, lvar))))
+
+(defun emit-set-funarg (x)
+  (list (make-vop :nargs 1 :code `(set-funarg ,x))))
 
 (defun emit-save-continuation (label)
-  (list (make-vop :code `(save-continuation ,label))))
+  (list (make-vop :nargs 0 :code `(save-continuation ,label))))
 
 (defun emit-jump (label)
-  (list (make-vop :code `(jump ,label))))
+  (list (make-vop :nargs 0 :code `(jump ,label))))
 
 (defun emit-jump-if (label)
-  (list (make-vop :code `(jump-if ,label))))
+  (list (make-vop :nargs 1 :code `(jump-if ,label))))
 
 (defun emit-jump-if-not (label)
-  (list (make-vop :code `(jump-if-not ,label))))
+  (list (make-vop :nargs 1 :code `(jump-if-not ,label))))
 
 (defun emit-return ()
-  (list (make-vop :code `(return))))
+  (list (make-vop :nargs 1 :code `(return))))
 
-(defun emit-primitive (name &rest args)
-  (list (make-vop :code `(,name ,@args))))
+(defun emit-primitive (name nargs)
+  (list (make-vop :nargs nargs :code `(primitive ,name))))
+
+(defun defprimitive (name nargs effect-free type)
+  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t
+                                     :expr (make-expr :effect-free effect-free :value-used t :env nil
+                                                      :type type :form `(primitive ,name)
+                                                      :code (emit-primitive name nargs)))))
+
+(defun instantiate-primop (primop valuep &aux (expr (func-expr primop)))
+  (make-expr :effect-free (expr-effect-free expr) :value-used valuep :env nil
+             :type (expr-type expr) :form (expr-form expr) :code (expr-code expr)))
+
+(defprimitive '+              2 t   'integer)
+(defprimitive '-              2 t   'integer)
+(defprimitive 'logior         2 t   'integer)
+(defprimitive 'logand         2 t   'integer)
+(defprimitive 'logxor         2 t   'integer)
+(defprimitive 'ash            2 t   'integer)
+(defprimitive 'lognot         1 t   'integer)
+(defprimitive '=              2 t   'boolean)
+(defprimitive '/=             2 t   'boolean)
+(defprimitive '>=             2 t   'boolean)
+(defprimitive '<=             2 t   'boolean)
+(defprimitive '>              2 t   'boolean)
+(defprimitive '<              2 t   'boolean)
+(defprimitive 'mem-ref        2 t   'integer)
+(defprimitive 'mem-set        3 nil 'null)
+(defprimitive 'mem-ref-impure 2 nil 'integer)
 
 ;;;
 ;;; Actual compilation
@@ -144,43 +188,58 @@
       (eq expr 'nil)
       (integerp expr)))
 
+(defun maybe-wrap-with-return (live-p wrap-p expr)
+  (when live-p
+    (if wrap-p
+        (make-expr :effect-free (expr-effect-free expr) :value-used t :env nil
+                   :type (expr-type expr) :form `(return ,(expr-code expr))
+                   :code
+                   (append (list expr)
+                           (emit-return)))
+        expr)))
+
+(defmacro with-liveness-and-tail-tracking (live-p wrap-p &body expr)
+  `(maybe-wrap-with-return ,live-p ,wrap-p ,@expr))
+
 (defun compile-constant (expr valuep tailp)
   (unless (constant-p expr)
     (comp-error "~@<In ~S: attempted to compile ~S as constant.~:@>" *sexp-path* expr))
-  (when valuep
-    (make-expr t t nil expr
-               (append (emit-constant (case expr
-                                        ((t) 1)
-                                        ((nil) 0)
-                                        (t expr)))
-                       (when tailp
-                         (emit-return))))))
+  (with-liveness-and-tail-tracking valuep tailp
+    (make-expr :effect-free t :value-used t :env nil
+               :type (comp-type-of expr) :form expr
+               :code
+               (emit-constant (case expr
+                                ((t) 1)
+                                ((nil) 0)
+                                (t expr))))))
 
 (defun compile-variable-ref (var lexenv valuep tailp)
   (with-noted-sexp-path var
     (unless (env-boundp var lexenv)
       (comp-error "~@<In ~S: ~S not bound.~:@>" *sexp-path* var))
-    (when valuep
-      (make-expr t t lexenv var
-                 (append (emit-lvar-ref var)
-                         (when tailp
-                           (emit-return)))))))
+    (with-liveness-and-tail-tracking valuep tailp
+      (make-expr :effect-free t :value-used t :env lexenv
+                 :type t :form var
+                 :code
+                 (emit-lvar-ref var)))))
 
 (defun compile-variable-set (var value compenv lexenv valuep tailp)
   (with-noted-sexp-path `(setf ,var)
     (unless (env-boundp var lexenv)
       (comp-error "~@<In ~S: ~S not bound.~:@>" *sexp-path* var))
-    (make-expr nil valuep lexenv var
-               (append (if (typep value 'expr)
-                           value
-                           (compile-expr value compenv lexenv t nil))
-                       (emit-lvar-set var)
-                       (when tailp
-                         (emit-return))))))
+    (with-liveness-and-tail-tracking t tailp
+      (let ((value-expr (if (typep value 'expr)
+                            value
+                            (compile-expr value compenv lexenv t nil))))
+        (make-expr :effect-free nil :value-used valuep :env lexenv
+                   :type (expr-type value-expr) :form `(setf ,var ,(expr-form value-expr))
+                   :code
+                   (append (list value-expr)
+                           (emit-lvar-set var)))))))
 
 (defun compile-funcall (fname args compenv lexenv valuep tailp)
   (let ((func (or (func compenv fname :if-does-not-exist :continue)
-                  (primop compenv fname :if-does-not-exist :continue))))
+                  (primop fname :if-does-not-exist :continue))))
     (unless func
       (comp-error "~@<In ~S: reference to undefined function ~S.~:@>" *sexp-path* fname))
     (unless (= (length args) (func-nargs func))
@@ -188,22 +247,31 @@
                   *sexp-path* fname (length args) (func-nargs func)))
     (with-noted-sexp-path `(funcall ,fname)
       (let* ((args-code (mapcar (rcurry #'compile-expr compenv lexenv t nil) args))
-             (expr-pure (and (every #'expr-effect-free args-code) (func-purep func))))
+             (expr-pure (every #'expr-effect-free (cons (func-expr func) args-code))))
         (when (or valuep (not expr-pure))
-          (make-expr expr-pure valuep lexenv `(funcall ,fname)
-                     (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
-                       ;; need to abstract the argument count issue better
-                       (append (iter (for arg-lvar in +arg-lvar-names+)
-                                     (for arg-code in args-code)
-                                     (collect (compile-variable-set arg-lvar arg-code compenv lexenv nil nil)))
-                               (if (typep func 'primitive-func)
-                                   (emit-primitive (func-name func))
-                                   (append
-                                    (unless tailp
-                                      (emit-save-continuation ret-label))
-                                    (emit-jump fname)
-                                    (unless tailp
-                                      (emit-label ret-label))))))))))))
+          (make-expr :effect-free expr-pure :value-used valuep :env lexenv
+                     :type (expr-type (func-expr func)) :form `(,fname ,@args)
+                     :code
+                     (if (typep func 'primitive-func)
+                         (append args-code
+                                 ;; copy the primitive function template, filling in missing stuff
+                                 (instantiate-primop func valuep)
+                                 (when tailp
+                                   (emit-return)))
+                         (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
+                           ;; need to abstract the argument count issue better
+                           (append (iter (for arg-code in args-code)
+                                         (for i from 0)
+                                         (collect (make-expr :effect-free nil :value-used t :env lexenv
+                                                             :type (expr-type arg-code) :expr `(set-funarg ,i ,(expr-form arg-code))
+                                                             :code
+                                                             (append (list arg-code)
+                                                                     (emit-set-funarg i)))))
+                                   (unless tailp
+                                     (emit-save-continuation ret-label))
+                                   (emit-jump fname)
+                                   (unless tailp
+                                     (emit-label ret-label)))))))))))
 
 ;;;
 ;;; Non-leaf expressions
@@ -214,7 +282,9 @@
              (for-value (compile-expr (lastcar expr) compenv lexenv tailp valuep))
              (expr-pure (and (null for-effect) (expr-effect-free for-value))))
         (when (or valuep (not expr-pure))
-          (make-expr expr-pure valuep lexenv `(progn ,@expr)
+          (make-expr :effect-free expr-pure :value-used valuep :env lexenv
+                     :type (expr-type for-value) :form `(progn ,@expr)
+                     :code
                      (append for-effect
                              ;; for-value is NIL iff (and (not valuep) (expr-effect-free for-value-expr))
                              ;; which implies (not tail)
@@ -233,7 +303,9 @@
            (body-code (compile-progn body compenv new-lexenv valuep tailp))
            (expr-pure (every #'expr-effect-free (cons body-code binding-value-code))))
       (when (or valuep (not expr-pure))
-        (make-expr expr-pure valuep lexenv `(let ,bindings ,@body)
+        (make-expr :effect-free expr-pure :value-used valuep :env lexenv
+                   :type (expr-type body-code) :form `(let ,bindings ,@body)
+                   :code
                    (append (iter (for var in vars)
                                  (collect (compile-variable-set (var-name var) (var-expr var) compenv lexenv nil nil)))
                            body-code))))))
@@ -256,18 +328,23 @@
                 ((constant-p condition) then-code)
                 ((equalp then-clause else-clause) (compile-progn `(,condition ,then-clause) compenv lexenv valuep tailp))
                 ((and (= 2 (length condition)) (eq (first condition) 'not))
-                 (compile-if (list* 'if (second condition) then-clause (when else-clause (list else-clause))) compenv lexenv valuep tailp))
+                 (compile-if `(if ,(second condition) ,then-clause ,else-clause) compenv lexenv valuep tailp))
                 (t
-                 (make-expr expr-pure valuep lexenv (list* 'if condition then-clause (when else-clause (list else-clause)))
+                 (make-expr :effect-free expr-pure :value-used valuep :env lexenv
+                            :type `(or ,(expr-type then-code) ,(expr-type else-code))
+                            :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
+                            :code
                             (let ((else-label (gensym (concatenate 'string "IF-NOT")))
                                   (end-label (gensym (concatenate 'string "IF-END"))))
-                             (append condition-code
-                                     (emit-jump-if-not else-label)
-                                     then-code
-                                     (emit-jump end-label)
-                                     (emit-label else-label)
-                                     else-code
-                                     (emit-label end-label)))))))))))
+                              (append condition-code
+                                      (emit-jump-if-not else-label)
+                                      then-code
+                                      (unless tailp
+                                        (emit-jump end-label))
+                                      (emit-label else-label)
+                                      else-code
+                                      (unless tailp
+                                        (emit-label end-label))))))))))))
 
 (defun compile-expr (expr compenv lexenv valuep tailp)
   (cond ((constant-p expr) (compile-constant expr valuep tailp))
@@ -310,8 +387,7 @@
                 (lret ((body-code (append (emit-label name)
                                           (compile-progn body compenv (make-frame-from-var-names lambda-list nil) t t))))
                   (setf (func compenv name)
-                        (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list
-                                       :purep (expr-effect-free body-code) :leafp nil
+                        (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list :leafp nil
                                        :expr body-code))))))
         (t
          (if-let ((macro (macro compenv op :if-does-not-exist :continue)))

@@ -132,8 +132,11 @@
 (defun emit-lvar-set (lvar)
   (list (make-vop :nargs 1 :code `(lvar-set, lvar))))
 
-(defun emit-set-funarg (x)
-  (list (make-vop :nargs 1 :code `(set-funarg ,x))))
+(defun emit-funarg-ref (x)
+  (list (make-vop :nargs 0 :code `(funarg-ref ,x))))
+
+(defun emit-funarg-set (x)
+  (list (make-vop :nargs 1 :code `(funarg-set ,x))))
 
 (defun emit-save-continuation (label)
   (list (make-vop :nargs 0 :code `(save-continuation ,label))))
@@ -266,10 +269,10 @@
                            (append (iter (for arg-code in args-code)
                                          (for i from 0)
                                          (collect (make-expr :effect-free nil :value-used t :env lexenv
-                                                             :type (expr-type arg-code) :expr `(set-funarg ,i ,(expr-form arg-code))
+                                                             :type (expr-type arg-code) :expr `(funarg-set ,i ,(expr-form arg-code))
                                                              :code
                                                              (append (list arg-code)
-                                                                     (emit-set-funarg i)))))
+                                                                     (emit-funarg-set i)))))
                                    (unless tailp
                                      (emit-save-continuation ret-label))
                                    (emit-jump fname)
@@ -387,8 +390,17 @@
               (comp-error "~@<In DEFUN: ~S already defined as macro.~:@>" op))
             (destructuring-bind (name lambda-list &body body) (rest expr)
               (with-noted-sexp-path `(defun ,name)
-                (lret ((body-code (append (emit-label name)
-                                          (compile-progn body compenv (make-frame-from-var-names lambda-list nil) t t))))
+                (lret* ((nargs (length lambda-list))
+                        (lexenv (make-frame-from-var-names lambda-list nil))
+                        (body-code (append (emit-label name)
+                                           (iter (for i from 0 below nargs)
+                                                 (for argvar in lambda-list)
+                                                 (collect (make-expr :effect-free nil :value-used t :env lexenv
+                                                                     :type t :expr `(setf argvar (funarg-ref ,i))
+                                                                     :code
+                                                                     (append (emit-funarg-ref i)
+                                                                             (emit-lvar-set argvar)))))
+                                           (compile-progn body compenv (make-frame-from-var-names lambda-list nil) t t))))
                   (setf (func compenv name)
                         (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list :leafp nil
                                        :expr body-code))))))

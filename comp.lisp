@@ -35,13 +35,53 @@
       (ecase type
         (boolean (member x '(t nil)))
         (integer (typep x '(unsigned-byte 32)))
-        (null nil)
+        (nil nil)
         ((t) t))))
 
 (defun comp-type-of (x)
   (cond ((member x '(t nil)) 'boolean)
         ((typep x '(unsigned-byte 32)) 'integer)
         (t t)))
+
+(defun comp-simplify-logical-expression (x &aux (pass-list '(remove-duplicates unnest-similars detrivialize recurse)))
+  (cond ((atom x) x)
+        ((= 2 (length x)) (comp-simplify-logical-expression (second x)))
+        (t
+         (cons (first x) (let ((state pass-list)
+                               (x-body (rest x)))
+                           (block machine-collector
+                             (tagbody
+                              loop
+                                (let ((xform (case (car state)
+                                               (remove-duplicates
+                                                (lambda ()
+                                                  (remove-duplicates x-body :test #'eq)))
+                                               (unnest-similars
+                                                (lambda ()
+                                                  (multiple-value-bind (nested-similars others) (unzip (lambda (subx)
+                                                                                                         (and (consp subx) (eq (car subx) (car x))))
+                                                                                                       x-body)
+                                                    (apply #'append (cons others (mapcar #'rest nested-similars))))))
+                                               (detrivialize
+                                                (lambda ()
+                                                  (if (null (cdr x-body))
+                                                      (values (car x-body) t)
+                                                      x-body)))
+                                               (recurse
+                                                (lambda ()
+                                                  (mapcar #'comp-simplify-logical-expression x-body))))))
+                                  (if xform
+                                      (multiple-value-bind (processed-x-body trivial-p) (funcall xform)
+                                        (cond (trivial-p
+                                               (return-from comp-simplify-logical-expression
+                                                 (comp-simplify-logical-expression processed-x-body)))
+                                              ((equalp processed-x-body x-body)
+                                               (setf state (cdr state)))
+                                              (t
+                                               (setf state pass-list
+                                                     x-body processed-x-body)))
+                                        (go loop))
+                                      (return-from machine-collector x-body))))))))))
 
 (defclass var ()
   ((name :accessor var-name :initarg :name)))
@@ -55,11 +95,11 @@
   (value-used t :type boolean)
   (env nil :type (or null frame))
   (type t :type (or symbol list))
-  (form t :type (or symbol list))
+  form
   code)
 
 (define-print-object-method ((o expr) effect-free value-used type code)
-    "~@<#<EXPR ~;pure: ~S, used: ~S, type: ~S~:_~S~;>~:@>" effect-free value-used type code)
+    "~@<#<EXPR ~;pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free value-used type code)
 
 (defclass expr-var (var)
   ((expr :accessor var-expr :initarg :expr)))
@@ -180,7 +220,7 @@
 (defprimitive '>              2 t   'boolean)
 (defprimitive '<              2 t   'boolean)
 (defprimitive 'mem-ref        2 t   'integer)
-(defprimitive 'mem-set        3 nil 'null)
+(defprimitive 'mem-set        3 nil 'nil)
 (defprimitive 'mem-ref-impure 2 nil 'integer)
 
 ;;;
@@ -194,46 +234,47 @@
       (eq expr 'nil)
       (integerp expr)))
 
-(defun maybe-wrap-with-return (live-p wrap-p expr)
-  (when live-p
-    (if wrap-p
-        (make-expr :effect-free (expr-effect-free expr) :value-used t :env nil
-                   :type (expr-type expr) :form `(return ,(expr-code expr))
-                   :code
-                   (append (list expr)
-                           (emit-return)))
-        expr)))
+(defun maybe-wrap-with-return (wrap-p expr)
+  (if wrap-p
+      (make-expr :effect-free (expr-effect-free expr) :value-used t :env nil
+                 :type (expr-type expr) :form `(return ,(expr-code expr))
+                 :code
+                 (append (list expr)
+                         (emit-return)))
+      expr))
 
-(defmacro with-liveness-and-tail-tracking (live-p wrap-p &body expr)
-  `(maybe-wrap-with-return ,live-p ,wrap-p ,@expr))
+(defmacro with-return-wrapped-if (wrap-p &body expr)
+  `(maybe-wrap-with-return ,wrap-p ,@expr))
 
 (defun compile-constant (expr valuep tailp)
   (unless (constant-p expr)
     (comp-error "~@<In ~S: attempted to compile ~S as constant.~:@>" *sexp-path* expr))
-  (with-liveness-and-tail-tracking valuep tailp
-    (make-expr :effect-free t :value-used t :env nil
-               :type (comp-type-of expr) :form expr
-               :code
-               (emit-constant (case expr
-                                ((t) 1)
-                                ((nil) 0)
-                                (t expr))))))
+  (when valuep
+    (with-return-wrapped-if tailp
+      (make-expr :effect-free t :value-used t :env nil
+                 :type (comp-type-of expr) :form expr
+                 :code
+                 (emit-constant (case expr
+                                  ((t) 1)
+                                  ((nil) 0)
+                                  (t expr)))))))
 
 (defun compile-variable-ref (var lexenv valuep tailp)
   (with-noted-sexp-path var
     (unless (env-boundp var lexenv)
       (comp-error "~@<In ~S: ~S not bound.~:@>" *sexp-path* var))
-    (with-liveness-and-tail-tracking valuep tailp
-      (make-expr :effect-free t :value-used t :env lexenv
-                 :type t :form var
-                 :code
-                 (emit-lvar-ref var)))))
+    (when valuep
+      (with-return-wrapped-if tailp
+        (make-expr :effect-free t :value-used t :env lexenv
+                   :type t :form var
+                   :code
+                   (emit-lvar-ref var))))))
 
 (defun compile-variable-set (var value compenv lexenv valuep tailp)
   (with-noted-sexp-path `(setf ,var)
     (unless (env-boundp var lexenv)
       (comp-error "~@<In ~S: ~S not bound.~:@>" *sexp-path* var))
-    (with-liveness-and-tail-tracking t tailp
+    (with-return-wrapped-if tailp
       (let ((value-expr (if (typep value 'expr)
                             value
                             (compile-expr value compenv lexenv t nil))))
@@ -255,29 +296,28 @@
       (let* ((args-code (mapcar (rcurry #'compile-expr compenv lexenv t nil) args))
              (expr-pure (every #'expr-effect-free (cons (func-expr func) args-code))))
         (when (or valuep (not expr-pure))
-          (make-expr :effect-free expr-pure :value-used valuep :env lexenv
-                     :type (expr-type (func-expr func)) :form `(,fname ,@args)
-                     :code
-                     (if (typep func 'primitive-func)
-                         (append args-code
-                                 ;; copy the primitive function template, filling in missing stuff
-                                 (instantiate-primop func valuep)
-                                 (when tailp
-                                   (emit-return)))
-                         (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
-                           ;; need to abstract the argument count issue better
-                           (append (iter (for arg-code in args-code)
-                                         (for i from 0)
-                                         (collect (make-expr :effect-free nil :value-used t :env lexenv
-                                                             :type (expr-type arg-code) :expr `(funarg-set ,i ,(expr-form arg-code))
-                                                             :code
-                                                             (append (list arg-code)
-                                                                     (emit-funarg-set i)))))
-                                   (unless tailp
-                                     (emit-save-continuation ret-label))
-                                   (emit-jump fname)
-                                   (unless tailp
-                                     (emit-label ret-label)))))))))))
+          (with-return-wrapped-if (and tailp (typep func 'primop))
+            (make-expr :effect-free expr-pure :value-used valuep :env lexenv
+                       :type (expr-type (func-expr func)) :form `(,fname ,@args)
+                       :code
+                       (if (typep func 'primop)
+                           (append args-code
+                                   ;; copy the primitive function template, filling in missing stuff
+                                   (list (instantiate-primop func valuep)))
+                           (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
+                             ;; need to abstract the argument count issue better
+                             (append (iter (for arg-code in args-code)
+                                           (for i from 0)
+                                           (collect (make-expr :effect-free nil :value-used t :env lexenv
+                                                               :type (expr-type arg-code) :form `(funarg-set ,i ,(expr-form arg-code))
+                                                               :code
+                                                               (append (list arg-code)
+                                                                       (emit-funarg-set i)))))
+                                     (unless tailp
+                                       (emit-save-continuation ret-label))
+                                     (emit-jump fname)
+                                     (unless tailp
+                                       (emit-label ret-label))))))))))))
 
 ;;;
 ;;; Non-leaf expressions
@@ -314,7 +354,7 @@
                    :code
                    (append (iter (for var in vars)
                                  (collect (compile-variable-set (var-name var) (var-expr var) compenv lexenv nil nil)))
-                           body-code))))))
+                           (list body-code)))))))
 
 (defun compile-if (clauses compenv lexenv valuep tailp)
   (let ((n-args (length clauses)))
@@ -337,22 +377,26 @@
                  (compile-if `(if ,(second condition) ,then-clause ,else-clause) compenv lexenv valuep tailp))
                 (t
                  (make-expr :effect-free expr-pure :value-used valuep :env lexenv
-                            :type `(or ,(expr-type then-code) ,(expr-type else-code))
+                            :type (comp-simplify-logical-expression `(or ,(expr-type then-code) ,(expr-type else-code)))
                             :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
                             :code
                             (let ((else-label (gensym (concatenate 'string "IF-NOT")))
                                   (end-label (gensym (concatenate 'string "IF-END"))))
-                              (append condition-code
-                                      (emit-jump-if-not else-label)
-                                      then-code
+                              (append (list (make-expr :effect-free (expr-effect-free condition-code) :value-used t :env lexenv
+                                                       :type 'boolean :form condition
+                                                       :code
+                                                       (append (list condition-code)
+                                                               (emit-jump-if-not else-label))))
+                                      (list then-code)
                                       (unless tailp
                                         (emit-jump end-label))
                                       (emit-label else-label)
-                                      else-code
+                                      (list else-code)
                                       (unless tailp
                                         (emit-label end-label))))))))))))
 
 (defun compile-expr (expr compenv lexenv valuep tailp)
+  (format t "~&; COMPILE-EXPR: ~S~%" expr)
   (cond ((constant-p expr) (compile-constant expr valuep tailp))
         ((symbolp expr) (compile-variable-ref expr lexenv valuep tailp))
         ((atom expr)
@@ -370,6 +414,7 @@
               (compile-funcall (car expr) (rest expr) compenv lexenv valuep tailp)))))))
 
 (defun compile-toplevel (expr compenv)
+  (format t "~&; COMPILE-TOPLEVEL: ~S~%" expr)
   (when (consp expr)
     (let ((op (first expr)))
       (case op
@@ -380,32 +425,95 @@
                   (when (and expr (not (expr-effect-free expr)))
                     (collect expr)))))
         (defmacro
-            (when (func compenv op)
+            (when (func compenv op :if-does-not-exist :continue)
               (comp-error "~@<In DEFMACRO: ~S already defined as function.~:@>" op))
             (destructuring-bind (name lambda-list &body body) (rest expr)
               (setf (macro compenv name) (compile nil `(lambda ,lambda-list ,@body))))
           nil)
         (defun
-            (when (macro compenv op)
+            (when (macro compenv op :if-does-not-exist :continue)
               (comp-error "~@<In DEFUN: ~S already defined as macro.~:@>" op))
             (destructuring-bind (name lambda-list &body body) (rest expr)
-              (with-noted-sexp-path `(defun ,name)
-                (lret* ((nargs (length lambda-list))
-                        (lexenv (make-frame-from-var-names lambda-list nil))
-                        (body-code (append (emit-label name)
-                                           (iter (for i from 0 below nargs)
-                                                 (for argvar in lambda-list)
-                                                 (collect (make-expr :effect-free nil :value-used t :env lexenv
-                                                                     :type t :expr `(setf argvar (funarg-ref ,i))
-                                                                     :code
-                                                                     (append (emit-funarg-ref i)
-                                                                             (emit-lvar-set argvar)))))
-                                           (compile-progn body compenv (make-frame-from-var-names lambda-list nil) t t))))
-                  (setf (func compenv name)
-                        (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list :leafp nil
-                                       :expr body-code))))))
+              (with-noted-sexp-path `(defun ,name ,lambda-list ,@body)
+                ;; Make an incomplete function definition, for the purpose of recursion.
+                (let ((func (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list :leafp nil
+                                           :expr (make-expr :effect-free nil :value-used t :env nil
+                                                            :type t :form `(defun ,name ,lambda-list #:phony) :code nil))))
+                  (setf (func compenv name) func)
+                  (let* ((nargs (length lambda-list))
+                         (lexenv (make-frame-from-var-names lambda-list nil))
+                         (inner-body-code (compile-progn body compenv (make-frame-from-var-names lambda-list nil) t t)))
+                    (setf (func-expr func) (make-expr :effect-free (expr-effect-free inner-body-code) :value-used t :env nil
+                                                      :type (expr-type inner-body-code) :form `(defun ,name ,lambda-list ,@body)
+                                                      :code
+                                                      (append (emit-label name)
+                                                              (iter (for i from 0 below nargs)
+                                                                    (for argvar in lambda-list)
+                                                                    (collect (make-expr :effect-free nil :value-used t :env lexenv
+                                                                                        :type t :form `(setf argvar (funarg-ref ,i))
+                                                                                        :code
+                                                                                        (append (emit-funarg-ref i)
+                                                                                                (emit-lvar-set argvar)))))
+                                                              (list inner-body-code)))))))))
         (t
          (if-let ((macro (macro compenv op :if-does-not-exist :continue)))
            (with-noted-sexp-path `(defmacro ,op)
              (compile-toplevel (apply macro (rest expr)) compenv))
            (compile-expr expr compenv nil nil nil)))))))
+
+(defparameter *test-code* `((defun flash-write-abs (absolute-addr value)
+                              (mem-set absolute-addr 0
+                                       (logior (ash value 0)
+                                               (ash value 16))))
+                            (defun flash-write (flash-base offset value)
+                              (mem-set (+ flash-base (ash offset 2)) 0
+                                       (logior (ash value 0)
+                                               (ash value 16))))
+                            (defun issue-command-abs (flash-base absolute-addr command)
+                              (flash-write flash-base #x555 #xaa)
+                              (flash-write flash-base #x2aa #x55)
+                              (flash-write-abs absolute-addr command))
+                            (defun issue-command (flash-base offset command)
+                              (flash-write flash-base #x555 #xaa)
+                              (flash-write flash-base #x2aa #x55)
+                              (flash-write flash-base offset command))
+                            (defun poll-toggle-ready (absolute-addr iterations-left)
+                              (if (= 0 iterations-left)
+                                  nil
+                                  (if (= (logand #x40 (mem-ref-impure absolute-addr 0))
+                                         (logand #x40 (mem-ref-impure absolute-addr 0)))
+                                      t
+                                      (poll-toggle-ready absolute-addr (- iterations-left 1)))))
+                            (defun poll-ds7 (absolute-addr iterations-left)
+                              (if (= 0 iterations-left)
+                                  nil
+                                  (if (/= 0 (logand #x80 (mem-ref-impure absolute-addr 0)))
+                                      t
+                                      (poll-ds7  absolute-addr (- iterations-left 1)))))
+                            (defun program-word (flash-base absolute-addr value)
+                              (issue-command flash-base #x555 ,#xa0 #+nil (bits :amd-opcode :word-program))
+                              (mem-set absolute-addr 0 value)
+                              (poll-toggle-ready absolute-addr #x7ffffff))
+                            (defun program-region (flash-base dest src word-count)
+                              (if (= 0 word-count)
+                                  nil
+                                  (progn
+                                    (program-word flash-base dest (mem-ref src 0))
+                                    (program-region flash-base (+ dest 4) (+ src 4) (- word-count 1)))))
+                            (defun erase-sector (flash-base absolute-sector-address)
+                              (issue-command flash-base #x555 ,#x80 #+nil (bits :amd-opcode :cyc1-erase))
+                              (issue-command-abs flash-base absolute-sector-address ,#x50 #+nil (bits :amd-opcode :cyc2-erase-sector))
+                              (poll-toggle-ready absolute-sector-address #x7ffffff))
+                            (defun erase-block (flash-base absolute-block-address)
+                              (issue-command flash-base #x555 ,#x80 #+nil (bits :amd-opcode :cyc1-erase))
+                              (issue-command-abs flash-base absolute-block-address ,#x30 #+nil (bits :amd-opcode :cyc2-erase-block))
+                              (poll-toggle-ready absolute-block-address #x7ffffff))
+                            (defun erase-chip (flash-base)
+                              (issue-command flash-base #x555 ,#x80 #+nil (bits :amd-opcode :cyc1-erase))
+                              (issue-command flash-base 0 ,#x10 #+nil (bits :amd-opcode :cyc2-erase-chip))
+                              (poll-ds7 flash-base #x7ffffff))))
+
+(let ((compenv (make-instance 'compenv)))
+  (dolist (component (subseq  *test-code* 0))
+    (format t "~&; compiling ~S:~%; got: ~S~%~%~%"
+            component (compile-toplevel component compenv))))

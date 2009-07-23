@@ -256,7 +256,8 @@ a new register was allocated."
 ;;;
 (defmacro emitting-iteration ((iterations &optional exit-tag (counter-reg :counter)) &body body)
   (once-only (iterations)
-    `(cell-let ((,counter-reg ,iterations))
+    `(progn
+       (emit-set-gpr ,counter-reg ,iterations)
        (with-tags *tag-domain*
          (emit* :addiu ,counter-reg ,counter-reg #xffff)
          (emit-tag :loop-begin)
@@ -301,17 +302,16 @@ a new register was allocated."
   (emit-long-jump (tag-address name))
   (emit* :nop))
 
-(defmacro emitting-function (name (&key (return-tag :return)) &body body)
+(defmacro emitting-function (name (&key (return-tag :return) (proxy :ret-reg)) &body body)
   `(with-function-definition-and-emission *tag-domain* ,name
-     (with-mips-gpri (:ret-reg)
-       (with-tags *tag-domain*
-         ,@body
-         (emit-tag ,return-tag)
-         (emit-stack-pop)
-         (emit-based-load32 :ret-reg 0 :stack-top)
-         (emit* :nop)
-         (emit* :jr :ret-reg)
-         (emit* :nop)))))
+     (with-tags *tag-domain*
+       ,@body
+       (emit-tag ,return-tag)
+       (emit-stack-pop)
+       (emit-based-load32 ,proxy 0 :stack-top)
+       (emit* :nop)
+       (emit* :jr ,proxy)
+       (emit* :nop))))
 
 ;;;
 ;;; Predicate functions

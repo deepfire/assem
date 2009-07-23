@@ -50,6 +50,7 @@
 (defpackage #:comp
   (:use :common-lisp :alexandria :iterate :pergamum :environment :isa)
   (:shadowing-import-from :isa #:disassemble)
+  (:shadow #:frame)
   (:export
    ))
 

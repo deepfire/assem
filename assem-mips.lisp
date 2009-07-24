@@ -35,10 +35,18 @@
      (with-mips-gpr-environment
        ,@body)))
 
-(defmacro with-extentable-mips-segment ((extentable addr) &body body)
+(defmacro with-extentable-mips-segment ((extentable addr &key (return :value)) &body body)
+  "Execute BODY with *SEGMENT* bound to a freshly allocated segment, 
+which is to be written at ADDR of EXTENTABLE.
+The return value is either the return value of BODY, or *SEGMENT*,
+depending on whether the RETURN key is :VALUE or :SEGMENT. The default
+is :VALUE."
   `(with-extentable-segment (*mips-isa* ,extentable ,addr)
      (with-mips-gpr-environment
-       ,@body)))
+       ,@body
+       ,@(ecase return
+                (:value)
+                (:segment `(*segment*))))))
 
 ;;;
 ;;; GPR yayity

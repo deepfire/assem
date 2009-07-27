@@ -103,7 +103,8 @@
 
 (defclass expr-like ()
   ((type :accessor expr-type :type (or symbol list) :initarg :type)
-   (effect-free :accessor expr-effect-free :type boolean :initarg :effect-free)))
+   (effect-free :accessor expr-effect-free :type boolean :initarg :effect-free)
+   (pure :accessor expr-pure :type boolean :initarg :pure)))
 
 (defclass expr (expr-like)
   ((value-used :accessor expr-value-used :type boolean :initarg :value-used)
@@ -111,8 +112,8 @@
    (form :accessor expr-form :initarg :form)
    (code :accessor expr-code :initarg :code)))
 
-(define-print-object-method ((o expr) effect-free value-used type code)
-    "~@<#<EXPR ~;pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free value-used type code)
+(define-print-object-method ((o expr) effect-free pure value-used type code)
+    "~@<#<EXPR ~;effect-free: ~S, pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free pure value-used type code)
 
 (defclass expr-var (var)
   ((expr :accessor var-expr :type expr :initarg :expr)))
@@ -123,7 +124,10 @@
    (leafp :accessor func-leafp :type boolean :initarg :leafp)))
 
 (defclass primop (expr-like func)
-  ((instantiator :accessor primop-instantiator :type function :initarg :instantiator)))
+  ((instantiator :accessor primop-instantiator :type function :initarg :instantiator)
+   (folder :accessor primop-folder :type function :initarg :folder)
+   (papplicable-p :accessor primop-papplicable-p :type function :initarg :papplicable-p)
+   (papplicator :accessor primop-papplicator :type function :initarg :papplicator)))
 
 (defclass expr-func (func)
   ((lambda-list :accessor func-lambda-list :type list :initarg :lambda-list)
@@ -132,9 +136,10 @@
 
 (defmethod expr-type ((o expr-func)) (expr-type (func-expr o)))
 (defmethod expr-effect-free ((o expr-func)) (expr-effect-free (func-expr o)))
+(defmethod expr-pure ((o expr-func)) (expr-pure (func-expr o)))
 
 (define-print-object-method ((o func) name nargs leafp)
-    "~@<#<FUNC ~;~S, ~S args, leafp: ~S, type: ~S, pure: ~S>~:@>" name nargs leafp (expr-type o) (expr-effect-free o))
+    "~@<#<FUNC ~;~S, ~S args, leafp: ~S, type: ~S, effect-free: ~S>~:@>" name nargs leafp (expr-type o) (expr-effect-free o))
 
 (defparameter *primops* (make-hash-table :test 'eq))
 
@@ -222,41 +227,67 @@
 ;;;
 (defun instantiate-simple-primop (primop valuep args arg-exprs &aux (name (func-name primop)))
   (declare (ignore args arg-exprs))
-  (make-instance 'expr :effect-free (expr-effect-free primop) :value-used valuep :env nil
+  (make-instance 'expr :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil
                  :type (expr-type primop) :form `(,name ,@args) 
                  :code (append arg-exprs
                                (emit-primitive name (length args)))))
 
-(defun ensure-primitive (name nargs effect-free type &optional (instantiator-fn #'instantiate-simple-primop))
-  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t :type type :effect-free effect-free
-                                     :instantiator instantiator-fn)))
+(defun ensure-primitive (name nargs type effect-free pure &key folder-fn (instantiator-fn #'instantiate-simple-primop)
+                         (papplicable-p (constantly nil)) papplicator-fn)
+  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t :type type :effect-free effect-free :pure pure
+                                     :instantiator instantiator-fn
+                                     :folder folder-fn
+                                     :papplicable-p papplicable-p :papplicator papplicator-fn)))
 
-(defmacro defprimitive (name nargs effect-free type &optional instantiator-lambda-list &body instantiator-body)
-  `(ensure-primitive ',name ,nargs ,effect-free ',type ,@(when instantiator-body
-                                                               `((lambda ,instantiator-lambda-list ,@instantiator-body)))))
+(defmacro defprimitive (name nargs type effect-free pure &rest args)
+  (let ((instantiator (rest (find :instantiator args :key #'car)))
+        (folder (rest (find :folder args :key #'car)))
+        (papplicable-p (rest (find :papplicable-p args :key #'car)))
+        (papplicator (rest (find :papplicator args :key #'car))))
+   `(ensure-primitive ',name ,nargs ,effect-free ,pure ',type
+                      ,@(when instantiator
+                              `(:instantiator-fn (lambda ,(first instantiator) ,@(rest instantiator))))
+                      ,@(when folder
+                              `(:folder-fn (lambda ,(first folder) ,@(rest folder))))
+                      ,@(when papplicable-p
+                              (unless papplicator
+                                (comp-error "~@<In DEFPRIMITIVE ~S: PAPPLICABLE-P specified without PAPPLICATOR.~:@>" name))
+                              `(:papplicable-p (lambda ,(first papplicable-p) ,@(rest papplicable-p))))
+                      ,@(when papplicator
+                              (unless papplicable-p
+                                (comp-error "~@<In DEFPRIMITIVE ~S: PAPPLICATOR specified without PAPPLICABLE-P.~:@>" name))
+                              `(:papplicator-fn (lambda ,(first papplicator) ,@(rest papplicator)))))))
 
-(defprimitive +              2 t   integer)
-(defprimitive -              2 t   integer)
-(defprimitive logior         2 t   integer)
-(defprimitive logand         2 t   integer)
-(defprimitive logxor         2 t   integer)
-(defprimitive ash            2 t   integer)
-(defprimitive lognot         1 t   integer)
-(defprimitive =              2 t   boolean)
-(defprimitive /=             2 t   boolean)
-(defprimitive >=             2 t   boolean)
-(defprimitive <=             2 t   boolean)
-(defprimitive >              2 t   boolean)
-(defprimitive <              2 t   boolean)
-(defprimitive mem-ref        2 t   integer)
-(defprimitive mem-set        3 nil nil)
-(defprimitive mem-ref-impure 2 nil integer)
-(defprimitive funarg-ref     2 t   t
-    (primop valuep args arg-exprs &aux (type (second args)))
-  (declare (ignore arg-exprs))
-  (make-instance 'expr :effect-free t :value-used valuep :env nil
-                 :type type :form `(,(func-name primop) ,@args)
-                 :code (apply #'emit-primitive 'funarg-ref 2 args)))
+(defprimitive +              2 integer t   t
+  (:folder (arg-exprs tailp)
+    (compile-constant (apply #'+ (mapcar #'expr-form arg-exprs)) t tailp)))
+(defprimitive -              2 integer t   t)
+(defprimitive logior         2 integer t   t)
+(defprimitive logand         2 integer t   t)
+(defprimitive logxor         2 integer t   t)
+(defprimitive ash            2 integer t   t
+  (:folder (arg-exprs tailp)
+    (compile-constant (apply #'ash (mapcar #'expr-form arg-exprs)) t tailp))
+  (:papplicable-p (arg-exprs &aux (shift (expr-form (second arg-exprs))))
+    (and (integerp shift) (zerop shift)))
+  (:papplicator (arg-exprs)
+    (first arg-exprs)))
+(defprimitive lognot         1 integer t   t)
+(defprimitive =              2 boolean t   t)
+(defprimitive /=             2 boolean t   t)
+(defprimitive >=             2 boolean t   t)
+(defprimitive <=             2 boolean t   t)
+(defprimitive >              2 boolean t   t)
+(defprimitive <              2 boolean t   t)
+(defprimitive mem-ref        2 integer t   nil)
+(defprimitive mem-set        3 nil     nil nil)
+(defprimitive mem-ref-impure 2 integer nil nil)
+(defprimitive funarg-ref     2 t       t   t
+  (:instantiator (primop valuep args arg-exprs &aux (type (second args)))
+    (declare (ignore arg-exprs))
+    (make-instance 'expr :effect-free t :pure t :value-used valuep :env nil
+                   :type type :form `(,(func-name primop) ,@args)
+                   :code (apply #'emit-primitive 'funarg-ref 2 args))))
 
 ;;;
 ;;; Actual compilation
@@ -271,7 +302,7 @@
 
 (defun maybe-wrap-with-return (wrap-p expr)
   (if wrap-p
-      (make-instance 'expr :effect-free (expr-effect-free expr) :value-used t :env nil
+      (make-instance 'expr :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
                      :type (expr-type expr) :form `(return ,(expr-code expr))
                      :code
                      (append (list expr)
@@ -286,7 +317,7 @@
     (expr-error "attempted to compile non-constant expression ~S as constant" expr))
   (when valuep
     (with-return-wrapped-if tailp
-      (make-instance 'expr :effect-free t :value-used t :env nil
+      (make-instance 'expr :effect-free t :pure t :value-used t :env nil
                      :type (comp-type-of expr) :form expr
                      :code
                      (emit-constant (case expr
@@ -300,7 +331,7 @@
       (expr-error "~S not bound" var))
     (when valuep
       (with-return-wrapped-if tailp
-        (make-instance 'expr :effect-free t :value-used t :env lexenv
+        (make-instance 'expr :effect-free t :pure nil :value-used t :env lexenv
                        :type t :form var
                        :code
                        (emit-lvar-ref var))))))
@@ -313,7 +344,7 @@
       (let ((value-expr (if (typep value 'expr)
                             value
                             (compile-expr value compenv lexenv t nil))))
-        (make-instance 'expr :effect-free nil :value-used valuep :env lexenv
+        (make-instance 'expr :effect-free nil :pure nil :value-used valuep :env lexenv
                        :type (expr-type value-expr) :form `(setf ,var ,(expr-form value-expr))
                        :code
                        (append (list value-expr)
@@ -331,26 +362,32 @@
                   fname (length args) (func-nargs func)))
     (with-noted-sexp-path `(funcall ,fname)
       (let* ((args-code (mapcar (rcurry #'compile-expr compenv lexenv t nil) args))
-             (effect-free (and (expr-effect-free func) (every #'expr-effect-free args-code))))
+             (effect-free (every #'expr-effect-free (cons func args-code)))
+             (pure (and effect-free (expr-pure func) (every #'expr-pure args-code))))
         (when (or valuep (not effect-free))
           (cond ((typep func 'primop)
-                 (with-return-wrapped-if tailp
-                   (funcall (primop-instantiator func) func valuep args args-code)))
+                 (cond ((and pure (primop-folder func))
+                        (funcall (primop-folder func) args-code tailp))
+                       ((funcall (primop-papplicable-p func) args-code)
+                        (with-return-wrapped-if tailp
+                          (funcall (primop-papplicator func) args-code)))
+                       (t
+                        (with-return-wrapped-if tailp
+                          (funcall (primop-instantiator func) func valuep args args-code)))))
                 (t
                  (when (and (boundp '*compiled-function*)
                             (func-leafp *compiled-function*))
                    (compiler-note "degrading ~S to non-leaf" *compiled-function*)
                    (setf (func-leafp *compiled-function*) nil))
-                 (make-instance 'expr :effect-free effect-free :value-used valuep :env lexenv
+                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (if (and (boundp '*compiled-function*)
                                                (eq func *compiled-function*))
                                           nil
                                           (expr-type func)) :form `(,fname ,@args)
                                 :code (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
-                                        ;; need to abstract the argument count issue better
                                         (append (iter (for arg-code in args-code)
                                                       (for i from 0)
-                                                      (collect (make-instance 'expr :effect-free nil :value-used t :env lexenv
+                                                      (collect (make-instance 'expr :effect-free nil :pure nil :value-used t :env lexenv
                                                                               :type (expr-type arg-code) :form `(funarg-set ,i ,(expr-form arg-code))
                                                                               :code
                                                                               (append (list arg-code)
@@ -368,9 +405,10 @@
   (if expr
       (let* ((for-effect (remove nil (mapcar (rcurry #'compile-expr compenv lexenv nil nil) (butlast expr))))
              (for-value (compile-expr (lastcar expr) compenv lexenv tailp valuep))
-             (effect-free (and (null for-effect) (expr-effect-free for-value))))
+             (effect-free (and (null for-effect) (expr-effect-free for-value)))
+             (pure (and effect-free (expr-pure for-value))))
         (when (or valuep (not effect-free))
-          (make-instance 'expr :effect-free effect-free :value-used valuep :env lexenv
+          (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                          :type (expr-type for-value) :form `(progn ,@expr)
                          :code
                          (append for-effect
@@ -389,9 +427,10 @@
                        (collect (make-instance 'expr-var :name name :expr expr))))
            (new-lexenv (make-frame-from-vars vars lexenv))
            (body-code (compile-progn body compenv new-lexenv valuep tailp))
-           (effect-free (every #'expr-effect-free (cons body-code binding-value-code))))
+           (effect-free (every #'expr-effect-free (cons body-code binding-value-code)))
+           (pure (and effect-free (every #'expr-pure (cons body-code binding-value-code)))))
       (when (or valuep (not effect-free))
-        (make-instance 'expr :effect-free effect-free :value-used valuep :env lexenv
+        (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                        :type (expr-type body-code) :form `(let ,bindings ,@body)
                        :code
                        (append (iter (for var in vars)
@@ -404,7 +443,7 @@
     ;; Make a temporary, incomplete function object for the purpose of recursion, with expression lacking proper code,
     ;; and type being set to t.
     (let ((func (make-instance 'expr-func :name name :nargs (length lambda-list) :lambda-list lambda-list :leafp t :complete nil
-                               :expr (make-instance 'expr :effect-free nil :value-used t :env nil
+                               :expr (make-instance 'expr :effect-free nil :pure nil :value-used t :env nil
                                                     :type t :form `(defun ,name ,lambda-list #:phony) :code nil))))
       (setf (func compenv name) func)
       (multiple-value-bind (docstring declarations body) (destructure-def-body body)
@@ -431,7 +470,8 @@
            (else-code (if else-clause
                           (compile-expr else-clause compenv lexenv valuep tailp)
                           (compile-constant nil valuep tailp)))
-           (effect-free (every #'expr-effect-free (list condition-code then-code else-code))))
+           (effect-free (every #'expr-effect-free (list condition-code then-code else-code)))
+           (pure (and effect-free (every #'expr-pure (list condition-code then-code else-code)))))
       (when (or valuep effect-free)
         (with-noted-sexp-path 'if
           (cond ((null condition) else-code)
@@ -440,13 +480,14 @@
                 ((and (= 2 (length condition)) (eq (first condition) 'not))
                  (compile-if `(if ,(second condition) ,then-clause ,else-clause) compenv lexenv valuep tailp))
                 (t
-                 (make-instance 'expr :effect-free effect-free :value-used valuep :env lexenv
+                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (comp-simplify-logical-expression `(or ,(expr-type then-code) ,(expr-type else-code)))
                                 :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
                                 :code
                                 (let ((else-label (gensym (concatenate 'string "IF-NOT")))
                                       (end-label (gensym (concatenate 'string "IF-END"))))
-                                  (append (list (make-instance 'expr :effect-free (expr-effect-free condition-code) :value-used t :env lexenv
+                                  (append (list (make-instance 'expr :effect-free (expr-effect-free condition-code) :pure (expr-pure condition-code)
+                                                               :value-used t :env lexenv
                                                                :type 'boolean :form condition
                                                                :code
                                                                (append (list condition-code)

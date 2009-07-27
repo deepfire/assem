@@ -22,9 +22,10 @@
 
 (defvar *comp-verbose* nil)
 
-(define-condition comp-condition () ())
-(define-condition comp-error (error comp-condition) ())
-(define-simple-error comp-error)
+(eval-when (:compile-toplevel :load-toplevel)
+  (define-condition comp-condition () ())
+  (define-condition comp-error (error comp-condition) ())
+  (define-simple-error comp-error))
 
 ;;;
 ;;; IR1
@@ -112,6 +113,10 @@
    (form :accessor expr-form :initarg :form)
    (code :accessor expr-code :initarg :code)))
 
+(defclass tn (expr)
+  ()
+  (:documentation "An EXPR whose result requires attention of the register allocator."))
+
 (define-print-object-method ((o expr) effect-free pure value-used type code)
     "~@<#<EXPR ~;effect-free: ~S, pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free pure value-used type code)
 
@@ -124,7 +129,8 @@
    (leafp :accessor func-leafp :type boolean :initarg :leafp)))
 
 (defclass primop (expr-like func)
-  ((instantiator :accessor primop-instantiator :type function :initarg :instantiator)
+  ((valuep :accessor primop-valuep :type boolean :initarg :valuep)
+   (instantiator :accessor primop-instantiator :type function :initarg :instantiator)
    (folder :accessor primop-folder :type function :initarg :folder)
    (papplicable-p :accessor primop-papplicable-p :type function :initarg :papplicable-p)
    (papplicator :accessor primop-papplicator :type function :initarg :papplicator)))
@@ -227,24 +233,24 @@
 ;;;
 (defun instantiate-simple-primop (primop valuep args arg-exprs &aux (name (func-name primop)))
   (declare (ignore args arg-exprs))
-  (make-instance 'expr :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil
+  (make-instance (if valuep 'tn 'expr) :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil
                  :type (expr-type primop) :form `(,name ,@args) 
                  :code (append arg-exprs
                                (emit-primitive name (length args)))))
 
-(defun ensure-primitive (name nargs type effect-free pure &key folder-fn (instantiator-fn #'instantiate-simple-primop)
+(defun ensure-primitive (name nargs type valuep effect-free pure &key folder-fn (instantiator-fn #'instantiate-simple-primop)
                          (papplicable-p (constantly nil)) papplicator-fn)
-  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t :type type :effect-free effect-free :pure pure
+  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t :type type :valuep valuep :effect-free effect-free :pure pure
                                      :instantiator instantiator-fn
                                      :folder folder-fn
                                      :papplicable-p papplicable-p :papplicator papplicator-fn)))
 
-(defmacro defprimitive (name nargs type effect-free pure &rest args)
+(defmacro defprimitive (name nargs type valuep effect-free pure &rest args)
   (let ((instantiator (rest (find :instantiator args :key #'car)))
         (folder (rest (find :folder args :key #'car)))
         (papplicable-p (rest (find :papplicable-p args :key #'car)))
         (papplicator (rest (find :papplicator args :key #'car))))
-   `(ensure-primitive ',name ,nargs ,effect-free ,pure ',type
+   `(ensure-primitive ',name ,nargs ,valuep ,effect-free ,pure ',type
                       ,@(when instantiator
                               `(:instantiator-fn (lambda ,(first instantiator) ,@(rest instantiator))))
                       ,@(when folder
@@ -258,34 +264,34 @@
                                 (comp-error "~@<In DEFPRIMITIVE ~S: PAPPLICATOR specified without PAPPLICABLE-P.~:@>" name))
                               `(:papplicator-fn (lambda ,(first papplicator) ,@(rest papplicator)))))))
 
-(defprimitive +              2 integer t   t
+(defprimitive +              2 integer t   t   t
   (:folder (arg-exprs tailp)
     (compile-constant (apply #'+ (mapcar #'expr-form arg-exprs)) t tailp)))
-(defprimitive -              2 integer t   t)
-(defprimitive logior         2 integer t   t)
-(defprimitive logand         2 integer t   t)
-(defprimitive logxor         2 integer t   t)
-(defprimitive ash            2 integer t   t
+(defprimitive -              2 integer t   t   t)
+(defprimitive logior         2 integer t   t   t)
+(defprimitive logand         2 integer t   t   t)
+(defprimitive logxor         2 integer t   t   t)
+(defprimitive ash            2 integer t   t   t
   (:folder (arg-exprs tailp)
     (compile-constant (apply #'ash (mapcar #'expr-form arg-exprs)) t tailp))
   (:papplicable-p (arg-exprs &aux (shift (expr-form (second arg-exprs))))
     (and (integerp shift) (zerop shift)))
   (:papplicator (arg-exprs)
     (first arg-exprs)))
-(defprimitive lognot         1 integer t   t)
-(defprimitive =              2 boolean t   t)
-(defprimitive /=             2 boolean t   t)
-(defprimitive >=             2 boolean t   t)
-(defprimitive <=             2 boolean t   t)
-(defprimitive >              2 boolean t   t)
-(defprimitive <              2 boolean t   t)
-(defprimitive mem-ref        2 integer t   nil)
-(defprimitive mem-set        3 nil     nil nil)
-(defprimitive mem-ref-impure 2 integer nil nil)
-(defprimitive funarg-ref     2 t       t   t
+(defprimitive lognot         1 integer t   t   t)
+(defprimitive =              2 boolean t   t   t)
+(defprimitive /=             2 boolean t   t   t)
+(defprimitive >=             2 boolean t   t   t)
+(defprimitive <=             2 boolean t   t   t)
+(defprimitive >              2 boolean t   t   t)
+(defprimitive <              2 boolean t   t   t)
+(defprimitive mem-ref        2 integer t   t   nil)
+(defprimitive mem-set        3 nil     nil nil nil)
+(defprimitive mem-ref-impure 2 integer t   nil nil)
+(defprimitive funarg-ref     2 t       t   t   t
   (:instantiator (primop valuep args arg-exprs &aux (type (second args)))
     (declare (ignore arg-exprs))
-    (make-instance 'expr :effect-free t :pure t :value-used valuep :env nil
+    (make-instance (if valuep 'tn 'expr) :effect-free t :pure t :value-used valuep :env nil
                    :type type :form `(,(func-name primop) ,@args)
                    :code (apply #'emit-primitive 'funarg-ref 0 args))))
 
@@ -302,7 +308,7 @@
 
 (defun maybe-wrap-with-return (wrap-p expr)
   (if wrap-p
-      (make-instance 'expr :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
+      (make-instance 'tn :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
                      :type (expr-type expr) :form `(return ,(expr-code expr))
                      :code
                      (append (list expr)
@@ -317,7 +323,7 @@
     (expr-error "attempted to compile non-constant expression ~S as constant" expr))
   (when valuep
     (with-return-wrapped-if tailp
-      (make-instance 'expr :effect-free t :pure t :value-used t :env nil
+      (make-instance 'tn :effect-free t :pure t :value-used t :env nil
                      :type (comp-type-of expr) :form expr
                      :code
                      (emit-constant (case expr
@@ -331,7 +337,7 @@
       (expr-error "~S not bound" var))
     (when valuep
       (with-return-wrapped-if tailp
-        (make-instance 'expr :effect-free t :pure nil :value-used t :env lexenv
+        (make-instance 'tn :effect-free t :pure nil :value-used t :env lexenv
                        :type t :form var
                        :code
                        (emit-lvar-ref var))))))
@@ -379,7 +385,7 @@
                             (func-leafp *compiled-function*))
                    (compiler-note "degrading ~S to non-leaf" *compiled-function*)
                    (setf (func-leafp *compiled-function*) nil))
-                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
+                 (make-instance 'tn :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (if (and (boundp '*compiled-function*)
                                                (eq func *compiled-function*))
                                           nil
@@ -408,7 +414,7 @@
              (effect-free (and (null for-effect) (expr-effect-free for-value)))
              (pure (and effect-free (expr-pure for-value))))
         (when (or valuep (not effect-free))
-          (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
+          (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
                          :type (expr-type for-value) :form `(progn ,@expr)
                          :code
                          (append for-effect
@@ -430,7 +436,7 @@
            (effect-free (every #'expr-effect-free (cons body-code binding-value-code)))
            (pure (and effect-free (every #'expr-pure (cons body-code binding-value-code)))))
       (when (or valuep (not effect-free))
-        (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
+        (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
                        :type (expr-type body-code) :form `(let ,bindings ,@body)
                        :code
                        (append (iter (for var in vars)
@@ -480,7 +486,7 @@
                 ((and (= 2 (length condition)) (eq (first condition) 'not))
                  (compile-if `(if ,(second condition) ,then-clause ,else-clause) compenv lexenv valuep tailp))
                 (t
-                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
+                 (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (comp-simplify-logical-expression `(or ,(expr-type then-code) ,(expr-type else-code)))
                                 :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
                                 :code

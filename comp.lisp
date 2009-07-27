@@ -202,7 +202,7 @@
   (list (make-vop :nargs 1 :code `(lvar-set ,lvar))))
 
 (defun emit-funarg-set (i)
-  (list (make-vop :nargs 2 :code `(funarg-set ,i))))
+  (list (make-vop :nargs 1 :code `(funarg-set ,i))))
 
 (defun emit-save-continuation (label)
   (list (make-vop :nargs 0 :code `(save-continuation ,label))))
@@ -287,7 +287,7 @@
     (declare (ignore arg-exprs))
     (make-instance 'expr :effect-free t :pure t :value-used valuep :env nil
                    :type type :form `(,(func-name primop) ,@args)
-                   :code (apply #'emit-primitive 'funarg-ref 2 args))))
+                   :code (apply #'emit-primitive 'funarg-ref 0 args))))
 
 ;;;
 ;;; Actual compilation

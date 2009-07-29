@@ -21,6 +21,7 @@
 (in-package :assem-mips)
 
 (defvar *mips-gpr-environment*)
+(defvar *poison-mips-stack* nil)
 
 ;;;
 ;;; Top levels for emission
@@ -282,23 +283,27 @@ a new register was allocated."
   `(with-mips-gpri (:stack-top :arg0-ret :arg1 :arg2)
      ,@body))
 
-(defun emit-stack-push (value)
+(defun emit-stack-push (value &optional poison)
   (emit-based-store32 value :stack-top 0)
+  (when poison
+    (emit-based-store32 #xfeeddead :stack-top #xfffc))
   (emit* :addiu :stack-top :stack-top #xfffc))
 
-(defun emit-stack-pop ()
+(defun emit-stack-pop (&optional poison)
+  (when poison
+    (emit-based-store32 #xfeeddead :stack-top 0))
   (emit* :addiu :stack-top :stack-top #x4))
 
-(defun emit-function-call-prologue (function-args offset)
+(defun emit-function-call-prologue (function-args offset poison)
   (iter (for arg in function-args)
         (for argreg in '(:arg0-ret :arg1 :arg2))
         (unless (eq arg argreg)
           (emit-set-gpr argreg arg)))
-  (emit-stack-push (+ offset (current-absolute-addr))))
+  (emit-stack-push (+ offset (current-absolute-addr)) poison))
 
 ;;; Everything is position-independent, whereas function return addresses aren't.
 (defun emit-near-function-call (name &rest args)
-  (emit-function-call-prologue args #x18)
+  (emit-function-call-prologue args (+ #x18 (if *poison-mips-stack* #xc 0)) *poison-mips-stack*)
   (let ((ref (emit-jump name)))
     (when-let ((tag (find-tag name)))
       (backpatch-tag-reference tag ref)))
@@ -306,7 +311,7 @@ a new register was allocated."
 
 ;;; Everything is position-independent, whereas function return addresses aren't.
 (defun emit-long-function-call (name &rest args)
-  (emit-function-call-prologue args #x24)
+  (emit-function-call-prologue args (+ #x24 (if *poison-mips-stack* #xc 0)) *poison-mips-stack*)
   (emit-long-jump (tag-address name))
   (emit* :nop))
 
@@ -315,7 +320,7 @@ a new register was allocated."
      (with-tags *tag-domain*
        ,@body
        (emit-tag ,return-tag)
-       (emit-stack-pop)
+       (emit-stack-pop *poison-mips-stack*)
        (emit-based-load32 ,proxy 0 :stack-top)
        (emit* :nop)
        (emit* :jr ,proxy)

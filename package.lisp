@@ -81,20 +81,21 @@
   (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa :isa-mips :assem)
   (:shadowing-import-from :isa #:disassemble)
   (:export
-    #:with-mips-gpr-environment #:with-mips-assem #:with-extentable-mips-segment
-    #:evaluate-mips-gpr #:with-mips-gpri #:allocate-mips-gpr #:release-mips-gpr
-    #:emit #:emit* #:emit-ref
-    #:emit-nops #:emit-set-gpr
-    #:emit-based-store32 #:emit-based-store16 #:emit-based-store8 #:emit-store32 #:emit-store16 #:emit-store8
-    #:emit-based-load32 #:emit-based-load16 #:emit-based-load8 #:emit-load32 #:emit-load16 #:emit-load8
-    #:emit-mask32 #:emit-mask16
-    #:emit-set-cp0 #:emit-set-tlb-entry
-    #:emit-long-jump
-    #:emit-jump #:emit-jump-if-eq #:emit-jump-if-ne
-    #:ensure-cell #:cell-let
-    #:emitting-iteration
-    #:*initial-stack-top*
-    #:with-function-calls #:emit-stack-push #:emit-stack-pop
-    #:emit-near-function-call #:emit-long-function-call #:emitting-function #:emitting-predicate-function
-    #:emit-succeed #:emit-fail #:emit-succeed-if-eq #:emit-succeed-if-ne #:emit-fail-if-eq #:emit-fail-if-ne #:emit-test-eq #:emit-test-ne
-    #:emit-jump-if))
+   #:*poison-mips-stack*
+   #:with-mips-gpr-environment #:with-mips-assem #:with-extentable-mips-segment
+   #:evaluate-mips-gpr #:with-mips-gpri #:allocate-mips-gpr #:release-mips-gpr
+   #:emit #:emit* #:emit-ref
+   #:emit-nops #:emit-set-gpr
+   #:emit-based-store32 #:emit-based-store16 #:emit-based-store8 #:emit-store32 #:emit-store16 #:emit-store8
+   #:emit-based-load32 #:emit-based-load16 #:emit-based-load8 #:emit-load32 #:emit-load16 #:emit-load8
+   #:emit-mask32 #:emit-mask16
+   #:emit-set-cp0 #:emit-set-tlb-entry
+   #:emit-long-jump
+   #:emit-jump #:emit-jump-if-eq #:emit-jump-if-ne
+   #:ensure-cell #:cell-let
+   #:emitting-iteration
+   #:*initial-stack-top*
+   #:with-function-calls #:emit-stack-push #:emit-stack-pop
+   #:emit-near-function-call #:emit-long-function-call #:emitting-function #:emitting-predicate-function
+   #:emit-succeed #:emit-fail #:emit-succeed-if-eq #:emit-succeed-if-ne #:emit-fail-if-eq #:emit-fail-if-ne #:emit-test-eq #:emit-test-ne
+   #:emit-jump-if))

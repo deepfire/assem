@@ -69,7 +69,8 @@
    #:bons #:bar #:bdr #:bons-path #:all-bons-paths #:shortest-bons-path #:bons-connected-p
    #:mapt-bb-paths #:do-path-internal-nodes #:bb-graph-within-distance-set
    #:linked-bb #:linked-addr #:linked-reg #:linked-to #:victim-bb #:aggressor-bb
-   #:insn-vector-to-basic-blocks #:bbnet-tree))
+   #:insn-vector-to-basic-blocks #:bbnet-tree
+   #:default-node-parameter-extractor #:pprint-node-graph-linear))
 
 (defpackage #:isa-mips
   (:use :common-lisp :alexandria :custom-harness :pergamum :iterate :isa)

@@ -285,10 +285,7 @@ Will lead to hard-to-diagnose, strange bugs."
 ;;;
 ;;; Misc
 ;;;
-(defun extent-list-adjoin-segment (extent-list address segment)
-  (extent-list-adjoin* extent-list 'extent (segment-active-vector segment) address))
-
-(defmacro with-extentable-segment ((isa extentable addr) &body body)
+(defmacro with-bioable-segment ((isa bioable addr) &body body)
   (with-gensyms (retcell segment ret)
     (once-only (addr)
       `(lret* (,retcell
@@ -296,4 +293,4 @@ Will lead to hard-to-diagnose, strange bugs."
                            ,@(butlast body)
                            (setf ,retcell ,(lastcar body))))
                (,ret ,retcell))
-         (setf (extentable-u8-vector ,extentable ,addr) (segment-active-vector ,segment))))))
+         (write-block ,bioable ,addr (segment-active-vector ,segment))))))

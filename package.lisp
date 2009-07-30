@@ -45,7 +45,7 @@
    #:emit-tag #:emit-global-tag #:find-tag #:tag-address
    #:compilation-environment #:cenv-isa #:cenv-optype #:cenv-segments #:cenv-cellenv #:cenv-tagenv
    #:with-compilation-environment #:save-compilation-environment
-   #:extent-list-adjoin-segment #:with-extentable-segment))
+   #:with-bioable-segment))
 
 (defpackage #:comp
   (:use :common-lisp :alexandria :iterate :pergamum :environment :isa)
@@ -83,7 +83,7 @@
   (:shadowing-import-from :isa #:disassemble)
   (:export
    #:*poison-mips-stack*
-   #:with-mips-gpr-environment #:with-mips-assem #:with-extentable-mips-segment
+   #:with-mips-gpr-environment #:with-mips-assem #:with-bioable-mips-segment
    #:evaluate-mips-gpr #:with-mips-gpri #:allocate-mips-gpr #:release-mips-gpr
    #:emit #:emit* #:emit-ref
    #:emit-nops #:emit-set-gpr

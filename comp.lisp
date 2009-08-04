@@ -751,6 +751,7 @@
                               (issue-command flash-base 0 ,#x10 #+nil (bits :amd-opcode :cyc2-erase-chip))
                               (poll-ds7 flash-base #x7ffffff))))
 
+#+(or)
 (let ((compenv (make-instance 'compenv)))
   (dolist (component (subseq  *test-code* 0))
     (let ((result (compile-toplevel component compenv)))

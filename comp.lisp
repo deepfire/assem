@@ -113,12 +113,49 @@
    (form :accessor expr-form :initarg :form)
    (code :accessor expr-code :initarg :code)))
 
+(define-print-object-method ((o expr) effect-free pure value-used type code)
+    "~@<#<EXPR ~;effect-free: ~S, pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free pure value-used type code)
+
 (defclass tn (expr)
   ()
   (:documentation "An EXPR whose result requires attention of the register allocator."))
 
-(define-print-object-method ((o expr) effect-free pure value-used type code)
-    "~@<#<EXPR ~;effect-free: ~S, pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free pure value-used type code)
+(define-protocol-class dfnode (expr)
+  ((generator :accessor generator :initarg :generator))
+  (:documentation "Data flow node."))
+
+(define-protocol-class dfproducer (dfnode) ((generation :accessor generation)))
+(define-protocol-class dfconsumer (dfnode) ((requirements :accessor requirements :initform nil)))
+(define-protocol-class dfcontinue (dfproducer dfconsumer) ())
+(define-protocol-class dfextremum (dfnode) ())
+
+(define-protocol-class dfstart (dfextremum dfproducer) ())
+(define-protocol-class dfend (dfextremum dfconsumer) ())
+
+(define-protocol-class dffanin (dfconsumer) ())
+(define-protocol-class dffanout (dfproducer) ())
+(define-protocol-class dfnotfan (dfnode) ())
+
+;; neither a producer, nor a consumer, a category of its own
+(defclass dfnop (dfnotfan) ())
+
+(defclass dfhead (dfstart dfnotfan) ())
+(defclass dftail (dfend dfnotfan) ())
+(defclass dfpipe (dfcontinue dfnotfan) ())
+
+(defclass dfstartfan (dfstart dffanout) ())
+(defclass dfendfan (dfend dffanin) ())
+(defclass dfuga (dfcontinue dffanout) ())
+(defclass dfagu (dfcontinue dffanin) ())
+
+(defclass dfhedge (dfcontinue dffanout dffanin) ())
+
+(defun compute-df-class (input output &aux (input (min 2 input)) (output (min 2 output)))
+  (cdr (find (cons input output)
+             '(((0 . 0) . dfnop)
+               ((0 . 1) . dfhead) ((1 . 0) . dftail) ((1 . 1) . dfpipe)
+               ((2 . 0) . dfendfan) ((0 . 2) . dfstartfan) ((2 . 1) . dfagu) ((1 . 2) . dfuga) ((2 . 2) . dfhedge))
+             :key #'car :test #'equal)))
 
 (defclass expr-var (var)
   ((expr :accessor var-expr :type expr :initarg :expr)))
@@ -443,6 +480,28 @@
                                      (collect (compile-variable-set (var-name var) (var-expr var) compenv new-lexenv nil nil)))
                                (list body-code)))))))
 
+;;;
+;;;   At this point we're past the fist pass, namely conversion of code
+;;; into soup of PRIMOPs, carrying concrete details of:
+;;;   - amount of required inputs and outputs, and
+;;;   - expansion on specific architecture;
+;;; and EXPR tree nodes, qualifying subtrees with:
+;;;   - effect-fulness or, perhapes even purity, and
+;;;   - type information.
+;;;
+;;;   Important invariants, simplifying (but, probably, not precluding)
+;;; interpretation of the tree, are:
+;;;   - whenever a VOP has dependencies, it must be the last one in its
+;;; parent's EXPR CODE sequence;
+;;;   - at the point of that particular VOP's occurence the amount of
+;;; outstanding DF sticks must be equal to the amount of VOP's dependencies.
+;;;
+;;;   As it stands, EXPR's CODE sequences fall into two types:
+;;;   - those ending with a producing VOP or EXPR, described above.
+;;; Such entries will make the parent EXPR produce a DF stick itself.
+;;;   - EXPRs which don't affect the DF stick/dependency balance, and thus
+;;; can be pasted into the parent.
+;;;
 ;;; NOTE: the expression doesn't contain the label, which must be emitted by the linker.
 (defun compile-defun (name lambda-list body compenv)
   (with-noted-sexp-path `(defun ,name ,lambda-list ,@body)

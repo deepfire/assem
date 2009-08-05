@@ -125,11 +125,13 @@
 (define-protocol-class dfnode ()
   ((generator :accessor generator :initarg :generator))
   (:documentation "Data flow node."))
+(define-print-object-method ((o dfnode) generator)
+    "~@<#<~;~A ~S~;>~:@>" (type-of o) generator)
 
-(define-protocol-class dfproducer (dfnode) ((production :accessor production :initarg :production)))
-(define-protocol-class dfconsumer (dfnode) ((consumption :accessor consumption :initform nil :initarg :consumption)))
-(define-print-object-method ((o dfconsumer) consumption)
-    "~@<#<~;~A ~S~_~{~S~:@_~}~;>~:@>" (class-of o) (generator o) consumption)
+(define-protocol-class dfproducer (dfnode) ((consumers :accessor consumers :initform nil :initarg :consumers)))
+(define-protocol-class dfconsumer (dfnode) ((producers :accessor producers :initarg :producers)))
+(define-print-object-method ((o dfconsumer) generator producers)
+    "~@<#<~;~A ~S~_~{~S~:@_~}~;>~:@>" (type-of o) generator producers)
 
 (define-protocol-class dfcontinue (dfproducer dfconsumer) ())
 (define-protocol-class dfextremum (dfnode) ())

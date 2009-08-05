@@ -275,7 +275,6 @@
 ;;; The megaquestion is whether PRIMOP's expr slot is warranted.
 ;;;
 (defun instantiate-simple-primop (primop valuep args arg-exprs &aux (name (func-name primop)))
-  (declare (ignore arg-exprs))
   (unless (= (length args) (func-nargs primop))
     (error "~@<~S was provided the wrong amount of values: ~D, expected ~D.~:@>" primop (length args) (func-nargs primop)))
   (make-instance 'expr :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil

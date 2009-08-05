@@ -112,7 +112,8 @@
   ((value-used :accessor expr-value-used :type boolean :initarg :value-used)
    (env :accessor expr-env :type (or null frame) :initarg :env)
    (form :accessor expr-form :initarg :form)
-   (code :accessor expr-code :initarg :code)))
+   (code :accessor expr-code :initarg :code)
+   (df-code :accessor expr-df-code :initform nil :documentation "DF nodes in CODE order (to facilitate side-effect ordering preservation).")))
 
 (define-print-object-method ((o expr) effect-free pure value-used type code)
     "~@<#<EXPR ~;effect-free: ~S, pure: ~S, used: ~S, type: ~S~_~{~S~:@_~}~;>~:@>" effect-free pure value-used type code)
@@ -537,52 +538,39 @@
 ;;;   - EXPRs which always have a zero DF producer count in their CODE
 ;;; sequence.
 ;;;
-(defun build-data-flow-graph (expr)
-  (labels ((expr-df-producing-p (expr)
-             (expr-value-used expr))
-           (code-producer (expr list &aux (lastcar (lastcar list)))
-             (etypecase lastcar
-               (vop lastcar)
-               (expr (code-producer lastcar (expr-code lastcar)))
-               ((nil) (error "~@<~Empty expression: ~S.:@>" expr))
-               (symbol (code-producer expr (butlast list)))))
-           (producer (soup)
-             (etypecase soup
-               (vop soup)
-               (expr (code-producer soup (expr-code soup)))))
-           (iterate-one (parent soup consumer acc-producers)
-             (etypecase soup
-               (vop
-                (unless (or consumer (zerop (vop-nargs soup)))
-                  (error "~@<Starved VOP ~S: requires ~D arguments, was given zero.~:@>" soup (vop-nargs soup)))
-                (when (and consumer (not (= (vop-nargs soup) (length acc-producers))))
-                  (error "~@<At expression ~S: producer count ~D, but VOP ~S expected ~D.~:@>" parent (length acc-producers) soup (vop-nargs soup)))
-                (let ((dfnode (make-instance (compute-df-class (vop-nargs soup) (vop-nvalues soup))
-                                             :generator soup
-                                             :consumption (when consumer acc-producers))))
-                  (when consumer
-                    (dolist (producer acc-producers)
-                      (push dfnode (consumers producer))))
-                  (values (append (when (typep dfnode 'producer)
-                                    (make-list (vop-nvalues soup) :initial-element dfnode))
-                                  (unless consumer acc-producers))
-                          dfnode)))
-               (expr
-                (when consumer
-                  (error "~@<EXPR was marked as consumer.~:@>" soup))
-                ;; Here's the point where we need CFA to perform separate iterations
-                ;; on basic block, so as not to conflate BBs producers.
-                ;; But if we localize passing to subnodes in branchy-branchy EXPRs,
-                ;; shouldn't it justwork?
-                
-                (lret (producers)
-                  (iter (for (subsoup . rest-code) on (expr-code soup))
-                        (multiple-value-bind (maybe-not-a-producer-node new-producers)
-                            (iterate-one soup subsoup (and (endp rest-code) (zerop (vop-nargs soup))) producers)
-                          (unless (typep maybe-not-a-producer-node 'producer)
-                            (format t "~@<Non-producer node: ~S~:@>" maybe-not-a-producer-node))
-                          (setf producers new-producers))))))))
-    (iterate-one expr)))
+(defun build-data-flow-graph (parent soup consumer acc-producers)
+  (etypecase soup
+    (vop
+     (unless (or consumer (zerop (vop-nargs soup)))
+       (error "~@<Starved VOP ~S: requires ~D arguments, was given zero.~:@>" soup (vop-nargs soup)))
+     (when (and consumer (not (= (vop-nargs soup) (length acc-producers))))
+       (error "~@<At expression ~S: producer count ~D, but VOP ~S expected ~D.~:@>" parent (length acc-producers) soup (vop-nargs soup)))
+     (let ((dfnode (make-instance (compute-df-class (vop-nargs soup) (vop-nvalues soup))
+                                  :generator soup
+                                  :consumption (when consumer acc-producers))))
+       (when consumer
+         (dolist (producer acc-producers)
+           (push dfnode (consumption producer))))
+       (values (append (when (typep dfnode 'dfproducer)
+                         (make-list (vop-nvalues soup) :initial-element dfnode))
+                       (unless consumer acc-producers))
+               dfnode)))
+    (expr
+     (when consumer
+       (error "~@<EXPR was marked as consumer.~:@>" soup))
+     ;; Here's the point where we need CFA to perform separate iterations
+     ;; on basic block, so as not to conflate BBs producers.
+     ;; But if we localize passing to subnodes in branchy-branchy EXPRs,
+     ;; shouldn't it justwork?
+     (lret (producers)
+       (setf (expr-df-code soup)
+             (iter (for (subsoup . rest-code) on (expr-code soup))
+                   (multiple-value-bind (node new-producers)
+                       (build-data-flow-graph soup subsoup (and (endp rest-code) (typep soup 'vop) (zerop (vop-nargs soup))) producers)
+                     (unless (typep node 'dfproducer)
+                       (format t "~@<Non-producer node: ~S~:@>" node))
+                     (collect node)
+                     (setf producers new-producers))))))))
 
 ;;; NOTE: the expression doesn't contain the label, which must be emitted by the linker.
 (defun compile-defun (name lambda-list body compenv)
@@ -604,7 +592,9 @@
                                    (collect `(,arg-name (funarg-ref ,i ,(or (first (find name type-decls :key #'rest :test #'member)) t)))))
                              body
                              compenv nil t t)
-                (func-complete func) t))))))
+                (func-complete func) t)
+          #+(or)
+          (build-data-flow-graph nil (func-expr func) nil nil))))))
 
 (defun compile-if (clauses compenv lexenv valuep tailp)
   (let ((n-args (length clauses)))

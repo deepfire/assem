@@ -291,7 +291,7 @@
 (defprimitive funarg-ref     2 t       t   t   t
   (:instantiator (primop valuep args arg-exprs &aux (type (second args)))
     (declare (ignore arg-exprs))
-    (make-instance (if valuep 'tn 'expr) :effect-free t :pure t :value-used valuep :env nil
+    (make-instance 'expr :effect-free t :pure t :value-used valuep :env nil
                    :type type :form `(,(func-name primop) ,@args)
                    :code (apply #'emit-primitive 'funarg-ref 0 args))))
 
@@ -308,7 +308,7 @@
 
 (defun maybe-wrap-with-return (wrap-p expr)
   (if wrap-p
-      (make-instance 'tn :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
+      (make-instance 'expr :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
                      :type (expr-type expr) :form `(return ,(expr-code expr))
                      :code
                      (append (list expr)
@@ -323,7 +323,7 @@
     (expr-error "attempted to compile non-constant expression ~S as constant" expr))
   (when valuep
     (with-return-wrapped-if tailp
-      (make-instance 'tn :effect-free t :pure t :value-used t :env nil
+      (make-instance 'expr :effect-free t :pure t :value-used t :env nil
                      :type (comp-type-of expr) :form expr
                      :code
                      (emit-constant (case expr
@@ -337,7 +337,7 @@
       (expr-error "~S not bound" var))
     (when valuep
       (with-return-wrapped-if tailp
-        (make-instance 'tn :effect-free t :pure nil :value-used t :env lexenv
+        (make-instance 'expr :effect-free t :pure nil :value-used t :env lexenv
                        :type t :form var
                        :code
                        (emit-lvar-ref var))))))
@@ -385,7 +385,7 @@
                             (func-leafp *compiled-function*))
                    (compiler-note "degrading ~S to non-leaf" *compiled-function*)
                    (setf (func-leafp *compiled-function*) nil))
-                 (make-instance 'tn :effect-free effect-free :pure pure :value-used valuep :env lexenv
+                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (if (and (boundp '*compiled-function*)
                                                (eq func *compiled-function*))
                                           nil
@@ -414,7 +414,7 @@
              (effect-free (and (null for-effect) (expr-effect-free for-value)))
              (pure (and effect-free (expr-pure for-value))))
         (when (or valuep (not effect-free))
-          (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
+          (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                          :type (expr-type for-value) :form `(progn ,@expr)
                          :code
                          (append for-effect
@@ -436,7 +436,7 @@
            (effect-free (every #'expr-effect-free (cons body-code binding-value-code)))
            (pure (and effect-free (every #'expr-pure (cons body-code binding-value-code)))))
       (when (or valuep (not effect-free))
-        (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
+        (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                        :type (expr-type body-code) :form `(let ,bindings ,@body)
                        :code
                        (append (iter (for var in vars)
@@ -486,7 +486,7 @@
                 ((and (= 2 (length condition)) (eq (first condition) 'not))
                  (compile-if `(if ,(second condition) ,then-clause ,else-clause) compenv lexenv valuep tailp))
                 (t
-                 (make-instance (if valuep 'tn 'expr) :effect-free effect-free :pure pure :value-used valuep :env lexenv
+                 (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (comp-simplify-logical-expression `(or ,(expr-type then-code) ,(expr-type else-code)))
                                 :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
                                 :code

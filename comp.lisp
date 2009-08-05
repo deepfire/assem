@@ -127,6 +127,9 @@
 
 (define-protocol-class dfproducer (dfnode) ((production :accessor production :initarg :production)))
 (define-protocol-class dfconsumer (dfnode) ((consumption :accessor consumption :initform nil :initarg :consumption)))
+(define-print-object-method ((o dfconsumer) consumption)
+    "~@<#<~;~A ~S~_~{~S~:@_~}~;>~:@>" (class-of o) (generator o) consumption)
+
 (define-protocol-class dfcontinue (dfproducer dfconsumer) ())
 (define-protocol-class dfextremum (dfnode) ())
 

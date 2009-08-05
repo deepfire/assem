@@ -105,7 +105,8 @@
 (defclass expr-like ()
   ((type :accessor expr-type :type (or symbol list) :initarg :type)
    (effect-free :accessor expr-effect-free :type boolean :initarg :effect-free)
-   (pure :accessor expr-pure :type boolean :initarg :pure)))
+   (pure :accessor expr-pure :type boolean :initarg :pure)
+   (branching :accessor expr-branching :type (or null (member :tail :non-tail :funcall)) :initarg :branching)))
 
 (defclass expr (expr-like)
   ((value-used :accessor expr-value-used :type boolean :initarg :value-used)
@@ -120,12 +121,12 @@
   ()
   (:documentation "An EXPR whose result requires attention of the register allocator."))
 
-(define-protocol-class dfnode (expr)
+(define-protocol-class dfnode ()
   ((generator :accessor generator :initarg :generator))
   (:documentation "Data flow node."))
 
-(define-protocol-class dfproducer (dfnode) ((generation :accessor generation)))
-(define-protocol-class dfconsumer (dfnode) ((requirements :accessor requirements :initform nil)))
+(define-protocol-class dfproducer (dfnode) ((production :accessor production :initarg :production)))
+(define-protocol-class dfconsumer (dfnode) ((consumption :accessor consumption :initform nil :initarg :consumption)))
 (define-protocol-class dfcontinue (dfproducer dfconsumer) ())
 (define-protocol-class dfextremum (dfnode) ())
 
@@ -163,6 +164,7 @@
 (defclass func ()
   ((name :accessor func-name :type symbol :initarg :name)
    (nargs :accessor func-nargs :type (integer 0) :initarg :nargs)
+   (nvalues :accessor func-nvalues :type (integer 0) :initarg :nvalues)
    (leafp :accessor func-leafp :type boolean :initarg :leafp)))
 
 (defclass primop (expr-like func)
@@ -226,6 +228,7 @@
 ;;;
 (defstruct vop
   nargs
+  nvalues
   code)
 
 (defmethod print-object ((o vop) stream)
@@ -236,58 +239,61 @@
   (list name))
 
 (defun emit-constant (value)
-  (list (make-vop :nargs 0 :code `(const ,value))))
+  (list (make-vop :nargs 0 :nvalues 1 :code `(const ,value))))
 
 (defun emit-lvar-ref (lvar)
-  (list (make-vop :nargs 0 :code `(lvar-ref ,lvar))))
+  (list (make-vop :nargs 0 :nvalues 1 :code `(lvar-ref ,lvar))))
 
 (defun emit-lvar-set (lvar)
-  (list (make-vop :nargs 1 :code `(lvar-set ,lvar))))
+  (list (make-vop :nargs 1 :nvalues 0 :code `(lvar-set ,lvar))))
 
 (defun emit-funarg-set (i)
-  (list (make-vop :nargs 1 :code `(funarg-set ,i))))
+  (list (make-vop :nargs 1 :nvalues 0 :code `(funarg-set ,i))))
 
 (defun emit-save-continuation (label)
-  (list (make-vop :nargs 0 :code `(save-continuation ,label))))
+  (list (make-vop :nargs 0 :nvalues 1 :code `(save-continuation ,label))))
 
 (defun emit-jump (label)
-  (list (make-vop :nargs 0 :code `(jump ,label))))
+  (list (make-vop :nargs 0 :nvalues 0 :code `(jump ,label))))
 
 (defun emit-jump-if (label)
-  (list (make-vop :nargs 1 :code `(jump-if ,label))))
+  (list (make-vop :nargs 1 :nvalues 0 :code `(jump-if ,label))))
 
 (defun emit-jump-if-not (label)
-  (list (make-vop :nargs 1 :code `(jump-if-not ,label))))
+  (list (make-vop :nargs 1 :nvalues 0 :code `(jump-if-not ,label))))
 
 (defun emit-return ()
-  (list (make-vop :nargs 1 :code `(return))))
+  (list (make-vop :nargs 1 :nvalues 0 :code `(return))))
 
-(defun emit-primitive (name nargs &rest primitive-args)
-  (list (make-vop :nargs nargs :code `(primitive ,name ,@primitive-args))))
+(defun emit-primitive (name nargs nvalues &rest primitive-args)
+  (list (make-vop :nargs nargs :nvalues nvalues :code `(primitive ,name ,@primitive-args))))
 
 ;;;
 ;;; The megaquestion is whether PRIMOP's expr slot is warranted.
 ;;;
 (defun instantiate-simple-primop (primop valuep args arg-exprs &aux (name (func-name primop)))
-  (declare (ignore args arg-exprs))
-  (make-instance (if valuep 'tn 'expr) :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil
-                 :type (expr-type primop) :form `(,name ,@args) 
+  (declare (ignore arg-exprs))
+  (unless (= (length args) (func-nargs primop))
+    (error "~@<~S was provided the wrong amount of values: ~D, expected ~D.~:@>" primop (length args) (func-nargs primop)))
+  (make-instance 'expr :effect-free (expr-effect-free primop) :pure (expr-pure primop) :value-used valuep :env nil
+                 :type (expr-type primop) :branching (expr-branching primop) :form `(,name ,@args) 
                  :code (append arg-exprs
-                               (emit-primitive name (length args)))))
+                               (emit-primitive name (func-nargs primop) (func-nvalues primop)))))
 
-(defun ensure-primitive (name nargs type valuep effect-free pure &key folder-fn (instantiator-fn #'instantiate-simple-primop)
+(defun ensure-primitive (name nargs nvalues type valuep effect-free pure branching &key folder-fn (instantiator-fn #'instantiate-simple-primop)
                          (papplicable-p (constantly nil)) papplicator-fn)
-  (setf (primop name) (make-instance 'primop :name name :nargs nargs :leafp t :type type :valuep valuep :effect-free effect-free :pure pure
+  (setf (primop name) (make-instance 'primop :name name :nargs nargs :nvalues nvalues :leafp t :type type :valuep valuep :effect-free effect-free :pure pure
+                                     :branching branching
                                      :instantiator instantiator-fn
                                      :folder folder-fn
                                      :papplicable-p papplicable-p :papplicator papplicator-fn)))
 
-(defmacro defprimitive (name nargs type valuep effect-free pure &rest args)
+(defmacro defprimitive (name nargs nvalues type valuep effect-free pure ,branching &rest args)
   (let ((instantiator (rest (find :instantiator args :key #'car)))
         (folder (rest (find :folder args :key #'car)))
         (papplicable-p (rest (find :papplicable-p args :key #'car)))
         (papplicator (rest (find :papplicator args :key #'car))))
-   `(ensure-primitive ',name ,nargs ,valuep ,effect-free ,pure ',type
+   `(ensure-primitive ',name ,nargs ,nvalues ',type ,valuep ,effect-free ,pure ,branching
                       ,@(when instantiator
                               `(:instantiator-fn (lambda ,(first instantiator) ,@(rest instantiator))))
                       ,@(when folder
@@ -301,36 +307,36 @@
                                 (comp-error "~@<In DEFPRIMITIVE ~S: PAPPLICATOR specified without PAPPLICABLE-P.~:@>" name))
                               `(:papplicator-fn (lambda ,(first papplicator) ,@(rest papplicator)))))))
 
-(defprimitive +              2 integer t   t   t
+(defprimitive +              2 1 integer t   t   t   nil
   (:folder (arg-exprs tailp)
     (compile-constant (apply #'+ (mapcar #'expr-form arg-exprs)) t tailp)))
-(defprimitive -              2 integer t   t   t)
-(defprimitive logior         2 integer t   t   t)
-(defprimitive logand         2 integer t   t   t)
-(defprimitive logxor         2 integer t   t   t)
-(defprimitive ash            2 integer t   t   t
+(defprimitive -              2 1 integer t   t   t   nil)
+(defprimitive logior         2 1 integer t   t   t   nil)
+(defprimitive logand         2 1 integer t   t   t   nil)
+(defprimitive logxor         2 1 integer t   t   t   nil)
+(defprimitive ash            2 1 integer t   t   t   nil
   (:folder (arg-exprs tailp)
     (compile-constant (apply #'ash (mapcar #'expr-form arg-exprs)) t tailp))
   (:papplicable-p (arg-exprs &aux (shift (expr-form (second arg-exprs))))
     (and (integerp shift) (zerop shift)))
   (:papplicator (arg-exprs)
     (first arg-exprs)))
-(defprimitive lognot         1 integer t   t   t)
-(defprimitive =              2 boolean t   t   t)
-(defprimitive /=             2 boolean t   t   t)
-(defprimitive >=             2 boolean t   t   t)
-(defprimitive <=             2 boolean t   t   t)
-(defprimitive >              2 boolean t   t   t)
-(defprimitive <              2 boolean t   t   t)
-(defprimitive mem-ref        2 integer t   t   nil)
-(defprimitive mem-set        3 nil     nil nil nil)
-(defprimitive mem-ref-impure 2 integer t   nil nil)
-(defprimitive funarg-ref     2 t       t   t   t
+(defprimitive lognot         1 1 integer t   t   t   nil)
+(defprimitive =              2 1 boolean t   t   t   nil)
+(defprimitive /=             2 1 boolean t   t   t   nil)
+(defprimitive >=             2 1 boolean t   t   t   nil)
+(defprimitive <=             2 1 boolean t   t   t   nil)
+(defprimitive >              2 1 boolean t   t   t   nil)
+(defprimitive <              2 1 boolean t   t   t   nil)
+(defprimitive mem-ref        2 1 integer t   t   nil nil)
+(defprimitive mem-set        3 0 nil     nil nil nil nil)
+(defprimitive mem-ref-impure 2 1 integer t   nil nil nil)
+(defprimitive funarg-ref     2 1 t       t   t   t   nil
   (:instantiator (primop valuep args arg-exprs &aux (type (second args)))
     (declare (ignore arg-exprs))
     (make-instance 'expr :effect-free t :pure t :value-used valuep :env nil
-                   :type type :form `(,(func-name primop) ,@args)
-                   :code (apply #'emit-primitive 'funarg-ref 0 args))))
+                   :type type :branching nil :form `(,(func-name primop) ,@args)
+                   :code (apply #'emit-primitive 'funarg-ref 0 1 args))))
 
 ;;;
 ;;; Actual compilation
@@ -338,15 +344,31 @@
 ;; Invariants:
 ;;  (not valuep) -> (not tailp)
 ;;  (expr-effect-free x) -> (compile-xxx x env nil nil) => nil
+;;;
+;;; General notes.
+;;;
+;;; A simplification candidate: DFA might be entirely enough to shake out effect-free dead code.
+;;; Practical equivalence of IR1 transforms to it must be seen, though, if not proven.
+;;;
+;;; Another simplification candidate: some kind of constituent iteration can simplify branching analysis.
+;;; Turning CODE sequences of EXPRs into a form useful for that would take:
+;;;   - a shift of label generation into a later point,
+;;;   - an increase of branch target granularity to EXPRs.
+;;;
 (defun constant-p (expr)
   (or (eq expr 't)
       (eq expr 'nil)
       (integerp expr)))
 
+(defun degrade-tail-branching (x)
+  (if (eq x :tail)
+      :non-tail
+      x))
+
 (defun maybe-wrap-with-return (wrap-p expr)
   (if wrap-p
       (make-instance 'expr :effect-free (expr-effect-free expr) :pure (expr-pure expr) :value-used t :env nil
-                     :type (expr-type expr) :form `(return ,(expr-code expr))
+                     :type (expr-type expr) :branching (degrade-tail-branching (expr-branching expr)) :form `(return ,(expr-code expr))
                      :code
                      (append (list expr)
                              (emit-return)))
@@ -361,7 +383,7 @@
   (when valuep
     (with-return-wrapped-if tailp
       (make-instance 'expr :effect-free t :pure t :value-used t :env nil
-                     :type (comp-type-of expr) :form expr
+                     :type (comp-type-of expr) :branching nil :form expr
                      :code
                      (emit-constant (case expr
                                       ((t) 1)
@@ -375,7 +397,7 @@
     (when valuep
       (with-return-wrapped-if tailp
         (make-instance 'expr :effect-free t :pure nil :value-used t :env lexenv
-                       :type t :form var
+                       :type t :branching nil :form var
                        :code
                        (emit-lvar-ref var))))))
 
@@ -388,7 +410,7 @@
                             value
                             (compile-expr value compenv lexenv t nil))))
         (make-instance 'expr :effect-free nil :pure nil :value-used valuep :env lexenv
-                       :type (expr-type value-expr) :form `(setf ,var ,(expr-form value-expr))
+                       :type (expr-type value-expr) :branching nil :form `(setf ,var ,(expr-form value-expr))
                        :code
                        (append (list value-expr)
                                (emit-lvar-set var)))))))
@@ -426,7 +448,9 @@
                                 :type (if (and (boundp '*compiled-function*)
                                                (eq func *compiled-function*))
                                           nil
-                                          (expr-type func)) :form `(,fname ,@args)
+                                          (expr-type func))
+                                :branching :funcall
+                                :form `(,fname ,@args)
                                 :code (let ((ret-label (gensym (concatenate 'string "BACK-FROM-" (symbol-name fname)))))
                                         (append (iter (for arg-code in args-code)
                                                       (for i from 0)
@@ -453,6 +477,10 @@
         (when (or valuep (not effect-free))
           (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                          :type (expr-type for-value) :form `(progn ,@expr)
+                         :branching (cond ((find :funcall for-effect :key #'expr-branching) :funcall)
+                                          ((find :tail for-effect :key #'expr-branching) :non-tail)
+                                          ((find :non-tail for-effect :key #'expr-branching) :non-tail)
+                                          (for-value (expr-branching for-value)))
                          :code
                          (append for-effect
                                  ;; for-value is NIL iff (and (not valuep) (expr-effect-free for-value-expr))
@@ -475,6 +503,10 @@
       (when (or valuep (not effect-free))
         (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                        :type (expr-type body-code) :form `(let ,bindings ,@body)
+                       :branching (cond ((find :funcall binding-value-code :key #'expr-branching) :funcall)
+                                        ((find :tail binding-value-code :key #'expr-branching) :non-tail)
+                                        ((find :non-tail binding-value-code :key #'expr-branching) :non-tail)
+                                        (t (expr-branching body-code)))
                        :code
                        (append (iter (for var in vars)
                                      (collect (compile-variable-set (var-name var) (var-expr var) compenv new-lexenv nil nil)))
@@ -491,6 +523,7 @@
 ;;;
 ;;;   Important invariants, simplifying (but, probably, not precluding)
 ;;; interpretation of the tree, are:
+;;;   - dependencies are EXPR-local, i.e. EXPRs cannot have dependencies.
 ;;;   - whenever a VOP has dependencies, it must be the last one in its
 ;;; parent's EXPR CODE sequence;
 ;;;   - at the point of that particular VOP's occurence the amount of
@@ -498,10 +531,57 @@
 ;;;
 ;;;   As it stands, EXPR's CODE sequences fall into two types:
 ;;;   - those ending with a producing VOP or EXPR, described above.
-;;; Such entries will make the parent EXPR produce a DF stick itself.
-;;;   - EXPRs which don't affect the DF stick/dependency balance, and thus
-;;; can be pasted into the parent.
+;;; Such entries will mark their parent EXPR as a DF producer.
+;;;   - EXPRs which always have a zero DF producer count in their CODE
+;;; sequence.
 ;;;
+(defun build-data-flow-graph (expr)
+  (labels ((expr-df-producing-p (expr)
+             (expr-value-used expr))
+           (code-producer (expr list &aux (lastcar (lastcar list)))
+             (etypecase lastcar
+               (vop lastcar)
+               (expr (code-producer lastcar (expr-code lastcar)))
+               ((nil) (error "~@<~Empty expression: ~S.:@>" expr))
+               (symbol (code-producer expr (butlast list)))))
+           (producer (soup)
+             (etypecase soup
+               (vop soup)
+               (expr (code-producer soup (expr-code soup)))))
+           (iterate-one (parent soup consumer acc-producers)
+             (etypecase soup
+               (vop
+                (unless (or consumer (zerop (vop-nargs soup)))
+                  (error "~@<Starved VOP ~S: requires ~D arguments, was given zero.~:@>" soup (vop-nargs soup)))
+                (when (and consumer (not (= (vop-nargs soup) (length acc-producers))))
+                  (error "~@<At expression ~S: producer count ~D, but VOP ~S expected ~D.~:@>" parent (length acc-producers) soup (vop-nargs soup)))
+                (let ((dfnode (make-instance (compute-df-class (vop-nargs soup) (vop-nvalues soup))
+                                             :generator soup
+                                             :consumption (when consumer acc-producers))))
+                  (when consumer
+                    (dolist (producer acc-producers)
+                      (push dfnode (consumers producer))))
+                  (values (append (when (typep dfnode 'producer)
+                                    (make-list (vop-nvalues soup) :initial-element dfnode))
+                                  (unless consumer acc-producers))
+                          dfnode)))
+               (expr
+                (when consumer
+                  (error "~@<EXPR was marked as consumer.~:@>" soup))
+                ;; Here's the point where we need CFA to perform separate iterations
+                ;; on basic block, so as not to conflate BBs producers.
+                ;; But if we localize passing to subnodes in branchy-branchy EXPRs,
+                ;; shouldn't it justwork?
+                
+                (lret (producers)
+                  (iter (for (subsoup . rest-code) on (expr-code soup))
+                        (multiple-value-bind (maybe-not-a-producer-node new-producers)
+                            (iterate-one soup subsoup (and (endp rest-code) (zerop (vop-nargs soup))) producers)
+                          (unless (typep maybe-not-a-producer-node 'producer)
+                            (format t "~@<Non-producer node: ~S~:@>" maybe-not-a-producer-node))
+                          (setf producers new-producers))))))))
+    (iterate-one expr)))
+
 ;;; NOTE: the expression doesn't contain the label, which must be emitted by the linker.
 (defun compile-defun (name lambda-list body compenv)
   (with-noted-sexp-path `(defun ,name ,lambda-list ,@body)
@@ -548,6 +628,9 @@
                  (make-instance 'expr :effect-free effect-free :pure pure :value-used valuep :env lexenv
                                 :type (comp-simplify-logical-expression `(or ,(expr-type then-code) ,(expr-type else-code)))
                                 :form `(if ,condition ,then-clause ,@(when else-clause `(,else-clause)))
+                                :branching (if (find :funcall (list condition-code then-code else-code) :key #'expr-branching)
+                                               :funcall
+                                               :non-tail)
                                 :code
                                 (let ((else-label (gensym (concatenate 'string "IF-NOT")))
                                       (end-label (gensym (concatenate 'string "IF-END"))))

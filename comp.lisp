@@ -290,7 +290,7 @@
                                      :folder folder-fn
                                      :papplicable-p papplicable-p :papplicator papplicator-fn)))
 
-(defmacro defprimitive (name nargs nvalues type valuep effect-free pure ,branching &rest args)
+(defmacro defprimitive (name nargs nvalues type valuep effect-free pure branching &rest args)
   (let ((instantiator (rest (find :instantiator args :key #'car)))
         (folder (rest (find :folder args :key #'car)))
         (papplicable-p (rest (find :papplicable-p args :key #'car)))

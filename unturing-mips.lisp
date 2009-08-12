@@ -35,7 +35,7 @@
 (defun update-protected/endangered-sets (bb allotment protected endangered)
   "Update PROTECTED/ENDANGERED hash sets in an inwards-reverse walk from BB, with ALLOTMENT edge length left."
   (iter (for (nil nil insn . params) in-vector (extent-data bb) with-index i
-             downto (max 0 (- (extent-length bb) allotment)))
+             downto (max 0 (- (size bb) allotment)))
         (dolist (prot (insn-reg-list :src insn params))
           (setf (gethash prot protected) t))
         ;;        <--i-->
@@ -47,12 +47,12 @@
                    (not (or (gethash (first params) protected)
                             (gethash (first params) endangered))))
           (setf (gethash (first params) endangered)
-                (list bb (- allotment (extent-length bb) (- i)) (+ (extent-base bb) i))))))
+                (list bb (- allotment (size bb) (- i)) (+ (base bb) i))))))
 
 (defun recurse-protected/endangered-sets (bb allotment protected endangered)
   "Update PROTECTED/ENDANGERED hash sets in an inwards-reverse walk from BB, with ALLOTMENT edge length left."
   (iter (for (nil nil insn . params) in-vector (extent-data bb) with-index i
-             downto (max 0 (- (extent-length bb) allotment)))
+             downto (max 0 (- (size bb) allotment)))
         (dolist (prot (insn-reg-list :src insn params))
           (pushnew prot protected))
         ;;        <--i-->
@@ -62,10 +62,10 @@
         (when-let* ((load-p (insn-load-p insn))
                     ;; in all mem->reg insn formats destreg is first parameter
                     (dstreg-unprotected-p (null (find (first params) protected)))
-                    (this-danger (- allotment (extent-length bb) (- i)))
+                    (this-danger (- allotment (size bb) (- i)))
                     (more-dangerous-p (> this-danger (or (second (gethash (first params) endangered)) 0))))
-          (setf (gethash (first params) endangered) (list bb this-danger (+ (extent-base bb) i)))))
-  (when-let* ((allotment-left (- allotment (extent-length bb)))
+          (setf (gethash (first params) endangered) (list bb this-danger (+ (base bb) i)))))
+  (when-let* ((allotment-left (- allotment (size bb)))
               (there-is-more-to-danger-than-meets-the-mind (plusp allotment-left)))
     (iter (for entrant in (bb-ins bb))
           (recurse-protected/endangered-sets entrant allotment-left protected endangered))))
@@ -94,7 +94,7 @@
             ;; <-------max-danger-------->
             (when (and (< i reg-safety-edge)
                        (not (eq bb dmg-bb)))
-              (return (values bb (+ (extent-base bb) i) dstreg dmg-bb aggr-addr)))))))
+              (return (values bb (+ (base bb) i) dstreg dmg-bb aggr-addr)))))))
 
 (defun path-hurt-by-mc24rt2-p (path &optional (danger-window 10) &aux (rpath (reverse path)))
   (let ((endangered-regs (make-hash-table))

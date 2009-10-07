@@ -194,13 +194,13 @@
 
 (defparameter *primops* (make-hash-table :test 'eq))
 
-(define-container-hash-accessor *primops* primop :if-exists :error)
+(define-root-container *primops* primop :if-exists :error)
 
 (defclass compenv ()
   ((functions :accessor compenv-functions :initform (make-hash-table :test 'eq))
    (macros :accessor compenv-macros :initform (make-hash-table :test 'eq))))
-(define-container-hash-accessor :i func :container-transform compenv-functions :parametrize-container t :type expr-func :if-exists :error)
-(define-container-hash-accessor :i macro :container-transform compenv-macros :parametrize-container t :type function :if-exists :error)
+(define-subcontainer func :container-slot functions :type expr-func :if-exists :error)
+(define-subcontainer macro :container-slot macros :type function :if-exists :error)
 
 (defun frame-boundp (name frame)
   (find name (frame-vars frame) :key #'var-name))

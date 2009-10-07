@@ -101,7 +101,7 @@
   (func nil :type (or null func))
   (emitter nil :type (function (pool-backed-frame-chain unsigned-byte unsigned-byte) unsigned-byte)))
 
-(define-container-hash-accessor :i func :container-transform env-functions :parametrize-container t :if-exists :error)
+(define-subcontainer func :container-transform functions :if-exists :error)
 
 (defvar *function*)
 

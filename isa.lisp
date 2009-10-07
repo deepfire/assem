@@ -233,9 +233,9 @@
    :insn# (make-hash-table :test #'equal)
    :iformat# (make-hash-table :test #'eq)))
 
-(define-container-hash-accessor :i optype    :container-transform isa-optype#     :parametrize-container t :if-exists :continue)
-(define-container-hash-accessor :i insn      :container-transform isa-insn#       :parametrize-container t :if-exists :continue)
-(define-container-hash-accessor :i iformat   :container-transform isa-iformat#    :parametrize-container t :if-exists :continue)
+(define-subcontainer optype  :container-slot optype#  :if-exists :continue)
+(define-subcontainer insn    :container-slot insn#    :if-exists :continue)
+(define-subcontainer iformat :container-slot iformat# :if-exists :continue)
 
 (defmacro define-optype (isa name bit-width)
   `(progn

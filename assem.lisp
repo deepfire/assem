@@ -101,7 +101,7 @@
   (func nil :type (or null func))
   (emitter nil :type (function (pool-backed-frame-chain unsigned-byte unsigned-byte) unsigned-byte)))
 
-(define-subcontainer func :container-transform functions :if-exists :error)
+(define-subcontainer func :container-slot functions :if-exists :error)
 
 (defvar *function*)
 

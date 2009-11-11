@@ -34,9 +34,10 @@
 (define-optype *mips-isa* brkcode 10)
 (define-optype *mips-isa* im16 16)
 (define-optype *mips-isa* im5 5)
+(define-optype *mips-isa* im3 3)
 (define-optype *mips-isa* c1cond 3)
 
-(deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im5 c1cond gpr cpsel fpr cacheop prefop))
+(deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im3 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
 (define-enumerated-gpr-optype *mips-isa* gpr 5
@@ -104,13 +105,13 @@
 
 (defmethod param-type-alist ((isa mips-isa) type)
   (ecase type
-    ((im26 im16 im5 c1cond))
+    ((im26 im16 im5 im3 c1cond))
     ((gpr fpr cpsel cacheop prefop)
      (hash-table-alist (optype-set (optype isa type))))))
 
 (defmethod encode-insn-param ((isa mips-isa) val type)
   (ecase type
-    ((im26 syscode brkcode im16 im5 c1cond)
+    ((im26 syscode brkcode im16 im5 im3 c1cond)
      val)
     ((gpr fpr cpsel cacheop prefop)
      (if (integerp val)
@@ -119,7 +120,7 @@
 
 (defmethod decode-insn-param ((isa mips-isa) val type &aux (optype (optype isa type)))
   (case type
-    ((im26 im16 im5 c1cond)
+    ((im26 im16 im5 im3 c1cond)
      (logand val (optype-mask optype)))
     ((gpr fpr cpsel cacheop prefop)
      (gethash (logand val (optype-mask optype)) (optype-rset optype)))))
@@ -179,9 +180,11 @@
 (defmipsformat :testgpr-im16               (gpr 21 :src) (im16 0))
 (defmipsformat :togpr-im16                 (gpr 16 :dst) (im16 0))
 (defmipsformat :fromgpr-cpsel              (gpr 16 :src) (cpsel 11 :dst))
+(defmipsformat :fromgpr-cpsel-im3          (gpr 16 :src) (cpsel 11 :dst) (im3 0 :dst))
 (defmipsformat :fromgpr-tofpr              (gpr 16 :src) (fpr 11 :dst))
 (defmipsformat :fromgpr-im16off-basegpr    (gpr 16 :src) (im16 0) (gpr 21 :src))
 (defmipsformat :togpr-cpsel                (gpr 16 :dst) (cpsel 11 :src))
+(defmipsformat :togpr-cpsel-im3            (gpr 16 :dst) (cpsel 11 :src) (im3 0 :src))
 (defmipsformat :togpr-fromfpr              (gpr 16 :dst) (fpr 11 :src))
 (defmipsformat :togpr-im16off-basegpr      (gpr 16 :dst) (im16 0) (gpr 21 :src))
 (defmipsformat :cacheop-im16off-basegpr    (cacheop 16) (im16 0) (gpr 21 :src))
@@ -289,10 +292,10 @@
 (defmipsinsn :xori    nil ((#b001110 0 0)) :togpr-fromgpr-im16parm)
 (defmipsinsn :lui     nil ((#b001111 0 0)) :togpr-im16)
 
-(defmipsinsn :mfc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0000 0 0)) :fromgpr-cpsel)
+(defmipsinsn :mfc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0000 0 0)) :fromgpr-cpsel-im3)
 (defmipsinsn :dmfc0   nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0001 0 0)) :fromgpr-cpsel)
 (defmipsinsn :cfc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0010 0 0)) :fromgpr-cpsel)
-(defmipsinsn :mtc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0100 0 0)) :togpr-cpsel)
+(defmipsinsn :mtc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0100 0 0)) :togpr-cpsel-im3)
 (defmipsinsn :dmtc0   nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0101 0 0)) :togpr-cpsel)
 (defmipsinsn :ctc0    nil ((#b010000 25 #x1) (#b0 21 #xf) (#b0110 0 0)) :togpr-cpsel)
 

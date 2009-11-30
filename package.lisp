@@ -17,7 +17,9 @@
    #:insn #:definsn #:opcode #:mnemonics #:width #:insn-iformat #:insn-src/dst-spec
    #:unknown-insn #:pseudo-insn #:branch-insn #:nonbranch-insn #:branch-destination-fn #:make-pseudo-insn
    #:continue-mixin #:pure-continue-mixin #:dep-continue-mixin #:noncontinue-mixin
-   #:branch-abs #:branch-rel #:branch-imm #:branch-reg #:branch-indef #:branch-cond #:branch-uncond))
+   #:branch-abs #:branch-rel #:branch-imm #:branch-reg #:branch-indef #:branch-cond #:branch-uncond
+   ;;
+   #:branch-insn-target-address))
 
 (defpackage #:assem
   (:nicknames #:assem)
@@ -76,7 +78,9 @@
   (:use :common-lisp :alexandria :custom-harness :pergamum :iterate :isa)
   (:shadowing-import-from :isa #:disassemble)
   (:export
-   #:*mips-isa* #:encode-mips-insn #:decode-mips-insn))
+   #:*mips-isa*
+   #:mips-insn #:mips-branch-insn
+   #:encode-mips-insn #:decode-mips-insn))
 
 (defpackage #:assem-mips
   (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa :isa-mips :assem)

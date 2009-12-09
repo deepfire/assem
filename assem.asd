@@ -1,9 +1,4 @@
-;;; -*- Mode: Lisp -*-
-
-(defpackage :assem.system
-  (:use :cl :asdf))
-
-(in-package :assem.system)
+;;; -*- Mode: Lisp; indent-tabs-mode: nil -*-
 
 (defsystem :assem
   :depends-on (:alexandria :iterate :pergamum :custom-harness :semi-precious :symtable)

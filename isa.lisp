@@ -405,3 +405,7 @@
           (for step = (ash (1+ (ash (or (1- insn-width) 32) -5)) 2))
           (incf offt step)
           (collect (list* (logand (1- (ash 1 (ash step 3))) opcode) step insn params)))))
+
+(defgeneric branch-insn-target-address (insn insn-address args)
+  (:documentation
+   "Return INSN's branch target address."))

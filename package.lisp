@@ -69,6 +69,11 @@
   (:use :common-lisp :alexandria :iterate :pergamum :environment :allocation-pool :isa)
   (:shadowing-import-from :isa #:disassemble)
   (:export
+   #:address-space
+   #:as-extent
+   #:as-code
+   #:as-data
+   #:as-stack
    #:segment
    #:segment-data
    #:segment-current-index

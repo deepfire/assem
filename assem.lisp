@@ -20,6 +20,24 @@
 
 (in-package :assem)
 
+
+;;;
+;;; Address space
+;;;
+(defclass address-space ()
+  ((extent :reader as-extent :initarg :extent)
+   (code :reader as-code :initarg :code)
+   (data :reader as-data :initarg :data)
+   (stack :reader as-stack :initarg :stack)))
+
+;;; XXX: hardwired 4
+(defmethod initialize-instance ((o address-space) &key extent code stack (stack-allocation #x100) &allow-other-keys)
+  (setf (slot-value o 'code) (or code extent)
+        (slot-value o 'stack) (or stack (extent (- (end extent) 4) stack-allocation))))
+
+;;;
+;;; Segment
+;;;
 (defclass segment ()
   ((data :accessor segment-data :initform (make-array 1024 :element-type '(unsigned-byte 8) :adjustable t :initial-element 0))
    (current-index :type (unsigned-byte 32) :initform 0)

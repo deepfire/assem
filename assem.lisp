@@ -302,16 +302,3 @@ Will lead to hard-to-diagnose, strange bugs."
                  :segments (list *segment*)
                  :cellenv (copy-environment cellenv)
                  :tagenv (copy-environment tagenv)))
-
-;;;
-;;; Misc
-;;;
-(defmacro with-bioable-segment ((isa bioable addr) &body body)
-  (with-gensyms (retcell segment ret)
-    (once-only (addr)
-      `(lret* (,retcell
-               (,segment (with-segment-emission (,isa (make-instance 'pinned-segment :base ,addr))
-                           ,@(butlast body)
-                           (setf ,retcell ,(lastcar body))))
-               (,ret ,retcell))
-         (write-block ,bioable ,addr (segment-active-vector ,segment))))))

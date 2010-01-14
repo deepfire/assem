@@ -42,12 +42,16 @@ which is to be written at ADDR of BIOABLE.
 The return value is either the return value of BODY, or *SEGMENT*,
 depending on whether the RETURN key is :VALUE or :SEGMENT. The default
 is :VALUE."
-  `(with-bioable-segment (*mips-isa* ,bioable ,addr)
-     (with-mips-gpr-environment
-       ,@body
-       ,@(ecase return
-                (:value)
-                (:segment `(*segment*))))))
+  (with-gensyms (segment-emission-block)
+    `(block ,segment-emission-block
+       (with-segment-emission (*mips-isa* (make-instance 'pinned-segment :base ,addr))
+         (with-mips-gpr-environment
+           (return-from ,segment-emission-block
+             (progn (multiple-value-prog1 (progn ,@body)
+                      (upload-segment ,bioable *segment*))
+                    ,@(ecase return
+                             (:value)
+                             (:segment `(*segment*))))))))))
 
 ;;;
 ;;; GPR yayity

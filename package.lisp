@@ -150,8 +150,7 @@
    #:cenv-cellenv
    #:cenv-tagenv
    #:with-compilation-environment
-   #:save-compilation-environment
-   #:with-bioable-segment))
+   #:save-compilation-environment))
 
 (defpackage #:comp
   (:use :common-lisp :alexandria :iterate :pergamum :environment :isa)

@@ -82,6 +82,7 @@
    #:pinned-segment-base
    #:segment-active-vector
    #:segment-disassemble
+   #:upload-segment
    #:*isa*
    #:*tag-domain*
    #:*segment*

@@ -67,6 +67,9 @@
   (declare (type segment segment))
   (disassemble isa (segment-active-vector segment)))
 
+(defun upload-segment (bioable segment)
+  (write-block bioable (pinned-segment-base segment) (segment-active-vector segment)))
+
 ;;;
 ;;; Environment-based evaluation and emission
 ;;;

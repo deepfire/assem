@@ -31,8 +31,9 @@
    (stack :reader as-stack :initarg :stack)))
 
 ;;; XXX: hardwired 4
-(defmethod initialize-instance ((o address-space) &key extent code stack (stack-allocation #x100) &allow-other-keys)
+(defmethod initialize-instance :after ((o address-space) &key extent code stack (stack-allocation #x100) &allow-other-keys)
   (setf (slot-value o 'code) (or code extent)
+        (slot-value o 'data) (cons 0 0)
         (slot-value o 'stack) (or stack (extent (- (end extent) 4) stack-allocation))))
 
 ;;;

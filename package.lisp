@@ -70,6 +70,9 @@
   (:shadowing-import-from :isa #:disassemble)
   (:export
    #:address-space
+   #:code
+   #:data
+   #:stack
    #:as-extent
    #:as-code
    #:as-data

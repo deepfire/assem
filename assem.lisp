@@ -201,8 +201,7 @@ Will lead to hard-to-diagnose, strange bugs."
            (with-environment ('tags *tag-domain*)
              (with-fresh-frame (*tag-domain* ,global-frame)
                (setf (env-global-frame *tag-domain*) ,global-frame)
-               (progn-1
-                 ,@body
+               (unwind-protect (progn ,@body)
                  (finalize-frame *tag-domain* ,global-frame t))))))))
 
 (defmacro with-tags (tag-env &body body)
@@ -212,7 +211,7 @@ Will lead to hard-to-diagnose, strange bugs."
          (unwind-protect (progn ,@body)
            (finalize-frame ,tag-env ,frame nil))))))
 
-(defun maybe-invoke-with-assem-ensured (wrap-p isa fn)
+(defun maybe-invoke-with-assem (wrap-p isa fn)
   (if (not wrap-p)
       (funcall fn)
       (with-metaenvironment
@@ -221,7 +220,7 @@ Will lead to hard-to-diagnose, strange bugs."
             (funcall fn))))))
 
 (defun invoke-with-assem-ensured (isa fn)
-  (maybe-invoke-with-assem-ensured (not (boundp '*tag-domain*)) isa fn))
+  (maybe-invoke-with-assem (not (boundp '*tag-domain*)) isa fn))
 
 (defmacro with-ensured-assem (isa &body body)
   `(invoke-with-assem-ensured ,isa (lambda () ,@body)))

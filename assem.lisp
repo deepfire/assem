@@ -232,11 +232,11 @@ Will lead to hard-to-diagnose, strange bugs."
 
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) &body body)
   (multiple-value-bind (decls body) (destructure-binding-form-body body)
-    `(lret ((*segment* ,segment))
+    `(let ((*segment* ,segment))
        (declare (special *segment*))
        (with-ensured-assem ,isa
          ,@(when decls `((declare ,@decls)))
-         ,@body))))
+         (multiple-value-call #'values *segment* (progn ,@body))))))
 
 (defun current-insn-count ()
   (segment-emitted-insn-count *segment*))

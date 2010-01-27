@@ -36,22 +36,19 @@
      (with-mips-gpr-environment
        ,@body)))
 
-(defmacro with-bioable-mips-segment ((bioable addr &key (return :value)) &body body)
+(defmacro with-bioable-mips-segment ((bioable addr) &body body)
   "Execute BODY with *SEGMENT* bound to a freshly allocated segment, 
 which is to be written at ADDR of BIOABLE.
 The return value is either the return value of BODY, or *SEGMENT*,
 depending on whether the RETURN key is :VALUE or :SEGMENT. The default
 is :VALUE."
-  (with-gensyms (segment-emission-block)
-    `(block ,segment-emission-block
-       (with-segment-emission (*mips-isa* (make-instance 'pinned-segment :base ,addr))
-         (with-mips-gpr-environment
-           (return-from ,segment-emission-block
-             (progn (multiple-value-prog1 (progn ,@body)
-                      (upload-segment ,bioable *segment*))
-                    ,@(ecase return
-                             (:value)
-                             (:segment `(*segment*))))))))))
+  (with-gensyms (segment value)
+    `(multiple-value-bind (,segment ,value)
+         (with-segment-emission (*mips-isa* (make-instance 'pinned-segment :base ,addr))
+           (with-mips-gpr-environment
+             ,@body))
+       (upload-segment ,bioable ,segment)
+       (values ,segment ,value))))
 
 ;;;
 ;;; GPR yayity

@@ -23,6 +23,7 @@
 (defclass mips-isa (isa)
   ()
   (:default-initargs
+   :name :mips
    :delay-slots 1
    :insn-defines-format-p t
    :root-shift 26 :root-mask #x3f))

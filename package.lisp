@@ -11,6 +11,7 @@
    #:isa-final-discriminator
    #:isa-gpr-optype
    #:isa-delay-slots
+   #:isa-name
    #:validate-insn-parameter-spec
    #:encode-insn-param
    #:decode-insn-param

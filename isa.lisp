@@ -217,7 +217,8 @@
   (unallocatables nil :type list))
 
 (defclass isa ()
-  ((insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
+  ((name :reader isa-name :initarg :name)
+   (insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
    (insn-root :accessor isa-insn-root)
    (iformat-root :accessor isa-iformat-root)
    (optype# :accessor isa-optype# :initarg :optype#)

@@ -37,6 +37,7 @@
 (define-optype *mips-isa* im5 5)
 (define-optype *mips-isa* im3 3)
 (define-optype *mips-isa* c1cond 3)
+(define-optype *mips-isa* cpsel2 5)
 
 (deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im3 im5 c1cond gpr cpsel fpr cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
@@ -168,6 +169,7 @@
 (defmipsformat :togpr-fromgpr-im5shift     (gpr 11 :dst) (gpr 16 :src) (im5 6))
 (defmipsformat :togpr-fromgpr-shiftgpr     (gpr 11 :dst) (gpr 16 :src) (gpr 21 :src))
 (defmipsformat :tofpr-paramfpr-fromfpr     (gpr 11 :dst) (gpr 16 :src) (gpr 21 :src))
+(defmipsformat :togpr-xgpr-ygpr            (gpr 11 :dst) (gpr 16 :src) (gpr 21 :src))
 (defmipsformat :tofpr-paramfpr		   (gpr 11 :dst) (gpr 16 :src))
 (defmipsformat :togpr-xgpr-ygpr            (gpr 11 :dst) (gpr 21 :src) (gpr 16 :src))
 (defmipsformat :togpr-fromgpr-testgpr      (gpr 11 :dst) (gpr 21 :src) (gpr 16 :src))
@@ -188,10 +190,12 @@
 (defmipsformat :testgpr-im16               (gpr 21 :src) (im16 0))
 (defmipsformat :togpr-im16                 (gpr 16 :dst) (im16 0))
 (defmipsformat :fromgpr-cpsel              (gpr 16 :src) (cpsel 11 :dst))
+(defmipsformat :fromgpr-cpsel2             (gpr 16 :src) (cpsel2 11 :dst))
 (defmipsformat :fromgpr-cpsel-im3          (gpr 16 :src) (cpsel 11 :dst) (im3 0 :dst))
 (defmipsformat :fromgpr-tofpr              (gpr 16 :src) (fpr 11 :dst))
 (defmipsformat :fromgpr-im16off-basegpr    (gpr 16 :src) (im16 0) (gpr 21 :src))
 (defmipsformat :togpr-cpsel                (gpr 16 :dst) (cpsel 11 :src))
+(defmipsformat :togpr-cpsel2               (gpr 16 :dst) (cpsel2 11 :src))
 (defmipsformat :togpr-cpsel-im3            (gpr 16 :dst) (cpsel 11 :src) (im3 0 :src))
 (defmipsformat :togpr-fromfpr              (gpr 16 :dst) (fpr 11 :src))
 (defmipsformat :togpr-im16off-basegpr      (gpr 16 :dst) (im16 0) (gpr 21 :src))
@@ -429,13 +433,33 @@
 (defmipsinsn :c.ngt.s   nil ((#b010001 21 #x1f) (#b10000 0 #x3f) (#b111111 0 0)) :c1cond-fromfpr-fromfpr)
 (defmipsinsn :c.ngt.d   nil ((#b010001 21 #x1f) (#b10001 0 #x3f) (#b111111 0 0)) :c1cond-fromfpr-fromfpr)
 
+(defmipsinsn :mfc2      nil ((#b010010 21 #x1f) (#b00000 0 0) (#b111111 0 0)) :fromgpr-cpsel2)
+(defmipsinsn :cfc2      nil ((#b010010 21 #x1f) (#b00010 0 0) (#b111111 0 0)) :fromgpr-cpsel2)
+(defmipsinsn :mtc2      nil ((#b010010 21 #x1f) (#b00100 0 0) (#b111111 0 0)) :togpr-cpsel2)
+(defmipsinsn :ctc2      nil ((#b010010 21 #x1f) (#b00110 0 0) (#b111111 0 0)) :togpr-cpsel2)
+(defmipsinsn :bc2f      nil ((#b010010 21 #x1f) (#b01000 16 #x1f) (#b00000 0 0)) :im16)
+(defmipsinsn :bc2t      nil ((#b010010 21 #x1f) (#b01000 16 #x1f) (#b00001 0 0)) :im16)
+(defmipsinsn :bc2fl     nil ((#b010010 21 #x1f) (#b01000 16 #x1f) (#b00010 0 0)) :im16)
+(defmipsinsn :bc2tl     nil ((#b010010 21 #x1f) (#b01000 16 #x1f) (#b00011 0 0)) :im16)
+
 (defmipsinsn :beql    (:ricp im3bd16) ((#b010100 0 0)) :testgpr-basegpr-im16off)
 (defmipsinsn :beqzl   (:ricp im2bd16) ((#b010100 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
 (defmipsinsn :bnel    (:ricp im3bd16) ((#b010101 0 0)) :testgpr-basegpr-im16off)
 (defmipsinsn :bnezl   (:ricp im2bd16) ((#b010101 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
 (defmipsinsn :blezl   (:ricp im2bd16) ((#b010110 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
 (defmipsinsn :bgtzl   (:ricp im2bd16) ((#b010111 16 #x1f) (#b00000 0 0)) :testgpr-im16off)
-                      
+
+(defmipsinsn :daddi   nil ((#b011000 0 0)) :togpr-fromgpr-im16parm)
+(defmipsinsn :daddiu  nil ((#b011001 0 0)) :togpr-fromgpr-im16parm)
+(defmipsinsn :ldl     nil ((#b011010 0 0)) :togpr-im16off-basegpr)
+(defmipsinsn :ldr     nil ((#b011011 0 0)) :togpr-im16off-basegpr)
+
+;;; These four are R4600, according to See MIPS Run.
+;; (defmipsinsn :mad     nil ((#b011100 0 #x1f) (#b00000 11 #xf) (0 0 0)) ) ; a variant
+(defmipsinsn :mad     nil ((#b011100 0 #x1f) (#b00000 0 0)) :xgpr-ygpr) ; mutates hilo
+(defmipsinsn :madu    nil ((#b011100 0 #x1f) (#b00001 0 0)) :xgpr-ygpr) ; mutates hilo
+(defmipsinsn :mul     nil ((#b011100 0 #x1f) (#b00010 0 0)) :togpr-xgpr-ygpr)
+
 (defmipsinsn :lb      nil ((#b100000 0 0)) :togpr-im16off-basegpr)
 (defmipsinsn :lh      nil ((#b100001 0 0)) :togpr-im16off-basegpr)
 (defmipsinsn :lwl     nil ((#b100010 0 0)) :togpr-im16off-basegpr)

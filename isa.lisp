@@ -220,6 +220,7 @@
   ((name :reader isa-name :initarg :name)
    (insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
    (insn-root :accessor isa-insn-root)
+   (nop-insn :reader isa-nop-insn :initarg :nop-insn)
    (iformat-root :accessor isa-iformat-root)
    (optype# :accessor isa-optype# :initarg :optype#)
    (gpr-optype :accessor isa-gpr-optype)
@@ -342,6 +343,10 @@
               (iter (for (type offt . nil) in (iformat-params iformat))
                     (collect (cons (byte (optype-width (optype isa type)) offt)
                                    (param-type-alist isa type))))))))
+
+(defun isa-nopcode (isa)
+  "Return the opcode of the ISA's no-op instruction."
+  (opcode (insn isa (isa-nop-insn isa))))
 
 (defun insn-optype-params (isa optype insn)
   (destructuring-bind (id &rest params) insn

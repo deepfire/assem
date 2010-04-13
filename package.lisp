@@ -12,6 +12,8 @@
    #:isa-gpr-optype
    #:isa-delay-slots
    #:isa-name
+   #:isa-nop-insn
+   #:isa-nopcode
    #:validate-insn-parameter-spec
    #:encode-insn-param
    #:decode-insn-param

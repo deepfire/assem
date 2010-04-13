@@ -24,6 +24,7 @@
   ()
   (:default-initargs
    :name :mips
+   :nop-insn :nop
    :delay-slots 1
    :insn-defines-format-p t
    :root-shift 26 :root-mask #x3f))

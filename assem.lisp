@@ -117,11 +117,11 @@
 
 (defstruct (func (:include envobject))
   (tag nil :type (or null tag))
-  (emitter nil :type (or null function)))
+  (emitter nil #-ccl :type #-ccl (or null function)))
 
 (defstruct (ref (:include segpoint) (:constructor make-ref (name cell-env segment offset insn-nr emitter func)))
   (func nil :type (or null func))
-  (emitter nil :type (function (pool-backed-frame-chain unsigned-byte unsigned-byte) unsigned-byte)))
+  (emitter nil #-ccl :type #-ccl (function (pool-backed-frame-chain unsigned-byte unsigned-byte) unsigned-byte)))
 
 (define-subcontainer func :container-slot functions :if-exists :error)
 

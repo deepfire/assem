@@ -355,7 +355,7 @@
                            (node-contribution (first (node-childs (node insn))))
                            (iformat isa :empty))))
              (iter (for param in params)
-                   (for (type offt . nil) in (iformat-params iformat))
+                   (for (type nil . nil) in (iformat-params iformat))
                    (unless (or (typep param type) (keywordp param))
                      (assembly-error "~@<Opcode ~S expects parameters ~S, got ~S~:@>" id (mapcar #'car (iformat-params iformat)) params))
                    (when (eq type (optype-name optype))

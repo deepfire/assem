@@ -488,7 +488,7 @@
 (defmipsinsn :l.d     nil ((#b110101 0 0)) :tofpr-fromgpr-im16parm)
 (defmipsinsn :ld      nil ((#b110111 0 0)) :tofpr-fromgpr-im16parm)
 (defmipsinsn :sc      nil ((#b111000 0 0)) :fromgpr-fromgpr-im16parm)
-(defmipsinsn :swc1    nil ((#b111001 0 0)) :fromgpr-im16off-basegpr)
+(defmipsinsn :s.s     nil ((#b111001 0 0)) :fromgpr-im16off-basegpr)
 (defmipsinsn :swc2    nil ((#b111010 0 0)) :fromgpr-im16off-basegpr)
 (defmipsinsn :swc3    nil ((#b111011 0 0)) :fromgpr-im16off-basegpr)
 

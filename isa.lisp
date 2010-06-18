@@ -130,24 +130,32 @@
    (width :accessor width :type integer :initarg :width)
    (node :accessor node :type (or null node) :initarg :node)))
 
-(defun bitree-discriminate-value (node value &key (test nil testp))
+(defun bitree-discriminate-value (node value &key (test nil testp) verbose)
   "Given a bitree NODE, yield the list of all contributing nodes down the discrimination path for VALUE."
   (declare (type function test))
-;;;   (format t "discriminating ~X~%" value)
   (labels ((discriminate (node acc)
              (let ((acc (prepend node acc :test #'node-contribution)))
-;;;                (when (node-contribution node)
-;;;                  (format t "acc is now ~S~%" (mapcar (compose #'mnemonicable-mnemonics #'node-contribution) acc)))
                (if (null (node-childs node))
                    acc
                    (let ((partial-matches (sort (copy-list (value-bitree-node-matches node value)) #'bitree-more-specific-p)))
-;;           (format t "going within mask ~X << ~D: ~S~%" (node-mask node) (node-shift node)
-;;                   (mapcar #'node-val (value-bitree-node-matches node value))
-;;                   #+nil (mapcar #'node-val partial-matches))
                      (iter (for partial-match in partial-matches)
                            (for match = (discriminate partial-match acc))
+                           (finding match such-that (maybecall (and match testp) (curry test value) match)))))))
+           (discriminate-verbose (node acc)
+             (let ((acc (prepend node acc :test #'node-contribution)))
+               (if (null (node-childs node))
+                   acc
+                   (let ((partial-matches (sort (copy-list (value-bitree-node-matches node value)) #'bitree-more-specific-p)))
+                     (format t "discriminating: ~X << ~D (~D/~:*#x~B/~:*#x~X/): ~S~%"
+                             (node-mask node) (node-shift node) (logand (node-mask node) (ash value (- (node-shift node))))
+                             (mapcar #'node-val (value-bitree-node-matches node value))
+                             #+nil (mapcar #'node-val partial-matches))
+                     (iter (for partial-match in partial-matches)
+                           (for match = (discriminate-verbose partial-match acc))
                            (finding match such-that (maybecall (and match testp) (curry test value) match))))))))
-    (nreverse (discriminate node nil))))
+    (nreverse (if verbose
+                  (discriminate-verbose node nil)
+                  (discriminate node nil)))))
 
 (defun make-node-spec (&rest params &key (val 0) (shift 0) (mask 0) &allow-other-keys)
   (list* val shift mask (remove-from-plist params :val :shift :mask)))
@@ -384,8 +392,8 @@
   (iter (for (type shift . nil) in (iformat-params iformat))
         (collect (decode-insn-param isa (ash opcode (* -1 shift)) type))))
 
-(defun decode-insn (isa opcode)
-  (if-let ((ret (bitree-discriminate-value (isa-insn-root isa) opcode :test (isa-final-discriminator isa))))
+(defun decode-insn (isa opcode &key verbose)
+  (if-let ((ret (bitree-discriminate-value (isa-insn-root isa) opcode :test (isa-final-discriminator isa) :verbose verbose)))
           (destructuring-bind (insn-node iformat-node) ret
             (let ((insn (node-contribution insn-node))
                   (iformat (node-contribution iformat-node)))

@@ -103,8 +103,8 @@
 (defun encode-mips-insn (id &rest params)
   (encode-insn *mips-isa* (cons id params)))
 
-(defun decode-mips-insn (opcode)
-  (decode-insn *mips-isa* opcode))
+(defun decode-mips-insn (opcode &key verbose)
+  (decode-insn *mips-isa* opcode :verbose verbose))
 
 (defmethod param-type-alist ((isa mips-isa) type)
   (ecase type

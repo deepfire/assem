@@ -254,6 +254,25 @@
 (defmipsinsn :slt     nil ((#b000000 0 #x3f) (#b101010 0 0)) :togpr-xgpr-ygpr)
 (defmipsinsn :sltu    nil ((#b000000 0 #x3f) (#b101011 0 0)) :togpr-xgpr-ygpr)
 
+(defmipsinsn :dadd    nil ((#b000000 0 #x3f) (#b101100 0 0)) :togpr-xgpr-ygpr)
+(defmipsinsn :daddu   nil ((#b000000 0 #x3f) (#b101101 0 0)) :togpr-xgpr-ygpr)
+(defmipsinsn :dsub    nil ((#b000000 0 #x3f) (#b101110 0 0)) :togpr-xgpr-ygpr)
+(defmipsinsn :dsubu   nil ((#b000000 0 #x3f) (#b101111 0 0)) :togpr-xgpr-ygpr)
+
+(defmipsinsn :tge     nil ((#b000000 0 #x3f) (#b110000 0 0)) :xgpr-ygpr)
+(defmipsinsn :tgeu    nil ((#b000000 0 #x3f) (#b110001 0 0)) :xgpr-ygpr)
+(defmipsinsn :tlt     nil ((#b000000 0 #x3f) (#b110010 0 0)) :xgpr-ygpr)
+(defmipsinsn :tltu    nil ((#b000000 0 #x3f) (#b110011 0 0)) :xgpr-ygpr)
+(defmipsinsn :teq     nil ((#b000000 0 #x3f) (#b110100 0 0)) :xgpr-ygpr)
+(defmipsinsn :tne     nil ((#b000000 0 #x3f) (#b110110 0 0)) :xgpr-ygpr)
+
+(defmipsinsn :dsll    nil ((#b000000 0 #x3f) (#b111000 0 0)) :togpr-fromgpr-im5shift)
+(defmipsinsn :dsrl    nil ((#b000000 0 #x3f) (#b111010 0 0)) :togpr-fromgpr-im5shift)
+(defmipsinsn :dsra    nil ((#b000000 0 #x3f) (#b111011 0 0)) :togpr-fromgpr-im5shift)
+(defmipsinsn :dsll32  nil ((#b000000 0 #x3f) (#b111100 0 0)) :togpr-fromgpr-im5shift)
+(defmipsinsn :dsrl32  nil ((#b000000 0 #x3f) (#b111110 0 0)) :togpr-fromgpr-im5shift)
+(defmipsinsn :dsra32  nil ((#b000000 0 #x3f) (#b111111 0 0)) :togpr-fromgpr-im5shift)
+
 (defparameter *branch-shift* 1)
 
 (defun im2bd16 (addr c1cond imoff)

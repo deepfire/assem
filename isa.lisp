@@ -232,6 +232,7 @@
    (iformat-root :accessor isa-iformat-root)
    (optype# :accessor isa-optype# :initarg :optype#)
    (gpr-optype :accessor isa-gpr-optype)
+   (fpr-optype :accessor isa-fpr-optype)
    (insn# :accessor isa-insn# :initarg :insn#)
    (final-discriminator :accessor isa-final-discriminator :initarg :final-discriminator)
    (iformat# :accessor isa-iformat# :initarg :iformat#)
@@ -268,6 +269,11 @@
   `(progn
      (define-enumerated-optype ,isa ,name ,bit-width ,set ,@(when unallocatables `(:unallocatables ,unallocatables)))
      (setf (isa-gpr-optype ,isa) (optype ,isa ',name))))
+
+(defmacro define-enumerated-fpr-optype (isa name bit-width (&rest set) &key unallocatables)
+  `(progn
+     (define-enumerated-optype ,isa ,name ,bit-width ,set ,@(when unallocatables `(:unallocatables ,unallocatables)))
+     (setf (isa-fpr-optype ,isa) (optype ,isa ',name))))
 
 (defun optype-allocatables (optype)
   "Compute the set of allocatable OPTYPE values."

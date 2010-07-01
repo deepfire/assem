@@ -40,7 +40,7 @@
 (define-optype *mips-isa* c1cond 3)
 (define-optype *mips-isa* cpsel2 5)
 
-(deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im3 im5 c1cond gpr cpsel fpr cacheop prefop))
+(deftype mips-insn-param-type () '(member im26 syscode brkcode im16 im3 im5 c1cond gpr fpr cpsel cacheop prefop))
 (deftype mips-insn-param-offt-type () '(member 21 16 11 6 0))
 
 (define-enumerated-gpr-optype *mips-isa* gpr 5
@@ -60,7 +60,7 @@
    (:r30 30) (:r31 31))
   :unallocatables (:zero :r0))
 
-(define-enumerated-optype *mips-isa* fpr 5
+(define-enumerated-fpr-optype *mips-isa* fpr 5
   ((:f0 0)   (:f1 1)   (:f2 2)   (:f3 3)   (:f4 4)
    (:f5 5)   (:f6 6)   (:f7 7)   (:f8 8)   (:f9 9)
    (:f10 10) (:f11 11) (:f12 12) (:f13 13) (:f14 14)

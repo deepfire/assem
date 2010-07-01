@@ -10,6 +10,7 @@
    #:isa
    #:isa-final-discriminator
    #:isa-gpr-optype
+   #:isa-fpr-optype
    #:isa-delay-slots
    #:isa-name
    #:isa-nop-insn
@@ -29,8 +30,10 @@
    #:define-optype
    #:define-enumerated-optype
    #:define-enumerated-gpr-optype
+   #:define-enumerated-fpr-optype
    ;; Take over the GPR symbol!
    #:gpr
+   #:fpr
    #:insn-optype-params
    #:insn-optype-variables
    #:encode-insn

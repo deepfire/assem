@@ -15,6 +15,8 @@
    #:isa-name
    #:isa-nop-insn
    #:isa-nopcode
+   #:isa-gpr-count
+   #:isa-fpr-count
    #:validate-insn-parameter-spec
    #:encode-insn-param
    #:decode-insn-param
@@ -31,7 +33,6 @@
    #:define-enumerated-optype
    #:define-enumerated-gpr-optype
    #:define-enumerated-fpr-optype
-   ;; Take over the GPR symbol!
    #:gpr
    #:fpr
    #:insn-optype-params
@@ -50,6 +51,7 @@
    #:width
    #:insn-iformat
    #:insn-src/dst-spec
+   ;; instruction classes/mixins
    #:unknown-insn
    #:pseudo-insn
    #:branch-insn

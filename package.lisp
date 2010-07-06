@@ -214,6 +214,11 @@
    #:emit-mask32
    #:emit-mask16
    #:emit-set-cp0
+   #:emit-set-hi
+   #:emit-set-lo
+   #:emit-get-cp0
+   #:emit-get-hi
+   #:emit-get-lo
    #:emit-set-tlb-entry
    #:emit-long-jump
    #:emit-jump

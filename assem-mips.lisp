@@ -199,6 +199,25 @@ is :VALUE."
   (emit* :nop)
   (emit* :mtc0 :proxy cp0))
 
+(define-emitter emit-set-hi ((value 32)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :nop)
+  (emit* :mthi :proxy))
+
+(define-emitter emit-set-lo ((value 32)) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :nop)
+  (emit* :mtlo :proxy))
+
+(define-emitter emit-get-cp0 (dstreg cp0) nil
+  (emit* :mfc0 dstreg cp0))
+
+(define-emitter emit-get-hi (dstreg) nil
+  (emit* :mfhi dstreg))
+
+(define-emitter emit-get-lo (dstreg) nil
+  (emit* :mflo dstreg))
+
 (define-emitter emit-set-tlb-entry (i value) nil
   (emit-set-cp0 :index i)
   (emit-set-cp0 :entryhi (first value))

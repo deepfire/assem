@@ -121,6 +121,10 @@ is :VALUE."
     (keyword
      (emit* :or gpr :zero value))))
 
+(define-emitter emit-set-fpr (value fpr) (gpr :proxy)
+  (emit-set-gpr :proxy value)
+  (emit* :mtc1 :proxy fpr))
+
 ;;;
 ;;; Register-based memory stores
 ;;;

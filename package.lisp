@@ -199,6 +199,7 @@
    #:emit-ref
    #:emit-nops
    #:emit-set-gpr
+   #:emit-set-fpr
    #:emit-based-store32
    #:emit-based-store16
    #:emit-based-store8

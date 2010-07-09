@@ -215,8 +215,10 @@
   (lret ((insn (make-instance 'pseudo-insn :mnemonics mnemonics)))
     (setf (node insn) (make-node :contribution insn :childs (list (node *unknown-iformat*))))))
 
-(defstruct optype
-  (name nil :type symbol)
+(defstruct (named-struct (:conc-name ||))
+  (name nil :type symbol))
+
+(defstruct (optype (:include named-struct))
   (width 0 :type (unsigned-byte 6)))
 
 (defstruct (enumerated-optype (:include optype) (:conc-name optype-))
@@ -224,12 +226,22 @@
   (rset nil :type hash-table)
   (unallocatables nil :type list))
 
+(defstruct (attribute (:include named-struct) (:conc-name attr-))
+  value)
+
+(defstruct (attribute-set (:include named-struct) (:conc-name attrset-))
+  byte
+  alist
+  hash)
+
 (defclass isa ()
   ((name :reader isa-name :initarg :name)
+   (root-attrset :reader isa-root-attrset :initarg :root-attrset)
    (insn-defines-format-p :accessor isa-insn-defines-format-p :initarg :insn-defines-format-p)
    (insn-root :accessor isa-insn-root)
    (nop-insn :reader isa-nop-insn :initarg :nop-insn)
    (iformat-root :accessor isa-iformat-root)
+   (attrset# :accessor isa-attrset# :initarg :attrset#)
    (optype# :accessor isa-optype# :initarg :optype#)
    (gpr-optype :accessor isa-gpr-optype)
    (fpr-optype :accessor isa-fpr-optype)
@@ -242,13 +254,25 @@
   (:default-initargs
    :insn-defines-format-p nil
    :final-discriminator #'values
-   :optype# (make-hash-table :test #'eq)
-   :insn# (make-hash-table :test #'equal)
-   :iformat# (make-hash-table :test #'eq)))
+   :attrset# (make-hash-table :test 'eq)
+   :optype# (make-hash-table :test 'eq)
+   :insn# (make-hash-table :test 'equal)
+   :iformat# (make-hash-table :test 'eq)))
 
+(define-subcontainer attrset :container-slot attrset# :if-exists :continue :type attribute-set)
 (define-subcontainer optype  :container-slot optype#  :if-exists :continue)
 (define-subcontainer insn    :container-slot insn#    :if-exists :continue)
 (define-subcontainer iformat :container-slot iformat# :if-exists :continue)
+
+(defun define-attrset (isa name content-formula)
+  (labels ((compute (x)
+             (case (first x)
+               (+ (remove-duplicates (mappend #'compute (rest x)) :test #'eq :key #'car))
+               (- (set-difference (compute (second x)) (mappend #'compute (cddr x)) :test #'eq :key #'car))
+               (set (attrset-alist (attrset isa (second x))))
+               (t x))))
+    (let ((content (compute content-formula)))
+      (setf (attrset isa name) (make-attribute-set :name name :alist content :hash (alist-hash-table content :test 'eq))))))
 
 (defmacro define-optype (isa name bit-width)
   `(progn

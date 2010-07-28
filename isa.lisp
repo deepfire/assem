@@ -230,7 +230,6 @@
   value)
 
 (defstruct (attribute-set (:include named-struct) (:conc-name attrset-))
-  byte
   alist
   hash)
 
@@ -241,7 +240,7 @@
    (insn-root :accessor isa-insn-root)
    (nop-insn :reader isa-nop-insn :initarg :nop-insn)
    (iformat-root :accessor isa-iformat-root)
-   (attrset# :accessor isa-attrset# :initarg :attrset#)
+   (root-attrset# :accessor isa-root-attrset# :initarg :root-attrset#)
    (optype# :accessor isa-optype# :initarg :optype#)
    (gpr-optype :accessor isa-gpr-optype)
    (fpr-optype :accessor isa-fpr-optype)
@@ -254,25 +253,30 @@
   (:default-initargs
    :insn-defines-format-p nil
    :final-discriminator #'values
-   :attrset# (make-hash-table :test 'eq)
+   :root-attrset# (make-hash-table :test 'eq)
    :optype# (make-hash-table :test 'eq)
    :insn# (make-hash-table :test 'equal)
    :iformat# (make-hash-table :test 'eq)))
 
-(define-subcontainer attrset :container-slot attrset# :if-exists :continue :type attribute-set)
+(define-subcontainer root-attrset :container-slot root-attrset# :if-exists :error :type attribute-set)
 (define-subcontainer optype  :container-slot optype#  :if-exists :continue)
 (define-subcontainer insn    :container-slot insn#    :if-exists :continue)
 (define-subcontainer iformat :container-slot iformat# :if-exists :continue)
 
-(defun define-attrset (isa name content-formula)
+(defun ensure-root-attrset (isa name set)
+  (setf (root-attrset isa name) (make-attribute-set :name name :alist set :hash (alist-hash-table set))))
+
+(defmacro defattrset (isa name &body set)
+  `(ensure-root-attrset ,isa ',name ',set))
+
+(defun evaluate-attrset-formula (isa content-formula)
   (labels ((compute (x)
              (case (first x)
                (+ (remove-duplicates (mappend #'compute (rest x)) :test #'eq :key #'car))
                (- (set-difference (compute (second x)) (mappend #'compute (cddr x)) :test #'eq :key #'car))
-               (set (attrset-alist (attrset isa (second x))))
+               (set (attrset-alist (root-attrset isa (second x))))
                (t x))))
-    (let ((content (compute content-formula)))
-      (setf (attrset isa name) (make-attribute-set :name name :alist content :hash (alist-hash-table content :test 'eq))))))
+    (compute content-formula)))
 
 (defmacro define-optype (isa name bit-width)
   `(progn

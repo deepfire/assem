@@ -4,9 +4,11 @@
   (:use :common-lisp :alexandria :iterate :pergamum)
   (:shadow #:disassemble)
   (:export
+   ;; conditions
    #:assembly-condition
    #:assembly-error
    #:simple-assembly-error
+   ;; ISA
    #:isa
    #:isa-final-discriminator
    #:isa-gpr-optype
@@ -17,6 +19,10 @@
    #:isa-nopcode
    #:isa-gpr-count
    #:isa-fpr-count
+   ;;
+   #:ensure-root-attrset
+   #:defattrset
+   ;;
    #:validate-insn-parameter-spec
    #:encode-insn-param
    #:decode-insn-param
@@ -245,3 +251,13 @@
    #:emit-test-eq
    #:emit-test-ne
    #:emit-jump-if))
+
+(defpackage #:isa-amd64
+  (:use :common-lisp :alexandria :custom-harness :pergamum :iterate :isa)
+  (:shadowing-import-from :isa #:disassemble)
+  (:export
+   #:*amd64-isa*
+   #:amd64-insn
+   #:amd64-branch-insn
+   #:encode-amd64-insn
+   #:decode-amd64-insn))

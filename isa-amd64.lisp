@@ -64,168 +64,168 @@
   (:twop-prefix .   #x0f))
 
 (defattrset *amd64-isa* :opcode
-  (:op-add .       #x00) (:op-add .     #x01) (:op-add .      #x02) (:op-add .       #x03) (:op-add .       #x04) (:op-add .       #x05)  #|  32-bit mode |#  #|  32-bit mode    |#
-  (:op-adc .       #x10) (:op-adc .     #x11) (:op-adc .      #x12) (:op-adc .       #x13) (:op-adc .       #x14) (:op-adc .       #x15)  #|  32-bit mode |#  #|  32-bit mode    |#
-  (:op-and .       #x20) (:op-and .     #x21) (:op-and .      #x22) (:op-and .       #x23) (:op-and .       #x24) (:op-and .       #x25)  #|  ES seg      |#  #|  32-bit mode    |#
-  (:op-xor .       #x30) (:op-xor .     #x31) (:op-xor .      #x32) (:op-xor .       #x33) (:op-xor .       #x34) (:op-xor .       #x35)  #|  SS seg      |#  #|  32-bit mode    |#
+  (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#  #| 32bit mode   |#
+  (:adc .       #x10) (:adc .     #x11) (:adc .      #x12) (:adc .       #x13) (:adc .       #x14) (:adc .       #x15)  #| 32bit mode|#  #| 32bit mode   |#
+  (:and .       #x20) (:and .     #x21) (:and .      #x22) (:and .       #x23) (:and .       #x24) (:and .       #x25)  #| ES seg    |#  #| 32bit mode   |#
+  (:xor .       #x30) (:xor .     #x31) (:xor .      #x32) (:xor .       #x33) (:xor .       #x34) (:xor .       #x35)  #| SS seg    |#  #| 32bit mode   |#
   ;; 4[0-7]: REX prefixes
-  (:op-push .      #x50) (:op-push .    #x51) (:op-push .     #x52) (:op-push .      #x53) (:op-push .      #x54) (:op-push .      #x55) (:op-push .    #x56) (:op-push .      #x57)
-   #|  32-bit mode   |#   #|  32-bit mode |#   #|  32-bit mode  |#   #|  64-bit mode   |#  #| FS seg         |#   #|  GS seg        |#   #|  oper size   |#   #|  addr size     |#
-  (:op-jo .        #x70) (:op-jno .     #x71) (:op-jb .       #x72) (:op-jnb .       #x73) (:op-jz .        #x74) (:op-jnz .       #x75) (:op-jbe .     #x76) (:op-jnbe .      #x77)
-  (:op-grp1-80 .   #x80) (:op-grp1-81 . #x81)  #|  32-bit mode  |#  (:op-grp1-83 .   #x83) (:op-test .      #x84) (:op-test .      #x85) (:op-xchg .    #x86) (:op-xchg .      #x87)
-  (:op-xchg.       #x90) (:op-xchg .    #x91) (:op-xchg.      #x92) (:op-xchg .      #x93) (:op-xchg .      #x94) (:op-xchg .      #x95) (:op-xchg .    #x96) (:op-xchg .      #x97)
-  (:op-mov .       #xa0) (:op-mov .     #xa1) (:op-mov .      #xa2) (:op-mov .       #xa3) (:op-movsb .     #xa4) (:op-movsw/d/q . #xa5) (:op-cmpsb .   #xa6) (:op-cmpsw/d/q . #xa7)
-  (:op-mov .       #xb0) (:op-mov .     #xb1) (:op-mov .      #xb2) (:op-mov .       #xb3) (:op-mov .       #xb4) (:op-mov .       #xb5) (:op-mov .     #xb6) (:op-mov .       #xb7)
-  (:op-grp2-c0 .   #xc0) (:op-grp2-c1 . #xc1) (:op-ret-near . #xc2) (:op-ret-near .  #xc3)  #|  32-bit mode   |#   #|  32-bit mode   |#  (:op-grp11-c6 . #xc6) (:op-grp11-c7 . #xc7)
-  (:op-grp2-d0 .   #xd0) (:op-grp2-d1 . #xd1) (:op-grp2-d2 .  #xd2) (:op-grp2-d3 .   #xd3)  #|  32-bit mode   |#   #|  32-bit mode   |#   #|  32-bit mode |#  (:op-xlat .      #xd7)
-  (:op-loopne/nz . #xe0) (:op-loope/z . #xe1) (:op-loop .     #xe2) (:op-jxcxz .     #xe3) (:op-in .        #xe4) (:op-in .        #xe5) (:op-out .     #xe6) (:op-out .       #xe7)
-   #|  lock          |#  (:op-int1 .    #xf1)  #|  repn         |#   #|  rep           |#  (:op-hlt .       #xf4) (:op-cmc .       #xf5) (:op-grp3-f6 . #xf6) (:op-grp3-f7 .   #xf7)
-  (:op-or .        #x08) (:op-or .      #x09) (:op-or .       #x0a) (:op-or .        #x0b) (:op-or .        #x0c) (:op-or .        #x0d)  #|  32-bit mode |#   #|  twop          |#
-  (:op-sbb .       #x18) (:op-sbb .     #x19) (:op-sbb .      #x1a) (:op-sbb .       #x1b) (:op-sbb .       #x1c) (:op-sbb .       #x1d)  #|  32-bit mode |#   #|  32-bit mode   |# 
-  (:op-sub .       #x28) (:op-sub .     #x29) (:op-sub .      #x2a) (:op-sub .       #x2b) (:op-sub .       #x2c) (:op-sub .       #x2d)  #|  CS seg      |#   #|  32-bit mode   |# 
-  (:op-cmp .       #x38) (:op-cmp .     #x39) (:op-cmp .      #x3a) (:op-cmp .       #x3b) (:op-cmp .       #x3c) (:op-cmp .       #x3d)  #|  DS seg      |#   #|  32-bit mode   |# 
+  (:push .      #x50) (:push .    #x51) (:push .     #x52) (:push .      #x53) (:push .      #x54) (:push .      #x55) (:push .    #x56) (:push .      #x57)
+   #| 32bit mode  |#   #| 32bit mode|#   #| 32bit mode |#   #| 64bit mode  |#   #| FS seg      |#   #|  GS seg     |#   #| oper size |#   #| addr size   |#
+  (:jo .        #x70) (:jno .     #x71) (:jb .       #x72) (:jnb .       #x73) (:jz .        #x74) (:jnz .       #x75) (:jbe .     #x76) (:jnbe .      #x77)
+  (:grp1-80 .   #x80) (:grp1-81 . #x81)  #| 32bit mode |#  (:grp1-83 .   #x83) (:test .      #x84) (:test .      #x85) (:xchg .    #x86) (:xchg .      #x87)
+  (:xchg.       #x90) (:xchg .    #x91) (:xchg.      #x92) (:xchg .      #x93) (:xchg .      #x94) (:xchg .      #x95) (:xchg .    #x96) (:xchg .      #x97)
+  (:mov .       #xa0) (:mov .     #xa1) (:mov .      #xa2) (:mov .       #xa3) (:movsb .     #xa4) (:movsw/d/q . #xa5) (:cmpsb .   #xa6) (:cmpsw/d/q . #xa7)
+  (:mov .       #xb0) (:mov .     #xb1) (:mov .      #xb2) (:mov .       #xb3) (:mov .       #xb4) (:mov .       #xb5) (:mov .     #xb6) (:mov .       #xb7)
+  (:grp2-c0 .   #xc0) (:grp2-c1 . #xc1) (:ret-near . #xc2) (:ret-near .  #xc3)  #| 32bit mode  |#   #| 32bit mode  |#  (:grp11-c6 . #xc6) (:grp11-c7 . #xc7)
+  (:grp2-d0 .   #xd0) (:grp2-d1 . #xd1) (:grp2-d2 .  #xd2) (:grp2-d3 .   #xd3)  #| 32bit mode  |#   #| 32bit mode  |#   #| 32bit mode|#  (:xlat .      #xd7)
+  (:loopne/nz . #xe0) (:loope/z . #xe1) (:loop .     #xe2) (:jxcxz .     #xe3) (:in .        #xe4) (:in .        #xe5) (:out .     #xe6) (:out .       #xe7)
+   #|  lock       |#  (:int1 .    #xf1)  #|  repn      |#   #|  rep        |#  (:hlt .       #xf4) (:cmc .       #xf5) (:grp3-f6 . #xf6) (:grp3-f7 .   #xf7)
+  (:or .        #x08) (:or .      #x09) (:or .       #x0a) (:or .        #x0b) (:or .        #x0c) (:or .        #x0d)  #| 32bit mode|#   #| twop        |#
+  (:sbb .       #x18) (:sbb .     #x19) (:sbb .      #x1a) (:sbb .       #x1b) (:sbb .       #x1c) (:sbb .       #x1d)  #| 32bit mode|#   #| 32bit mode  |# 
+  (:sub .       #x28) (:sub .     #x29) (:sub .      #x2a) (:sub .       #x2b) (:sub .       #x2c) (:sub .       #x2d)  #| CS seg    |#   #| 32bit mode  |# 
+  (:cmp .       #x38) (:cmp .     #x39) (:cmp .      #x3a) (:cmp .       #x3b) (:cmp .       #x3c) (:cmp .       #x3d)  #| DS seg    |#   #| 32bit mode  |# 
   ;; 4[8-f]: REX prefixes
-  (:op-pop .       #x58) (:op-pop .     #x59) (:op-pop .      #x5a) (:op-pop .       #x5b) (:op-pop .       #x5c) (:op-pop .       #x5d) (:op-pop .     #x5e) (:op-pop .       #x5f)
-  (:op-push .      #x68) (:op-imul .    #x69) (:op-push .     #x6a) (:op-imul .      #x6b) (:op-insb .      #x6c) (:op-insw/d .    #x6d) (:op-outsb .   #x6e) (:op-outsw/d .   #x6f)
-  (:op-js .        #x78) (:op-jns .     #x79) (:op-jp .       #x7a) (:op-jnp .       #x7b) (:op-jl .        #x7c) (:op-jnl .       #x7d) (:op-jle .     #x7e) (:op-jnle .      #x7f)
-  (:op-mov .       #x88) (:op-mov .     #x89) (:op-mov .      #x8a) (:op-mov .       #x8b) (:op-mov .       #x8c) (:op-lea .       #x8d) (:op-mov .     #x8e) (:op-grp1-8f .   #x8f)
-  (:op-cbwde/qe .  #x98) (:op-cwdqo .   #x99)  #|  32-bit mode  |#  (:op-f/wait .    #x9b) (:op-pushf/d/q . #x9c) (:op-popf/d/q .  #x9d) (:op-sahf .    #x9e) (:op-lahf .      #x9f)
-  (:op-test .      #xa8) (:op-test .    #xa9) (:op-stosb .    #xaa) (:op-stosw/d/q . #xab) (:op-lodsb .     #xac) (:op-lodsw/d/q . #xad) (:op-scasb .   #xae) (:op-scasw/d/q . #xaf)
-  (:op-mov .       #xb8) (:op-mov .     #xb9) (:op-mov .      #xba) (:op-mov .       #xbb) (:op-mov .       #xbc) (:op-mov .       #xbd) (:op-mov .     #xbe) (:op-mov .       #xbf)
-  (:op-enter .     #xc8) (:op-leave .   #xc9) (:op-ret .      #xca) (:op-ret .       #xcb) (:op-int3 .      #xcc) (:op-int .       #xcd)  #|  32-bit mode |#  (:op-iret/d/q .  #xcf)
+  (:pop .       #x58) (:pop .     #x59) (:pop .      #x5a) (:pop .       #x5b) (:pop .       #x5c) (:pop .       #x5d) (:pop .     #x5e) (:pop .       #x5f)
+  (:push .      #x68) (:imul .    #x69) (:push .     #x6a) (:imul .      #x6b) (:insb .      #x6c) (:insw/d .    #x6d) (:outsb .   #x6e) (:outsw/d .   #x6f)
+  (:js .        #x78) (:jns .     #x79) (:jp .       #x7a) (:jnp .       #x7b) (:jl .        #x7c) (:jnl .       #x7d) (:jle .     #x7e) (:jnle .      #x7f)
+  (:mov .       #x88) (:mov .     #x89) (:mov .      #x8a) (:mov .       #x8b) (:mov .       #x8c) (:lea .       #x8d) (:mov .     #x8e) (:grp1-8f .   #x8f)
+  (:cbwde/qe .  #x98) (:cwdqo .   #x99)  #| 32bit mode |#  (:f/wait .    #x9b) (:pushf/d/q . #x9c) (:popf/d/q .  #x9d) (:sahf .    #x9e) (:lahf .      #x9f)
+  (:test .      #xa8) (:test .    #xa9) (:stosb .    #xaa) (:stosw/d/q . #xab) (:lodsb .     #xac) (:lodsw/d/q . #xad) (:scasb .   #xae) (:scasw/d/q . #xaf)
+  (:mov .       #xb8) (:mov .     #xb9) (:mov .      #xba) (:mov .       #xbb) (:mov .       #xbc) (:mov .       #xbd) (:mov .     #xbe) (:mov .       #xbf)
+  (:enter .     #xc8) (:leave .   #xc9) (:ret .      #xca) (:ret .       #xcb) (:int3 .      #xcc) (:int .       #xcd)  #| 32bit mode|#  (:iret/d/q .  #xcf)
   ;; d[8-f]: x87
-  (:op-call .      #xe8) (:op-jmp .     #xe9)  #|  32-bit mode  |#  (:op-jmp .       #xeb) (:op-in .        #xec) (:op-in .        #xed) (:op-out .     #xee) (:op-out .       #xef)
-  (:op-clc .       #xf8) (:op-stc .     #xf9) (:op-cli .      #xfa) (:op-sti .       #xfb) (:op-cld .       #xfc) (:op-std .       #xfd)  #|  64-bit mode |#  (:op-grp5 .      #xff))
+  (:call .      #xe8) (:jmp .     #xe9)  #| 32bit mode |#  (:jmp .       #xeb) (:in .        #xec) (:in .        #xed) (:out .     #xee) (:out .       #xef)
+  (:clc .       #xf8) (:stc .     #xf9) (:cli .      #xfa) (:sti .       #xfb) (:cld .       #xfc) (:std .       #xfd)  #| 64bit mode|#  (:grp5 .      #xff))
 
 (defattrset *amd64-isa* :longmode-only-opcode
-   #|  .........              .......              ........     |#  (:op-movsxd .    #x63)  #|  .........              .........              .......              .........     |#
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-grp4 .    #xfe)) #|  .........     |#
+   #|  .........           .......           ........  |#  (:movsxd .    #x63)  #|  .........           .........           .......           .........  |#
+   #|  .........           .......           ........           .........           .........           .........  |#  (:grp4 .    #xfe)) #|  .........  |#
 
 (defattrset *amd64-isa* :shortmode-only-opcode
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-push-es . #x06) (:op-pop-es .    #x07)
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-push-ss . #x16) (:op-pop-ss .    #x17)
-   #|  .........              .......              ........              .........              .........              .........              .......     |#  (:op-daa .       #x27)
-   #|  .........              .......              ........              .........              .........              .........              .......     |#  (:op-aaa .       #x37)
-  (:op-inc .       #x40) (:op-inc .     #x41) (:op-inc .      #x42) (:op-inc .       #x43) (:op-inc .       #x44) (:op-inc .       #x45) (:op-inc .     #x46) (:op-inc .       #x47)
-  (:op-pusha/d .   #x60) (:op-popa/d .  #x61) (:op-bound .    #x62)  #|  .........              .........              .........              .......              .........     |#
-   #|  .........              .......     |#  (:op-grp1-82 .  #x82)  #|  .........              .........              .........              .......              .........     |#
-   #|  .........              .......              ........              .........     |#  (:op-les .       #xc4) (:op-lds .       #xc5)
-   #|  .........              .......              ........              .........     |#  (:op-aam .       #xd4) (:op-aad .       #xd5) (:op-salc .    #xd6)  #|  .........     |#
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-push .    #x0e)  #|  .........     |#
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-push .    #x1e) (:op-pop .       #x1f)
-   #|  .........              .......              ........              .........              .........              .........              .......     |#  (:op-das .       #x2f)
-   #|  .........              .......              ........              .........              .........              .........              .......     |#  (:op-aas .       #x3f)
-  (:op-dec .       #x48) (:op-dec .     #x49) (:op-dec .      #x4a) (:op-dec .       #x4b) (:op-dec .       #x4c) (:op-dec .       #x4d) (:op-dec .     #x4e) (:op-dec .       #x4f)
-   #|  .........              .......     |#  (:op-call .     #x9a)  #|  .........              .........              .........              .......              .........     |#
-   #|  .........              .......              ........              .........              .........              .........     |#  (:op-into .    #xce)  #|  .........     |#
-   #|  .........              .......     |#  (:op-jmp .      #xea)  #|  .........              .........              .........              .......              .........     |#)
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push-es . #x06) (:pop-es .    #x07)
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push-ss . #x16) (:pop-ss .    #x17)
+   #|  .........           .......           ........           .........           .........           .........           .......  |#  (:daa .       #x27)
+   #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aaa .       #x37)
+  (:inc .       #x40) (:inc .     #x41) (:inc .      #x42) (:inc .       #x43) (:inc .       #x44) (:inc .       #x45) (:inc .     #x46) (:inc .       #x47)
+  (:pusha/d .   #x60) (:popa/d .  #x61) (:bound .    #x62)  #|  .........           .........           .........           .......           .........  |#
+   #|  .........           .......  |#  (:grp1-82 .  #x82)  #|  .........           .........           .........           .......           .........  |#
+   #|  .........           .......           ........           .........  |#  (:les .       #xc4) (:lds .       #xc5)
+   #|  .........           .......           ........           .........  |#  (:aam .       #xd4) (:aad .       #xd5) (:salc .    #xd6)  #|  .........  |#
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push .    #x0e)  #|  .........  |#
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push .    #x1e) (:pop .       #x1f)
+   #|  .........           .......           ........           .........           .........           .........           .......  |#  (:das .       #x2f)
+   #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aas .       #x3f)
+  (:dec .       #x48) (:dec .     #x49) (:dec .      #x4a) (:dec .       #x4b) (:dec .       #x4c) (:dec .       #x4d) (:dec .     #x4e) (:dec .       #x4f)
+   #|  .........           .......  |#  (:call .     #x9a)  #|  .........           .........           .........           .......           .........  |#
+   #|  .........           .......           ........           .........           .........           .........  |#  (:into .    #xce)  #|  .........  |#
+   #|  .........           .......  |#  (:jmp .      #xea)  #|  .........           .........           .........           .......           .........  |#)
 
 (defattrset *amd64-isa* :extended-opcode
-  (:xop-grp6 .      #x00) (:xop-grp7 .      #x01) (:xop-lar .       #x02) (:xop-lsl .      #x03)  #|   invalid      |#  (:xop-syscall .  #x05) (:xop-clts .    #x06) (:xop-sysret .   #x07)
+  (:grp6 .      #x00) (:grp7 .      #x01) (:lar .       #x02) (:lsl .      #x03)  #|   invalid  |#  (:syscall .  #x05) (:clts .    #x06) (:sysret .   #x07)
   ;; 1[0-7]: prefixed
-  (:xop-mov .       #x20) (:xop-mov .       #x21) (:xop-mov .       #x22) (:xop-mov .      #x23)  #|   invalid      |#   #|   invalid      |#   #|   invalid     |#   #|   invalid      |#
-  (:xop-wrmsr .     #x30) (:xop-rstsc .     #x31) (:xop-rdmsr .     #x32) (:xop-rdpmc .    #x33)  #|   32-bit mode  |#   #|   32-bit mode  |#   #|   invalid     |#   #|   invalid      |#
-  (:xop-cmovo .     #x40) (:xop-cmovno .    #x41) (:xop-cmovb .     #x42) (:xop-cmovnb .   #x43) (:xop-cmovz .    #x44) (:xop-cmovnz .   #x45) (:xop-cmovbe .  #x46) (:xop-cmovnbe .  #x47)
+  (:mov .       #x20) (:mov .       #x21) (:mov .       #x22) (:mov .      #x23)  #|   invalid  |#   #|   invalid  |#   #|   invalid |#   #|   invalid  |#
+  (:wrmsr .     #x30) (:rstsc .     #x31) (:rdmsr .     #x32) (:rdpmc .    #x33)  #| 32bit mode |#   #| 32bit mode |#   #|   invalid |#   #|   invalid  |#
+  (:cmovo .     #x40) (:cmovno .    #x41) (:cmovb .     #x42) (:cmovnb .   #x43) (:cmovz .    #x44) (:cmovnz .   #x45) (:cmovbe .  #x46) (:cmovnbe .  #x47)
   ;; 5[0-7]: prefixed
   ;; 6[0-7]: prefixed
   ;; 7[0-7]: prefixed
-  (:xop-jo .        #x80) (:xop-jno .       #x81) (:xop-jb .        #x82) (:xop-jnb .      #x83) (:xop-jz .       #x84) (:xop-jnz .      #x85) (:xop-jbe .     #x86) (:xop-jnbe .     #x87)
-  (:xop-seto .      #x90) (:xop-setno .     #x91) (:xop-setb .      #x92) (:xop-setnb .    #x93) (:xop-setz .     #x94) (:xop-setnz .    #x95) (:xop-setbe .   #x96) (:xop-setnbe .   #x97)
-  (:xop-push .      #xa0) (:xop-pop .       #xa1) (:xop-cpuid .     #xa2) (:xop-bt .       #xa3) (:xop-shld .     #xa4) (:xop-shld .     #xa5)  #|   invalid     |#   #|   invalid      |#
-  (:xop-cmpxchg .   #xb0) (:xop-cmpxchg .   #xb1) (:xop-lss .       #xb2) (:xop-btr .      #xb3) (:xop-lfs .      #xb4) (:xop-lgs .      #xb5) (:xop-movzx .   #xb6) (:xop-movzx .    #xb7)
+  (:jo .        #x80) (:jno .       #x81) (:jb .        #x82) (:jnb .      #x83) (:jz .       #x84) (:jnz .      #x85) (:jbe .     #x86) (:jnbe .     #x87)
+  (:seto .      #x90) (:setno .     #x91) (:setb .      #x92) (:setnb .    #x93) (:setz .     #x94) (:setnz .    #x95) (:setbe .   #x96) (:setnbe .   #x97)
+  (:push .      #xa0) (:pop .       #xa1) (:cpuid .     #xa2) (:bt .       #xa3) (:shld .     #xa4) (:shld .     #xa5)  #|   invalid |#   #|   invalid  |#
+  (:cmpxchg .   #xb0) (:cmpxchg .   #xb1) (:lss .       #xb2) (:btr .      #xb3) (:lfs .      #xb4) (:lgs .      #xb5) (:movzx .   #xb6) (:movzx .    #xb7)
   ;; c[0-7]: prefixed
   ;; d[0-7]: prefixed
   ;; e[0-7]: prefixed
   ;; f[0-7]: prefixed
-  (:xop-invd .      #x08) (:xop-wbinvd .    #x09)  #|   invalid       |#  (:xop-ud2 .      #x0b)  #|   invalid      |#  (:xop-grp-p .    #x0d) (:xop-femms .   #x0e) (:xop-grp3dnow . #x0f)
-  (:xop-grp16 .     #x18) (:xop-nop .       #x19) (:xop-nop .       #x1a) (:xop-nop .      #x1b) (:xop-nop .      #x1c) (:xop-nop .      #x1d) (:xop-nop .     #x1e) (:xop-nop .      #x1f)
+  (:invd .      #x08) (:wbinvd .    #x09)  #|   invalid   |#  (:ud2 .      #x0b)  #|   invalid  |#  (:grp-p .    #x0d) (:femms .   #x0e) (:grp3dnow . #x0f)
+  (:grp16 .     #x18) (:nop .       #x19) (:nop .       #x1a) (:nop .      #x1b) (:nop .      #x1c) (:nop .      #x1d) (:nop .     #x1e) (:nop .      #x1f)
   ;; 2[8-f]: prefixed
   ;; 3[8-f]: invalid
-  (:xop-cmovs .     #x48) (:xop-cmovns .    #x49) (:xop-cmovp .     #x4a) (:xop-cmovnp .   #x4b) (:xop-cmovl .    #x4c) (:xop-cmovnl .   #x4d) (:xop-cmovle .  #x4e) (:xop-cmovnle .  #x4f)
+  (:cmovs .     #x48) (:cmovns .    #x49) (:cmovp .     #x4a) (:cmovnp .   #x4b) (:cmovl .    #x4c) (:cmovnl .   #x4d) (:cmovle .  #x4e) (:cmovnle .  #x4f)
   ;; 5[8-f]: prefixed
   ;; 6[8-f]: prefixed
   ;; 7[8-f]: prefixed
-  (:xop-js .        #x88) (:xop-jns .       #x89) (:xop-jp .        #x8a) (:xop-jnp .      #x8b) (:xop-jl .       #x8c) (:xop-jnl .      #x8d) (:xop-jle .     #x8e) (:xop-jnle .     #x8f)
-  (:xop-sets .      #x98) (:xop-setns .     #x99) (:xop-setp .      #x9a) (:xop-setnp .    #x9b) (:xop-setl .     #x9c) (:xop-setnl .    #x9d) (:xop-setle   . #x9e) (:xop-setnle .   #x9f)
-  (:xop-push .      #xa8) (:xop-pop .       #xa9) (:xop-rsm .       #xaa) (:xop-bts .      #xab) (:xop-shrd .     #xac) (:xop-shrd .     #xad) (:xop-grp15 .   #xae) (:xop-imul .     #xaf)
+  (:js .        #x88) (:jns .       #x89) (:jp .        #x8a) (:jnp .      #x8b) (:jl .       #x8c) (:jnl .      #x8d) (:jle .     #x8e) (:jnle .     #x8f)
+  (:sets .      #x98) (:setns .     #x99) (:setp .      #x9a) (:setnp .    #x9b) (:setl .     #x9c) (:setnl .    #x9d) (:setle   . #x9e) (:setnle .   #x9f)
+  (:push .      #xa8) (:pop .       #xa9) (:rsm .       #xaa) (:bts .      #xab) (:shrd .     #xac) (:shrd .     #xad) (:grp15 .   #xae) (:imul .     #xaf)
   ;; b[8-f]: prefixed
-  (:xop-bswap .     #xc8) (:xop-bswap .     #xc9) (:xop-bswap .     #xca) (:xop-bswap .    #xcb) (:xop-bswap .    #xcc) (:xop-bswap .    #xcd) (:xop-bswap .   #xce) (:xop-bswap .    #xcf)
+  (:bswap .     #xc8) (:bswap .     #xc9) (:bswap .     #xca) (:bswap .    #xcb) (:bswap .    #xcc) (:bswap .    #xcd) (:bswap .   #xce) (:bswap .    #xcf)
   ;; d[8-f]: prefixed
   ;; e[8-f]: prefixed
   ;; f[8-f]: prefixed
   )
 
 (defattrset *amd64-isa* :shortmode-only-ext-opcode
-  #|    .........               .........               .........               ........     |#  (:xop-sysenter . #x34) (:xop-sysexit .  #x35)  #|   .......               ........     |#)
+  #|    .........           .........           .........            ........ |#  (:sysenter .  #x34) (:sysexit .  #x35)  #|   .......            ........ |#)
 
 (defattrset *amd64-isa* :opcode-ext-variant-unprefixed
-  (:xop-movups .    #x10) (:xop-movups .    #x11) (:xop-movl/hlps . #x12) (:xop-movlps .    #x13) (:xop-unpcklps .  #x14) (:xop-unpckhps . #x15) (:xop-movh/lhps . #x16) (:xop-movhps .  #x17)
-  (:xop-movmskps .  #x50) (:xop-sqrtps .    #x51) (:xop-rsqrtps .   #x52) (:xop-rcpps .     #x53) (:xop-andps .     #x54) (:xop-andnps .   #x55) (:xop-orps .     #x56) (:xop-xorps .    #x57)
-  (:xop-punpcklbw . #x60) (:xop-punpcklwd . #x61) (:xop-punpckldq . #x62) (:xop-packsswb .  #x63) (:xop-pcmpgtb .   #x64) (:xop-pcmpgtw .  #x65) (:xop-pcmpgtd .  #x66) (:xop-packuswb . #x67)
-  (:xop-pshufw .    #x70) (:xop-grp12-u .   #x71) (:xop-grp13-u .   #x72) (:xop-grp14-u .   #x73) (:xop-pcmpeqb .   #x74) (:xop-pcmpeqw .  #x75) (:xop-pcmpeqd .  #x76) (:xop-emss .     #x77)
-  (:xop-xadd .      #xc0) (:xop-xadd .      #xc1) (:xop-cmpps .     #xc2) (:xop-movnti .    #xc3) (:xop-pinsrw .    #xc4) (:xop-pextsrw .  #xc5) (:xop-shufps .   #xc6) (:xop-grp9-u .   #xc7)
-   #|   invalid       |#  (:xop-psrlw .     #xd1) (:xop-psrld .     #xd2) (:xop-psrlq .     #xd3) (:xop-paddq .     #xd4) (:xop-pmullw .   #xd5)  #|   invalid      |#  (:xop-pmovmskb . #xd7)
-  (:xop-pavgb .     #xe0) (:xop-psraw .     #xe1) (:xop-psrad .     #xe2) (:xop-pavgw .     #xe3) (:xop-pmulhuw .   #xe4) (:xop-pmulhw .   #xe5)  #|   invalid      |#  (:xop-movntq .   #xe7)
-   #|   invalid       |#  (:xop-psllw .     #xf1) (:xop-pslld .     #xf2) (:xop-psllq .     #xf3) (:xop-pmuludq .   #xf4) (:xop-pmaddwd .  #xf5) (:xop-psadbw .   #xf6) (:xop-maskmovq . #xf7)
-  (:xop-movaps .    #x28) (:xop-movaps .    #x29) (:xop-cvtpi2ps .  #x2a) (:xop-movntps .   #x2b) (:xop-cvttps2pi . #x2c) (:xop-cvtps2pi . #x2d) (:xop-ucomiss .  #x2e) (:xop-comiss .   #x2f)
-  (:xop-addps .     #x58) (:xop-mulps .     #x59) (:xop-cvtps2pd .  #x5a) (:xop-cvtdq2ps .  #x5b) (:xop-subps .     #x5c) (:xop-minps .    #x5d) (:xop-divps .    #x5e) (:xop-maxps .    #x5f)
-  (:xop-punpckhwb . #x68) (:xop-punpckhwd . #x69) (:xop-punpckhdq . #x6a) (:xop-packssdw .  #x6b)  #|   invalid       |#   #|   invalid      |#  (:xop-movd .     #x6e) (:xop-movq .     #x6f)
-   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid      |#  (:xop-movd .     #x7e) (:xop-movq .     #x7f)
-   #|   reserved      |#  (:xop-grp10 .     #xb9) (:xop-grp8 .      #xba) (:xop-btc .       #xbb) (:xop-bsf .       #xbc) (:xop-bsr .      #xbd) (:xop-movsx .    #xbe) (:xop-movsx .    #xbf)
-  (:xop-psubusb .   #xd8) (:xop-psubusw .   #xd9) (:xop-pminub .    #xda) (:xop-pand .      #xdb) (:xop-paddusb .   #xdc) (:xop-paddusw .  #xdd) (:xop-pmaxub .   #xde) (:xop-pandn .    #xdf)
-  (:xop-psubsb .    #xe8) (:xop-psubsw .    #xe9) (:xop-pminsw .    #xea) (:xop-por .       #xeb) (:xop-paddsb .    #xec) (:xop-paddsw .   #xed) (:xop-pmaxsw .   #xee) (:xop-pxor .     #xef)
-  (:xop-psubb .     #xf8) (:xop-psubw .     #xf9) (:xop-psubd .     #xfa) (:xop-psubq .     #xfb) (:xop-padb .      #xfc) (:xop-padw .     #xfd) (:xop-padd .     #xfe)  #|   invalid      |#)
+  (:movups .    #x10) (:movups .    #x11) (:movl/hlps . #x12) (:movlps .    #x13) (:unpcklps .  #x14) (:unpckhps . #x15) (:movh/lhps . #x16) (:movhps .  #x17)
+  (:movmskps .  #x50) (:sqrtps .    #x51) (:rsqrtps .   #x52) (:rcpps .     #x53) (:andps .     #x54) (:andnps .   #x55) (:orps .     #x56) (:xorps .    #x57)
+  (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .   #x64) (:pcmpgtw .  #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
+  (:pshufw .    #x70) (:grp12-u .   #x71) (:grp13-u .   #x72) (:grp14-u .   #x73) (:pcmpeqb .   #x74) (:pcmpeqw .  #x75) (:pcmpeqd .  #x76) (:emss .     #x77)
+  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpps .     #xc2) (:movnti .    #xc3) (:pinsrw .    #xc4) (:pextsrw .  #xc5) (:shufps .   #xc6) (:grp9-u .   #xc7)
+   #|   invalid   |#  (:psrlw .     #xd1) (:psrld .     #xd2) (:psrlq .     #xd3) (:paddq .     #xd4) (:pmullw .   #xd5)  #|   invalid  |#  (:pmovmskb . #xd7)
+  (:pavgb .     #xe0) (:psraw .     #xe1) (:psrad .     #xe2) (:pavgw .     #xe3) (:pmulhuw .   #xe4) (:pmulhw .   #xe5)  #|   invalid  |#  (:movntq .   #xe7)
+   #|   invalid   |#  (:psllw .     #xf1) (:pslld .     #xf2) (:psllq .     #xf3) (:pmuludq .   #xf4) (:pmaddwd .  #xf5) (:psadbw .   #xf6) (:maskmovq . #xf7)
+  (:movaps .    #x28) (:movaps .    #x29) (:cvtpi2ps .  #x2a) (:movntps .   #x2b) (:cvttps2pi . #x2c) (:cvtps2pi . #x2d) (:ucomiss .  #x2e) (:comiss .   #x2f)
+  (:addps .     #x58) (:mulps .     #x59) (:cvtps2pd .  #x5a) (:cvtdq2ps .  #x5b) (:subps .     #x5c) (:minps .    #x5d) (:divps .    #x5e) (:maxps .    #x5f)
+  (:punpckhwb . #x68) (:punpckhwd . #x69) (:punpckhdq . #x6a) (:packssdw .  #x6b)  #|   invalid   |#   #|   invalid  |#  (:movd .     #x6e) (:movq .     #x6f)
+   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#  (:movd .     #x7e) (:movq .     #x7f)
+   #|   reserved  |#  (:grp10 .     #xb9) (:grp8 .      #xba) (:btc .       #xbb) (:bsf .       #xbc) (:bsr .      #xbd) (:movsx .    #xbe) (:movsx .    #xbf)
+  (:psubusb .   #xd8) (:psubusw .   #xd9) (:pminub .    #xda) (:pand .      #xdb) (:paddusb .   #xdc) (:paddusw .  #xdd) (:pmaxub .   #xde) (:pandn .    #xdf)
+  (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .    #xec) (:paddsw .   #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
+  (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .      #xfc) (:padw .     #xfd) (:padd .     #xfe)  #|   invalid  |#)
 
 (defattrset *amd64-isa* :opcode-ext-variant-f3-prefixed
-  (:xop-movss .     #x10) (:xop-movss .     #x11) (:xop-movsldup .  #x12)  #|   invalid       |#   #|   invalid       |#   #|  invalid       |#  (:xop-movshdup . #x16)  #|   invalid      |#
-   #|   invalid       |#  (:xop-sqrtss .    #x51) (:xop-rsqrtss .   #x52) (:xop-rcpss .     #x53)  #|   invalid       |#   #|  invalid       |#   #|   invalid      |#   #|   invalid      |#
+  (:movss .     #x10) (:movss .     #x11) (:movsldup .  #x12)  #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:movshdup . #x16)  #|   invalid  |#
+   #|   invalid   |#  (:sqrtss .    #x51) (:rsqrtss .   #x52) (:rcpss .     #x53)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
   ;; 6[0-7]: invalid
-  (:xop-pshufhw .   #x70) #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|  invalid       |#   #|   invalid      |#   #|   invalid      |#
-  (:xop-xadd .      #xc0) (:xop-xadd .      #xc1) (:xop-cmpss .     #xc2)  #|   invalid       |#   #|   invalid       |#   #|  invalid       |#   #|   invalid      |#  (:xop-grp9 .     #xc7)
-   #|   invalid       |#  #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|  invalid       |#  (:xop-movq2dq .  #xd6)  #|   invalid      |#
-   #|   invalid       |#  #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|  invalid       |#  (:xop-cvtdq2pd . #xe6)  #|   invalid      |#
+  (:pshufhw .   #x70) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
+  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpss .     #xc2)  #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#  (:grp9 .     #xc7)
+   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:movq2dq .  #xd6)  #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:cvtdq2pd . #xe6)  #|   invalid  |#
   ;; f[0-7]: invalid
-   #|   invalid       |#   #|   invalid       |#  (:xop-cvtsi2ss .  #x2a) (:xop-movntss .   #x2b) (:xop-cvttss2si . #x2c) (:xop-cvtss2si . #x2d)  #|   invalid      |#   #|   invalid      |#
-  (:xop-addss .     #x58) (:xop-mulss .     #x59) (:xop-cvtss2sd .  #x5a) (:xop-cvttps2dq . #x5b) (:xop-subss       #x5c) (:xop-minss .    #x5d) (:xop-divss .    #x5e) (:xop-maxss .    #x5f)
-   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid      |#   #|   invalid      |#  (:xop-movdqu     #x6f)
-   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid      |#  (:xop-movq .     #x7e) (:xop-movdqu .   #x7f)
-  (:xop-popcnt .    #xb8)  #|   reserved      |#   #|   reserved      |#   #|   reserved      |#   #|   reserved      |#  (:xop-lzcnt .    #xbd)  #|   reserved     |#   #|   reserved     |#
+   #|   invalid   |#   #|   invalid   |#  (:cvtsi2ss .  #x2a) (:movntss .   #x2b) (:cvttss2si . #x2c) (:cvtss2si . #x2d)  #|   invalid  |#   #|   invalid  |#
+  (:addss .     #x58) (:mulss .     #x59) (:cvtss2sd .  #x5a) (:cvttps2dq . #x5b) (:subss       #x5c) (:minss .    #x5d) (:divss .    #x5e) (:maxss .    #x5f)
+   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#   #|   invalid  |#  (:movdqu     #x6f)
+   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#  (:movq .     #x7e) (:movdqu .   #x7f)
+  (:popcnt .    #xb8)  #|   reserved  |#   #|   reserved  |#   #|   reserved  |#   #|   reserved  |#  (:lzcnt .    #xbd)  #|   reserved |#   #|   reserved |#
   ;; d[8-f]: invalid
   ;; e[8-f]: invalid
   ;; f[8-f]: invalid
   )
 
 (defattrset *amd64-isa* :opcode-ext-variant-66-prefixed
-  (:xop-movupd .    #x10) (:xop-movupd .    #x11) (:xop-movlpd .    #x12) (:xop-movlpd .    #x13) (:xop-unpcklpd .   #x14) (:xop-unpckhpd .   #x15) (:xop-movhpd .   #x16) (:xop-movhpd .   #x17)
-  (:xop-movmskpd .  #x50) (:xop-sqrtpd .    #x51)  #|   invalid       |#   #|   invalid       |#  (:xop-andpd .      #x54) (:xop-andnpd .     #x55) (:xop-orpd .     #x56) (:xop-xorpd .    #x57)
-  (:xop-punpcklbw . #x60) (:xop-punpcklwd . #x61) (:xop-punpckldq . #x62) (:xop-packsswb .  #x63) (:xop-pcmpgtb .    #x64) (:xop-pcmpgtw .    #x65) (:xop-pcmpgtd .  #x66) (:xop-packuswb . #x67)
-  (:xop-pshufd .    #x70) (:xop-grp12-p66 . #x71) (:xop-grp13-p66 . #x72) (:xop-grp14-p66 . #x73) (:xop-pcmpeqb .    #x74) (:xop-pcmpeqw .    #x75) (:xop-pcmpeqd .  #x76)  #|   invalid      |#
-  (:xop-xadd .      #xc0) (:xop-xadd .      #xc1) (:xop-cmppd .     #xc2)  #|   invalid       |#  (:xop-pinsrw .     #xc4) (:xop-pextsrw .    #xc5) (:xop-shufpd .   #xc6) (:xop-grp9 .     #xc7)
-  (:xop-addsubpd .  #xd0) (:xop-psrlw .     #xd1) (:xop-psrld .     #xd2) (:xop-psrlq .     #xd3) (:xop-paddq .      #xd4) (:xop-pmullw .     #xd5) (:xop-movq .     #xd6) (:xop-pmovmskb . #xd7)
-  (:xop-pavgb .     #xe0) (:xop-psraw .     #xe1) (:xop-psrad .     #xe2) (:xop-pavgw .     #xe3) (:xop-pmulhuw .    #xe4) (:xop-pmulhw .     #xe5) (:xop-cvttpd2d . #xe6) (:xop-movntdq .  #xe7)
-   #|   invalid       |#  (:xop-psllw .     #xf1) (:xop-pslld .     #xf2) (:xop-psllq .     #xf3) (:xop-pmuludq .    #xf4) (:xop-pmaddwd .    #xf5) (:xop-psadbw .   #xf6) (:xop-maskmovdqu . #xf7)
-  (:xop-movapd .    #x28) (:xop-movapd .    #x29) (:xop-cvtpi2pd .  #x2a) (:xop-movntpd .   #x2b) (:xop-cvttpd2pi .  #x2c) (:xop-cvtpd2pi .   #x2d) (:xop-ucomisd .  #x2e) (:xop-comisd .   #x2f)
-  (:xop-addpd .     #x58) (:xop-mulpd .     #x59) (:xop-cvtpd2ps .  #x5a) (:xop-cvtps2dq .  #x5b) (:xop-subpd .      #x5c) (:xop-minpd .      #x5d) (:xop-divpd .    #x5e) (:xop-maxpd .    #x5f)
-  (:xop-punpckhwb . #x68) (:xop-punpckhwd . #x69) (:xop-punpckhdq . #x6a) (:xop-packssdw .  #x6b) (:xop-punpcklqdq . #x6c) (:xop-punpckhqdq . #x6d) (:xop-movd .     #x6e) (:xop-movdqa .   #x6f)
-  (:xop-grp17 .     #x78) (:xop-extrq .     #x79)  #|   invalid       |#   #|   invalid       |#  (:xop-haddpd       #x7c) (:xop-hsubpd .     #x7d)  (:xop-movd .    #x7e) (:xop-movdqa .   #x7f)
+  (:movupd .    #x10) (:movupd .    #x11) (:movlpd .    #x12) (:movlpd .    #x13) (:unpcklpd .   #x14) (:unpckhpd .   #x15) (:movhpd .   #x16) (:movhpd .   #x17)
+  (:movmskpd .  #x50) (:sqrtpd .    #x51)  #|   invalid   |#   #|   invalid   |#  (:andpd .      #x54) (:andnpd .     #x55) (:orpd .     #x56) (:xorpd .    #x57)
+  (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .    #x64) (:pcmpgtw .    #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
+  (:pshufd .    #x70) (:grp12-p66 . #x71) (:grp13-p66 . #x72) (:grp14-p66 . #x73) (:pcmpeqb .    #x74) (:pcmpeqw .    #x75) (:pcmpeqd .  #x76)  #|   invalid  |#
+  (:xadd .      #xc0) (:xadd .      #xc1) (:cmppd .     #xc2)  #|   invalid   |#  (:pinsrw .     #xc4) (:pextsrw .    #xc5) (:shufpd .   #xc6) (:grp9 .     #xc7)
+  (:addsubpd .  #xd0) (:psrlw .     #xd1) (:psrld .     #xd2) (:psrlq .     #xd3) (:paddq .      #xd4) (:pmullw .     #xd5) (:movq .     #xd6) (:pmovmskb . #xd7)
+  (:pavgb .     #xe0) (:psraw .     #xe1) (:psrad .     #xe2) (:pavgw .     #xe3) (:pmulhuw .    #xe4) (:pmulhw .     #xe5) (:cvttpd2d . #xe6) (:movntdq .  #xe7)
+   #|   invalid   |#  (:psllw .     #xf1) (:pslld .     #xf2) (:psllq .     #xf3) (:pmuludq .    #xf4) (:pmaddwd .    #xf5) (:psadbw .   #xf6) (:maskmovdqu . #xf7)
+  (:movapd .    #x28) (:movapd .    #x29) (:cvtpi2pd .  #x2a) (:movntpd .   #x2b) (:cvttpd2pi .  #x2c) (:cvtpd2pi .   #x2d) (:ucomisd .  #x2e) (:comisd .   #x2f)
+  (:addpd .     #x58) (:mulpd .     #x59) (:cvtpd2ps .  #x5a) (:cvtps2dq .  #x5b) (:subpd .      #x5c) (:minpd .      #x5d) (:divpd .    #x5e) (:maxpd .    #x5f)
+  (:punpckhwb . #x68) (:punpckhwd . #x69) (:punpckhdq . #x6a) (:packssdw .  #x6b) (:punpcklqdq . #x6c) (:punpckhqdq . #x6d) (:movd .     #x6e) (:movdqa .   #x6f)
+  (:grp17 .     #x78) (:extrq .     #x79)  #|   invalid   |#   #|   invalid   |#  (:haddpd       #x7c) (:hsubpd .     #x7d)  (:movd .    #x7e) (:movdqa .   #x7f)
   ;; b[8-f]: strange irregularity (heh) -- absence..
-  (:xop-psubusb .   #xd8) (:xop-psubusw .   #xd9) (:xop-pminub .    #xda) (:xop-pand .      #xdb) (:xop-paddusb .    #xdc) (:xop-paddusw .    #xdd) (:xop-pmaxub .   #xde) (:xop-pandn .    #xdf)
-  (:xop-psubsb .    #xe8) (:xop-psubsw .    #xe9) (:xop-pminsw .    #xea) (:xop-por .       #xeb) (:xop-paddsb .     #xec) (:xop-paddsw .     #xed) (:xop-pmaxsw .   #xee) (:xop-pxor .     #xef)
-  (:xop-psubb .     #xf8) (:xop-psubw .     #xf9) (:xop-psubd .     #xfa) (:xop-psubq .     #xfb) (:xop-padb .       #xfc) (:xop-padw .       #xfd) (:xop-padd .     #xfe)  #|   invalid      |#)
+  (:psubusb .   #xd8) (:psubusw .   #xd9) (:pminub .    #xda) (:pand .      #xdb) (:paddusb .    #xdc) (:paddusw .    #xdd) (:pmaxub .   #xde) (:pandn .    #xdf)
+  (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .     #xec) (:paddsw .     #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
+  (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .       #xfc) (:padw .       #xfd) (:padd .     #xfe)  #|   invalid  |#)
 
 (defattrset *amd64-isa* :opcode-ext-variant-f2-prefixed
-  (:xop-movsd .     #x10) (:xop-movsd .     #x11) (:xop-movddup .   #x12)  #|   invalid       |#   #|   invalid        |#   #|   invalid        |#   #|   invalid      |#   #|   invalid      |#
-   #|   invalid       |#  (:xop-sqrtsd .    #x51)  #|   invalid       |#   #|   invalid       |#   #|   invalid        |#   #|   invalid        |#   #|   invalid      |#   #|   invalid      |#
+  (:movsd .     #x10) (:movsd .     #x11) (:movddup .   #x12)  #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
+   #|   invalid   |#  (:sqrtsd .    #x51)  #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
   ;; 6[0-7]: invalid
-  (:xop-pshuflw .   #x70) #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid        |#   #|   invalid        |#   #|   invalid      |#   #|   invalid      |#
-  (:xop-xadd .      #xc0) (:xop-xadd .      #xc1) (:xop-cmpsd .     #xc2)  #|   invalid       |#   #|   invalid        |#   #|   invalid        |#   #|   invalid      |#  (:xop-grp9 .     #xc7)
-  (:xop-addsubps .  #xd0) #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid        |#   #|   invalid        |#  (:xop-movdq2q .  #xd6)  #|   invalid      |#
-   #|   invalid       |#  #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid        |#   #|   invalid        |#  (:xop-cvtpd2dq . #xe6)  #|   invalid      |#
-  (:xop-lddqu .     #xf0) #|    invalid       |#   #|   invalid       |#   #|   invalid       |#   #|   invalid        |#   #|   invalid        |#   #|   invalid      |#   #|   invalid      |#
-   #|   invalid       |#   #|   invalid       |#  (:xop-cvtsi2sd .  #x2a) (:xop-movntsd .   #x2b) (:xop-cvttsd2si .  #x2c) (:xop-cvtsd2si .   #x2d)  #|   invalid      |#   #|   invalid      |#
-  (:xop-addsd .     #x58) (:xop-mulsd .     #x59) (:xop-cvtsd2ss .  #x5a)  #|   invalid       |#  (:xop-subsd        #x5c) (:xop-minsd .      #x5d) (:xop-divsd .    #x5e) (:xop-maxsd .    #x5f)
+  (:pshuflw .   #x70) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
+  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpsd .     #xc2)  #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#  (:grp9 .     #xc7)
+  (:addsubps .  #xd0) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#  (:movdq2q .  #xd6)  #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#  (:cvtpd2dq . #xe6)  #|   invalid  |#
+  (:lddqu .     #xf0) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
+   #|   invalid   |#   #|   invalid   |#  (:cvtsi2sd .  #x2a) (:movntsd .   #x2b) (:cvttsd2si .  #x2c) (:cvtsd2si .   #x2d)  #|   invalid  |#   #|   invalid  |#
+  (:addsd .     #x58) (:mulsd .     #x59) (:cvtsd2ss .  #x5a)  #|   invalid   |#  (:subsd        #x5c) (:minsd .      #x5d) (:divsd .    #x5e) (:maxsd .    #x5f)
   ;; 6[8-f]: invalid
-  (:xop-insertq .   #x78) (:xop-insertq .   #x79)  #|   invalid       |#   #|   invalid       |#  (:xop-haddps       #x5c) (:xop-hsubps .     #x5d)  #|   invalid      |#   #|   invalid      |#
+  (:insertq .   #x78) (:insertq .   #x79)  #|   invalid   |#   #|   invalid   |#  (:haddps       #x5c) (:hsubps .     #x5d)  #|   invalid  |#   #|   invalid  |#
   ;; b[8-f]: invalid
   ;; d[8-f]: invalid
   ;; e[8-f]: invalid
@@ -233,45 +233,45 @@
   )
 
 (defattrset *amd64-isa* modrm-grp1-80
-  (:mop-add .    #x0) (:mop-or .     #x1) (:mop-adc .    #x2) (:mop-sbb .    #x3) (:mop-and .    #x4) (:mop-sub .    #x5) (:mop-xor .    #x6) (:mop-cmp .    #x7))
+  (:add .    #x0) (:or .     #x1) (:adc .    #x2) (:sbb .    #x3) (:and .    #x4) (:sub .    #x5) (:xor .    #x6) (:cmp .    #x7))
 (defattrset *amd64-isa* modrm-grp1-81
-  (:mop-add .    #x0) (:mop-or .     #x1) (:mop-adc .    #x2) (:mop-sbb .    #x3) (:mop-and .    #x4) (:mop-sub .    #x5) (:mop-xor .    #x6) (:mop-cmp .    #x7))
+  (:add .    #x0) (:or .     #x1) (:adc .    #x2) (:sbb .    #x3) (:and .    #x4) (:sub .    #x5) (:xor .    #x6) (:cmp .    #x7))
 (defattrset *amd64-isa* shortmode-only-modrm-grp1-82
-  (:mop-add .    #x0) (:mop-or .     #x1) (:mop-adc .    #x2) (:mop-sbb .    #x3) (:mop-and .    #x4) (:mop-sub .    #x5) (:mop-xor .    #x6) (:mop-cmp .    #x7))
+  (:add .    #x0) (:or .     #x1) (:adc .    #x2) (:sbb .    #x3) (:and .    #x4) (:sub .    #x5) (:xor .    #x6) (:cmp .    #x7))
 (defattrset *amd64-isa* modrm-grp1-83
-  (:mop-add .    #x0) (:mop-or .     #x1) (:mop-adc .    #x2) (:mop-sbb .    #x3) (:mop-and .    #x4) (:mop-sub .    #x5) (:mop-xor .    #x6) (:mop-cmp .    #x7))
+  (:add .    #x0) (:or .     #x1) (:adc .    #x2) (:sbb .    #x3) (:and .    #x4) (:sub .    #x5) (:xor .    #x6) (:cmp .    #x7))
 (defattrset *amd64-isa* modrm-grp1-8f
-  (:mop-pop .    #x0)  #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+  (:pop .    #x0)  #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp2-c0
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 (defattrset *amd64-isa* modrm-grp2-c1
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 (defattrset *amd64-isa* modrm-grp2-d0
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 (defattrset *amd64-isa* modrm-grp2-d1
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 (defattrset *amd64-isa* modrm-grp2-d2
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 (defattrset *amd64-isa* modrm-grp2-d3
-  (:mop-rol .    #x0) (:mop-ror .    #x1) (:mop-rcl .    #x2) (:mop-rcr .    #x3) (:mop-shl/sal . #x4) (:mop-shr .   #x5) (:mop-shl/sal . #x6) (:mop-sar .   #x7))
+  (:rol .    #x0) (:ror .    #x1) (:rcl .    #x2) (:rcr .    #x3) (:shl/sal . #x4) (:shr .   #x5) (:shl/sal . #x6) (:sar .   #x7))
 
 (defattrset *amd64-isa* modrm-grp3-f6
-  (:mop-test .   #x0) (:mop-test .   #x1) (:mop-not .    #x2) (:mop-neg .    #x3) (:mop-mul .    #x4) (:mop-imul .   #x5) (:mop-div .     #x6) (:mop-idiv .  #x7))
+  (:test .   #x0) (:test .   #x1) (:not .    #x2) (:neg .    #x3) (:mul .    #x4) (:imul .   #x5) (:div .     #x6) (:idiv .  #x7))
 (defattrset *amd64-isa* modrm-grp3-f7
-  (:mop-test .   #x0) (:mop-test .   #x1) (:mop-not .    #x2) (:mop-neg .    #x3) (:mop-mul .    #x4) (:mop-imul .   #x5) (:mop-div .     #x6) (:mop-idiv .  #x7))
+  (:test .   #x0) (:test .   #x1) (:not .    #x2) (:neg .    #x3) (:mul .    #x4) (:imul .   #x5) (:div .     #x6) (:idiv .  #x7))
 
 (defattrset *amd64-isa* modrm-grp4
-  (:mop-inc .    #x0) (:mop-dec .    #x1)  #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid      |#   #| invalid    |#)
+  (:inc .    #x0) (:dec .    #x1)  #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp5
-  (:mop-inc .    #x0) (:mop-dec .    #x1) (:mop-call .   #x2) (:mop-call .   #x3) (:mop-jmp .    #x4) (:mop-jmp .    #x5) (:mop-push .    #x6)  #| invalid    |#)
+  (:inc .    #x0) (:dec .    #x1) (:call .   #x2) (:call .   #x3) (:jmp .    #x4) (:jmp .    #x5) (:push .   #x6)  #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp6
-  (:mop-sldt .   #x0) (:mop-str .    #x1) (:mop-lldt .   #x2) (:mop-ltr .    #x3) (:mop-verr .   #x4) (:mop-verw .   #x5)  #| invalid      |#   #| invalid    |#)
+  (:sldt .   #x0) (:str .    #x1) (:lldt .   #x2) (:ltr .    #x3) (:verr .   #x4) (:verw .   #x5)  #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp7
-  (:mop-sgdt .   #x0) (:mop-trik0 .  #x1) (:mop-lgdt .   #x2) (:mop-trik1 .  #x3) (:mop-smsw .   #x4)  #| invalid     |#  (:mop-lmsw .    #x6) (:mop-trik2 . #x7))
+  (:sgdt .   #x0) (:trik0 .  #x1) (:lgdt .   #x2) (:trik1 .  #x3) (:smsw .   #x4)  #| invalid |#  (:lmsw .   #x6) (:trik2 .  #x7))
 
 (defattrset *amd64-isa* modrm-grp7-nmod11
   (:mop-sidt .     #x1) (:mop-lidt .     #x3) (:mop-invlpg .  #x7))
@@ -283,49 +283,49 @@
   (:trik-monitor . #x0) (:trik-mwait .   #x1))
 
 (defattrset *amd64-isa* modrm-grp8
-   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#  (:mop-bt .     #x4) (:mop-bts .    #x5) (:mop-btr .    #x6) (:mop-btc .    #x7))
+   #| invalid     |#   #| invalid     |#   #| invalid   |#   #| invalid   |#  (:bt .     #x4) (:bts .    #x5) (:btr .    #x6) (:btc .    #x7))
 
-(defattrset *amd64-isa* modrm-grp9
-   #| invalid     |#  (:mop-cmpxchg8b . #x1) #| invalid   |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+(defattrset *amd64-isa* modrm-grp9 
+   #| invalid     |#  (:cmpxchg8/16b . #x1) #| invalid  |#   #| invalid   |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp10 ;; what a genius plan...
-   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+   #| invalid     |#   #| invalid     |#   #| invalid   |#   #| invalid   |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp11-c6
-  (:mop-mov .    #x0)  #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+  (:mov .        #x0)  #| invalid     |#   #| invalid   |#   #| invalid   |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 (defattrset *amd64-isa* modrm-grp11-c7
-  (:mop-mov .    #x0)  #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+  (:mov .        #x0)  #| invalid     |#   #| invalid   |#   #| invalid   |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp12-u
-   #| invalid     |#   #| invalid     |#  (:mop-psrlw .  #x2)  #| invalid     |#  (:mop-psraw .  #x4)  #| invalid     |#  (:mop-psllw .  #x6)  #| invalid     |#)
+   #| invalid     |#   #| invalid     |#  (:psrlw .    #x2)  #| invalid   |#  (:psraw .  #x4)  #| invalid |#  (:psllw .  #x6)  #| invalid |#)
 (defattrset *amd64-isa* modrm-grp12-66
-   #| invalid     |#   #| invalid     |#  (:mop-psrlw .  #x2)  #| invalid     |#  (:mop-psraw .  #x4)  #| invalid     |#  (:mop-psllw .  #x6)  #| invalid     |#)
+   #| invalid     |#   #| invalid     |#  (:psrlw .    #x2)  #| invalid   |#  (:psraw .  #x4)  #| invalid |#  (:psllw .  #x6)  #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp13-u
-   #| invalid     |#   #| invalid     |#  (:mop-psrld .  #x2)  #| invalid     |#  (:mop-psrad .  #x4)  #| invalid     |#  (:mop-pslld .  #x6)  #| invalid     |#)
+   #| invalid     |#   #| invalid     |#  (:psrld .    #x2)  #| invalid   |#  (:psrad .  #x4)  #| invalid |#  (:pslld .  #x6)  #| invalid |#)
 (defattrset *amd64-isa* modrm-grp13-66
-   #| invalid     |#   #| invalid     |#  (:mop-psrld .  #x2)  #| invalid     |#  (:mop-psrad .  #x4)  #| invalid     |#  (:mop-pslld .  #x6)  #| invalid     |#)
+   #| invalid     |#   #| invalid     |#  (:psrld .    #x2)  #| invalid   |#  (:psrad .  #x4)  #| invalid |#  (:pslld .  #x6)  #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grp14-u
-   #| invalid     |#   #| invalid     |#  (:mop-psrlq .  #x2)  #| invalid     |#   #| invalid     |#   #| invalid     |#  (:mop-psllq .  #x6)  #| invalid     |#)
+   #| invalid     |#   #| invalid     |#  (:psrlq .    #x2)  #| invalid   |#   #| invalid |#   #| invalid |#  (:psllq .  #x6)  #| invalid |#)
 (defattrset *amd64-isa* modrm-grp14-66
-   #| invalid     |#   #| invalid     |#  (:mop-psrlq .  #x2) (:mop-psrldq . #x3)  #| invalid     |#   #| invalid     |#  (:mop-psllq .  #x6) (:mop-pslldq . #x7))
+   #| invalid     |#   #| invalid     |#  (:psrlq .    #x2) (:psrldq .   #x3)  #| invalid |#   #| invalid |#  (:psllq .  #x6) (:pslldq . #x7))
 
 (defattrset *amd64-isa* modrm-grp15
-  (:mop-fxsave . #x0) (:mop-fxrstor . #x1) (:mop-ldmxcsr . #x2) (:mop-stmxcsr . #x3) #| invalid   |#   #| trickery    |#   #| trickery    |#   #| trickery    |#)
+  (:fxsave .     #x0) (:fxrstor .    #x1) (:ldmxcsr .  #x2) (:stmxcsr .  #x3)  #| invalid |#   #| trickery|#   #| trickery|#   #| trickery|#)
 (defattrset *amd64-isa* modrm-grp15-nmod11
-                                                                                                                                              (:mop-clflush . #x7))
+                                                                                                                              (:clflush . #x7))
 (defattrset *amd64-isa* modrm-grp15-mod11
-                                                                                                    (:mop-mfence  . #x5) (:mop-lfence  . #x6) (:mop-sfence  . #x7))
+                                                                                              (:mfence . #x5) (:lfence . #x6) (:sfence . #x7))
 
 (defattrset *amd64-isa* modrm-grp16
-  (:mop-prefetch . #x0) (:mop-prefetch . #x1) (:mop-prefetch . #x2) (:mop-prefetch . #x3) (:mop-nop . #x4) (:mop-nop . #x5) (:mop-nop .  #x6) (:mop-nop .    #x7))
+  (:prefetch .   #x0) (:prefetch .   #x1) (:prefetch . #x2) (:prefetch . #x3) (:nop .    #x4) (:nop .    #x5) (:nop .    #x6) (:nop .     #x7))
 
 (defattrset *amd64-isa* modrm-grp17
-  (:mop-extrq .  #x0)  #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+  (:extrq .      #x0)  #| invalid     |#   #| invalid   |#   #| invalid   |#   #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 (defattrset *amd64-isa* modrm-grpp
-  (:mop-prefetch . #x0) (:mop-prefetch . #x1) #| reserved |# (:mop-prefetch . #x3) #| invalid     |#   #| invalid     |#   #| invalid     |#   #| invalid     |#)
+  (:prefetch .   #x0) (:prefetch .   #x1)  #| reserved  |#  (:prefetch . #x3)  #| invalid |#   #| invalid |#   #| invalid |#   #| invalid |#)
 
 
 ;;; ModRM

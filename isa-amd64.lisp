@@ -61,7 +61,7 @@
 (defattrset *amd64-isa* :rex-prefix-b
   (:b .             #b1))
 (defattrset *amd64-isa* :xop-prefix
-  (:twop-prefix .   #x0f))
+  (:xop-prefix .   #x0f))
 
 (defattrset *amd64-isa* :opcode
   (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#  #| 32bit mode   |#
@@ -80,7 +80,7 @@
   (:grp2-d0 .   #xd0) (:grp2-d1 . #xd1) (:grp2-d2 .  #xd2) (:grp2-d3 .   #xd3)  #| 32bit mode  |#   #| 32bit mode  |#   #| 32bit mode|#  (:xlat .      #xd7)
   (:loopne/nz . #xe0) (:loope/z . #xe1) (:loop .     #xe2) (:jxcxz .     #xe3) (:in .        #xe4) (:in .        #xe5) (:out .     #xe6) (:out .       #xe7)
    #|  lock       |#  (:int1 .    #xf1)  #|  repn      |#   #|  rep        |#  (:hlt .       #xf4) (:cmc .       #xf5) (:grp3-f6 . #xf6) (:grp3-f7 .   #xf7)
-  (:or .        #x08) (:or .      #x09) (:or .       #x0a) (:or .        #x0b) (:or .        #x0c) (:or .        #x0d)  #| 32bit mode|#   #| twop        |#
+  (:or .        #x08) (:or .      #x09) (:or .       #x0a) (:or .        #x0b) (:or .        #x0c) (:or .        #x0d)  #| 32bit mode|#   #| xop         |#
   (:sbb .       #x18) (:sbb .     #x19) (:sbb .      #x1a) (:sbb .       #x1b) (:sbb .       #x1c) (:sbb .       #x1d)  #| 32bit mode|#   #| 32bit mode  |# 
   (:sub .       #x28) (:sub .     #x29) (:sub .      #x2a) (:sub .       #x2b) (:sub .       #x2c) (:sub .       #x2d)  #| CS seg    |#   #| 32bit mode  |# 
   (:cmp .       #x38) (:cmp .     #x39) (:cmp .      #x3a) (:cmp .       #x3b) (:cmp .       #x3c) (:cmp .       #x3d)  #| DS seg    |#   #| 32bit mode  |# 
@@ -394,48 +394,59 @@
 ;;  ! - does not source its first argument
 ;;  2! - does not source its second argument
 
-(defamd64format "<>AL"                   (:rflags :al)                    (:rflags :al))                                 ;; AAA, AAS, DAA, DAS
-(defamd64format "<AL, AH"                (:rflags :al)                    (:al :ah))                                     ;; AAD
-(defamd64format "<2|2!AL, AH"            (:rflags :al :ah)                (:al :imm8))                                   ;; AAM
-(defamd64format "<AL, imm8"              (:rflags :al)                    (:al :imm8))                                   ;; ADC, ADD, SBB, SUB
-(defamd64format "<AX, imm16"             (:rflags :ax)                    (:ax :imm16))                                  ;; ADC, ADD, SBB, SUB
-(defamd64format "<EAX, imm32"            (:rflags :eax)                   (:eax :imm32))                                 ;; ADC, ADD, SBB, SUB
-(defamd64format "<RAX, imm32"            (:rflags :rax)                   (:rax :imm32))                                 ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem8, imm8"        (:rflags :reg/mem8)              (:reg/mem8 :imm8))                             ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, imm16"      (:rflags :reg/mem16)             (:reg/mem16 :imm16))                           ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem32, imm32"      (:rflags :reg/mem32)             (:reg/mem32 :imm32))                           ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem64, imm32"      (:rflags :reg/mem64)             (:reg/mem64 :imm32))                           ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, imm8"       (:rflags :reg/mem16)             (:reg/mem16 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem32, imm8"       (:rflags :reg/mem32)             (:reg/mem32 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem64, imm8"       (:rflags :reg/mem64)             (:reg/mem64 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem8, reg8"        (:rflags :reg/mem8)              (:reg/mem8 :reg8))                             ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, reg16"      (:rflags :reg/mem16)             (:reg/mem16 :reg16))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem32, reg32"      (:rflags :reg/mem32)             (:reg/mem32 :reg32))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem64, reg64"      (:rflags :reg/mem64)             (:reg/mem64 :reg64))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg8, reg/mem8"        (:rflags :reg8)                  (:reg8 :reg/mem8))                             ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg16, reg/mem16"      (:rflags :reg16)                 (:reg16 :reg/mem16))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
-(defamd64format "<reg32, reg/mem32"      (:rflags :reg32)                 (:reg32 :reg/mem32))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
-(defamd64format "<reg64, reg/mem64"      (:rflags :reg64)                 (:reg64 :reg/mem64))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
+;;;
+;;; Warning: we are only storing the last full discriminating byte of the opcode,
+;;; and sometimes (modrm...) we have an xinst ambiguity and a tail to examine...
+;;;
 
-(defamd64format "AL, imm8"               (:al)                            (:al :imm8))                                   ;; AND, OR, XOR
-(defamd64format "AX, imm16"              (:ax)                            (:ax :imm1))                                   ;; AND, OR, XOR
-(defamd64format "EAX, imm32"             (:eax)                           (:eax :imm32))                                 ;; AND, OR, XOR
-(defamd64format "RAX, imm32"             (:rax)                           (:rax :imm32))                                 ;; AND, OR, XOR
-(defamd64format "reg/mem8, imm8"         (:reg/mem8)                      (:reg/mem8 :imm8))                             ;; AND, OR, XOR
-(defamd64format "reg/mem16, imm16"       (:reg/mem16)                     (:reg/mem16 :imm16))                           ;; AND, OR, XOR
-(defamd64format "reg/mem32, imm32"       (:reg/mem32)                     (:reg/mem32 :imm32))                           ;; AND, OR, XOR
-(defamd64format "reg/mem64, imm32"       (:reg/mem64)                     (:reg/mem64 :imm32))                           ;; AND, OR, XOR
-(defamd64format "reg/mem16, imm8"        (:reg/mem16)                     (:reg/mem16 :imm8))                            ;; AND, OR, XOR
-(defamd64format "reg/mem32, imm8"        (:reg/mem32)                     (:reg/mem32 :imm8))                            ;; AND, OR, XOR
-(defamd64format "reg/mem64, imm8"        (:reg/mem64)                     (:reg/mem64 :imm8))                            ;; AND, OR, XOR
-(defamd64format "reg/mem8, reg8"         (:reg/mem8)                      (:reg/mem8 :reg8))                             ;; AND, OR, XOR
-(defamd64format "reg/mem16, reg16"       (:reg/mem16)                     (:reg/mem16 :reg16))                           ;; AND, OR, XOR
-(defamd64format "reg/mem32, reg32"       (:reg/mem32)                     (:reg/mem32 :reg32))                           ;; AND, OR, XOR
-(defamd64format "reg/mem64, reg64"       (:reg/mem64)                     (:reg/mem64 :reg64))                           ;; AND, OR, XOR
-(defamd64format "reg8, reg/mem8"         (:reg8)                          (:reg8 :reg/mem8))                             ;; AND, OR, XOR
-(defamd64format "reg16, reg/mem16"       (:reg16)                         (:reg16 :reg/mem16))                           ;; AND, OR, XOR
-(defamd64format "reg32, reg/mem32"       (:reg32)                         (:reg32 :reg/mem32))                           ;; AND, OR, XOR
-(defamd64format "reg64, reg/mem64"       (:reg64)                         (:reg64 :reg/mem64))                           ;; AND, OR, XOR
+(defamd64format "<>AL"                   (:rflags :al)           (:rflags :al)          (:aaa #x37) (:aas #x3f) (:daa #x27) (:das #x2f))
+(defamd64format "<AL, AH, imm8"          (:rflags :al)           (:al :ah :imm8)        (:aad #xd5))
+(defamd64format "<2|2!AL, AH, imm8"      (:rflags :al :ah)       (:al :imm8)            (:aam #xd4))
+(defamd64format "<AL, imm8"              (:rflags :al)           (:al :imm8)            (:adc #x14) (:add #x04) (:sbb #x1c) (:sub #x2c))
+(defamd64format "<AX, imm16"             (:rflags :ax)           (:ax :imm16)           (:adc #x15) (:add #x05) (:sbb #x1d) (:sub #x2d))
+(defamd64format "<EAX, imm32"            (:rflags :eax)          (:eax :imm32)          (:adc #x15) (:add #x05) (:sbb #x1d) (:sub #x2d))
+(defamd64format "<RAX, imm32"            (:rflags :rax)          (:rax :imm32)          (:adc #x15) (:add #x05) (:sbb #x1d) (:sub #x2d))
+(defamd64format "<reg/mem8, imm8"        (:rflags :reg/mem8)     (:reg/mem8 :imm8)      (:adc #x80) (:add #x80) (:sbb #x80) (:sub #x80))
+(defamd64format "<reg/mem16, imm16"      (:rflags :reg/mem16)    (:reg/mem16 :imm16)    (:adc #x81) (:add #x81) (:sbb #x81) (:sub #x81))
+(defamd64format "<reg/mem32, imm32"      (:rflags :reg/mem32)    (:reg/mem32 :imm32)    (:adc #x81) (:add #x81) (:sbb #x81) (:sub #x81))
+(defamd64format "<reg/mem64, imm32"      (:rflags :reg/mem64)    (:reg/mem64 :imm32)    (:adc #x81) (:add #x81) (:sbb #x81) (:sub #x81))
+(defamd64format "<reg/mem16, imm8"       (:rflags :reg/mem16)    (:reg/mem16 :imm8)     (:adc #x83) (:add #x83) (:sbb #x83) (:sub #x83) (:btc #xba) (:btr #xba) (:bts #xba))
+(defamd64format "<reg/mem32, imm8"       (:rflags :reg/mem32)    (:reg/mem32 :imm8)     (:adc #x83) (:add #x83) (:sbb #x83) (:sub #x83) (:btc #xba) (:btr #xba) (:bts #xba))
+(defamd64format "<reg/mem64, imm8"       (:rflags :reg/mem64)    (:reg/mem64 :imm8)     (:adc #x83) (:add #x83) (:sbb #x83) (:sub #x83) (:btc #xba) (:btr #xba) (:bts #xba))
+(defamd64format "<reg/mem8, reg8"        (:rflags :reg/mem8)     (:reg/mem8 :reg8)      (:adc #x10) (:add #x00) (:sbb #x18) (:sub #x28))
+(defamd64format "<reg/mem16, reg16"      (:rflags :reg/mem16)    (:reg/mem16 :reg16)    (:adc #x11) (:add #x01) (:sbb #x19) (:sub #x29) (:btc #xbb) (:btr #xb3) (:bts #xab))
+(defamd64format "<reg/mem32, reg32"      (:rflags :reg/mem32)    (:reg/mem32 :reg32)    (:adc #x11) (:add #x01) (:sbb #x19) (:sub #x29) (:btc #xbb) (:btr #xb3) (:bts #xab))
+(defamd64format "<reg/mem64, reg64"      (:rflags :reg/mem64)    (:reg/mem64 :reg64)    (:adc #x11) (:add #x01) (:sbb #x19) (:sub #x29) (:btc #xbb) (:btr #xb3) (:bts #xab))
+(defamd64format "<reg8, reg/mem8"        (:rflags :reg8)         (:reg8 :reg/mem8)      (:adc #x12) (:add #x02) (:sbb #x1a) (:sub #x2a))
+(defamd64format "<reg16, reg/mem16"      (:rflags :reg16)        (:reg16 :reg/mem16)    (:adc #x13) (:add #x03) (:sbb #x1b) (:sub #x2b))
+(defamd64format "<reg32, reg/mem32"      (:rflags :reg32)        (:reg32 :reg/mem32)    (:adc #x13) (:add #x03) (:sbb #x1b) (:sub #x2b))
+(defamd64format "<reg64, reg/mem64"      (:rflags :reg64)        (:reg64 :reg/mem64)    (:adc #x13) (:add #x03) (:sbb #x1b) (:sub #x2b))
+;; opcode sharing pools:
+;;   ADC, ADD, SBB, SUB, AND, OR and XOR
+;;   BTC, BTR, BTS
+
+(defamd64format "AL, imm8"               (:al)                   (:al :imm8)            (:and #x24) (:or #x0c) (:xor #x34))
+(defamd64format "AX, imm16"              (:ax)                   (:ax :imm1)            (:and #x25) (:or #x0d) (:xor #x35))
+(defamd64format "EAX, imm32"             (:eax)                  (:eax :imm32)          (:and #x25) (:or #x0d) (:xor #x35))
+(defamd64format "RAX, imm32"             (:rax)                  (:rax :imm32)          (:and #x25) (:or #x0d) (:xor #x35))
+(defamd64format "reg/mem8, imm8"         (:reg/mem8)             (:reg/mem8 :imm8)      (:and #x80) (:or #x80) (:xor #x80))
+(defamd64format "reg/mem16, imm16"       (:reg/mem16)            (:reg/mem16 :imm16)    (:and #x81) (:or #x81) (:xor #x81))
+(defamd64format "reg/mem32, imm32"       (:reg/mem32)            (:reg/mem32 :imm32)    (:and #x81) (:or #x81) (:xor #x81))
+(defamd64format "reg/mem64, imm32"       (:reg/mem64)            (:reg/mem64 :imm32)    (:and #x81) (:or #x81) (:xor #x81))
+(defamd64format "reg/mem16, imm8"        (:reg/mem16)            (:reg/mem16 :imm8)     (:and #x83) (:or #x83) (:xor #x83))
+(defamd64format "reg/mem32, imm8"        (:reg/mem32)            (:reg/mem32 :imm8)     (:and #x83) (:or #x83) (:xor #x83))
+(defamd64format "reg/mem64, imm8"        (:reg/mem64)            (:reg/mem64 :imm8)     (:and #x83) (:or #x83) (:xor #x83))
+(defamd64format "reg/mem8, reg8"         (:reg/mem8)             (:reg/mem8 :reg8)      (:and #x20) (:or #x08) (:xor #x30))
+(defamd64format "reg/mem16, reg16"       (:reg/mem16)            (:reg/mem16 :reg16)    (:and #x21) (:or #x09) (:xor #x31))
+(defamd64format "reg/mem32, reg32"       (:reg/mem32)            (:reg/mem32 :reg32)    (:and #x21) (:or #x09) (:xor #x31))
+(defamd64format "reg/mem64, reg64"       (:reg/mem64)            (:reg/mem64 :reg64)    (:and #x21) (:or #x09) (:xor #x31))
+(defamd64format "reg8, reg/mem8"         (:reg8)                 (:reg8 :reg/mem8)      (:and #x22) (:or #x0a) (:xor #x32))
+(defamd64format "reg16, reg/mem16"       (:reg16)                (:reg16 :reg/mem16)    (:and #x23) (:or #x0b) (:xor #x33))
+(defamd64format "reg32, reg/mem32"       (:reg32)                (:reg32 :reg/mem32)    (:and #x23) (:or #x0b) (:xor #x33))
+(defamd64format "reg64, reg/mem64"       (:reg64)                (:reg64 :reg/mem64)    (:and #x23) (:or #x0b) (:xor #x33))
+;; opcode sharing pools:
+;;   ADC, ADD, SBB, SUB, AND, OR and XOR
+;;   BTC, BTR, BTS
 
 (defamd64format ">!reg/mem8"             (:reg/mem8)                      (:rflags))                                     ;; SETxx
 (defamd64format ">reg16, reg/mem16"      (:reg16)                         (:rflags :reg16 :reg/mem16))                   ;; CMOVxx

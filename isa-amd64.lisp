@@ -377,6 +377,8 @@
 ;; Issues:
 ;;  the correspondence of sources and destinatios to instruction arguments is unclear, and in particular,
 ;;  whether we have the first argument as source is unclear from our representation
+;;
+;;  GDTR, IDTR, RPL, DPL, STAR, and, likely, some other system registers are either not accounted for properly, or ignored completely
 
 ;; Mnemonics:
 ;;  > - depends on RFLAGS
@@ -385,157 +387,166 @@
 ;;  @@ - like @, but modifies more
 ;;  @@@ - like @, but modifies still more
 ;;  # - port I/O
+;;  $ - system-level crap is going-on
 ;;;; invert sourceness/destness of first/second/ argument
 ;;  | - does not modify its first argument
 ;;  2| - /does/ modify its second argument
 ;;  ! - does not source its first argument
 ;;  2! - does not source its second argument
 
-(defamd64format "<>AL"                   (:rflags :al)                    (:rflags :al))       ;; AAA, AAS, DAA, DAS
-(defamd64format "<AL, AH"                (:rflags :al)                    (:al :ah))           ;; AAD
-(defamd64format "<2|2!AL, AH"            (:rflags :al :ah)                (:al :imm8))         ;; AAM
-(defamd64format "<AL, imm8"              (:rflags :al)                    (:al :imm8))         ;; ADC, ADD, SBB, SUB
-(defamd64format "<AX, imm16"             (:rflags :ax)                    (:ax :imm16))        ;; ADC, ADD, SBB, SUB
-(defamd64format "<EAX, imm32"            (:rflags :eax)                   (:eax :imm32))       ;; ADC, ADD, SBB, SUB
-(defamd64format "<RAX, imm32"            (:rflags :rax)                   (:rax :imm32))       ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem8, imm8"        (:rflags :reg/mem8)              (:reg/mem8 :imm8))   ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, imm16"      (:rflags :reg/mem16)             (:reg/mem16 :imm16)) ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem32, imm32"      (:rflags :reg/mem32)             (:reg/mem32 :imm32)) ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem64, imm32"      (:rflags :reg/mem64)             (:reg/mem64 :imm32)) ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, imm8"       (:rflags :reg/mem16)             (:reg/mem16 :imm8))  ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem32, imm8"       (:rflags :reg/mem32)             (:reg/mem32 :imm8))  ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem64, imm8"       (:rflags :reg/mem64)             (:reg/mem64 :imm8))  ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem8, reg8"        (:rflags :reg/mem8)              (:reg/mem8 :reg8))   ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg/mem16, reg16"      (:rflags :reg/mem16)             (:reg/mem16 :reg16)) ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem32, reg32"      (:rflags :reg/mem32)             (:reg/mem32 :reg32)) ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg/mem64, reg64"      (:rflags :reg/mem64)             (:reg/mem64 :reg64)) ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
-(defamd64format "<reg8, reg/mem8"        (:rflags :reg8)                  (:reg8 :reg/mem8))   ;; ADC, ADD, SBB, SUB
-(defamd64format "<reg16, reg/mem16"      (:rflags :reg16)                 (:reg16 :reg/mem16)) ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
-(defamd64format "<reg32, reg/mem32"      (:rflags :reg32)                 (:reg32 :reg/mem32)) ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
-(defamd64format "<reg64, reg/mem64"      (:rflags :reg64)                 (:reg64 :reg/mem64)) ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
+(defamd64format "<>AL"                   (:rflags :al)                    (:rflags :al))                                 ;; AAA, AAS, DAA, DAS
+(defamd64format "<AL, AH"                (:rflags :al)                    (:al :ah))                                     ;; AAD
+(defamd64format "<2|2!AL, AH"            (:rflags :al :ah)                (:al :imm8))                                   ;; AAM
+(defamd64format "<AL, imm8"              (:rflags :al)                    (:al :imm8))                                   ;; ADC, ADD, SBB, SUB
+(defamd64format "<AX, imm16"             (:rflags :ax)                    (:ax :imm16))                                  ;; ADC, ADD, SBB, SUB
+(defamd64format "<EAX, imm32"            (:rflags :eax)                   (:eax :imm32))                                 ;; ADC, ADD, SBB, SUB
+(defamd64format "<RAX, imm32"            (:rflags :rax)                   (:rax :imm32))                                 ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem8, imm8"        (:rflags :reg/mem8)              (:reg/mem8 :imm8))                             ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem16, imm16"      (:rflags :reg/mem16)             (:reg/mem16 :imm16))                           ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem32, imm32"      (:rflags :reg/mem32)             (:reg/mem32 :imm32))                           ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem64, imm32"      (:rflags :reg/mem64)             (:reg/mem64 :imm32))                           ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem16, imm8"       (:rflags :reg/mem16)             (:reg/mem16 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg/mem32, imm8"       (:rflags :reg/mem32)             (:reg/mem32 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg/mem64, imm8"       (:rflags :reg/mem64)             (:reg/mem64 :imm8))                            ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg/mem8, reg8"        (:rflags :reg/mem8)              (:reg/mem8 :reg8))                             ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg/mem16, reg16"      (:rflags :reg/mem16)             (:reg/mem16 :reg16))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg/mem32, reg32"      (:rflags :reg/mem32)             (:reg/mem32 :reg32))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg/mem64, reg64"      (:rflags :reg/mem64)             (:reg/mem64 :reg64))                           ;; ADC, ADD, SBB, SUB, BTC, BTR, BTS
+(defamd64format "<reg8, reg/mem8"        (:rflags :reg8)                  (:reg8 :reg/mem8))                             ;; ADC, ADD, SBB, SUB
+(defamd64format "<reg16, reg/mem16"      (:rflags :reg16)                 (:reg16 :reg/mem16))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
+(defamd64format "<reg32, reg/mem32"      (:rflags :reg32)                 (:reg32 :reg/mem32))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
+(defamd64format "<reg64, reg/mem64"      (:rflags :reg64)                 (:reg64 :reg/mem64))                           ;; ADC, ADD, SBB, SUB, BSF, BSR, IMUL
 
-(defamd64format "AL, imm8"               (:al)                            (:al :imm8))         ;; AND, OR, XOR
-(defamd64format "AX, imm16"              (:ax)                            (:ax :imm1))         ;; AND, OR, XOR
-(defamd64format "EAX, imm32"             (:eax)                           (:eax :imm32))       ;; AND, OR, XOR
-(defamd64format "RAX, imm32"             (:rax)                           (:rax :imm32))       ;; AND, OR, XOR
-(defamd64format "reg/mem8, imm8"         (:reg/mem8)                      (:reg/mem8 :imm8))   ;; AND, OR, XOR
-(defamd64format "reg/mem16, imm16"       (:reg/mem16)                     (:reg/mem16 :imm16)) ;; AND, OR, XOR
-(defamd64format "reg/mem32, imm32"       (:reg/mem32)                     (:reg/mem32 :imm32)) ;; AND, OR, XOR
-(defamd64format "reg/mem64, imm32"       (:reg/mem64)                     (:reg/mem64 :imm32)) ;; AND, OR, XOR
-(defamd64format "reg/mem16, imm8"        (:reg/mem16)                     (:reg/mem16 :imm8))  ;; AND, OR, XOR
-(defamd64format "reg/mem32, imm8"        (:reg/mem32)                     (:reg/mem32 :imm8))  ;; AND, OR, XOR
-(defamd64format "reg/mem64, imm8"        (:reg/mem64)                     (:reg/mem64 :imm8))  ;; AND, OR, XOR
-(defamd64format "reg/mem8, reg8"         (:reg/mem8)                      (:reg/mem8 :reg8))   ;; AND, OR, XOR
-(defamd64format "reg/mem16, reg16"       (:reg/mem16)                     (:reg/mem16 :reg16)) ;; AND, OR, XOR
-(defamd64format "reg/mem32, reg32"       (:reg/mem32)                     (:reg/mem32 :reg32)) ;; AND, OR, XOR
-(defamd64format "reg/mem64, reg64"       (:reg/mem64)                     (:reg/mem64 :reg64)) ;; AND, OR, XOR
-(defamd64format "reg8, reg/mem8"         (:reg8)                          (:reg8 :reg/mem8))   ;; AND, OR, XOR
-(defamd64format "reg16, reg/mem16"       (:reg16)                         (:reg16 :reg/mem16)) ;; AND, OR, XOR
-(defamd64format "reg32, reg/mem32"       (:reg32)                         (:reg32 :reg/mem32)) ;; AND, OR, XOR
-(defamd64format "reg64, reg/mem64"       (:reg64)                         (:reg64 :reg/mem64)) ;; AND, OR, XOR
+(defamd64format "AL, imm8"               (:al)                            (:al :imm8))                                   ;; AND, OR, XOR
+(defamd64format "AX, imm16"              (:ax)                            (:ax :imm1))                                   ;; AND, OR, XOR
+(defamd64format "EAX, imm32"             (:eax)                           (:eax :imm32))                                 ;; AND, OR, XOR
+(defamd64format "RAX, imm32"             (:rax)                           (:rax :imm32))                                 ;; AND, OR, XOR
+(defamd64format "reg/mem8, imm8"         (:reg/mem8)                      (:reg/mem8 :imm8))                             ;; AND, OR, XOR
+(defamd64format "reg/mem16, imm16"       (:reg/mem16)                     (:reg/mem16 :imm16))                           ;; AND, OR, XOR
+(defamd64format "reg/mem32, imm32"       (:reg/mem32)                     (:reg/mem32 :imm32))                           ;; AND, OR, XOR
+(defamd64format "reg/mem64, imm32"       (:reg/mem64)                     (:reg/mem64 :imm32))                           ;; AND, OR, XOR
+(defamd64format "reg/mem16, imm8"        (:reg/mem16)                     (:reg/mem16 :imm8))                            ;; AND, OR, XOR
+(defamd64format "reg/mem32, imm8"        (:reg/mem32)                     (:reg/mem32 :imm8))                            ;; AND, OR, XOR
+(defamd64format "reg/mem64, imm8"        (:reg/mem64)                     (:reg/mem64 :imm8))                            ;; AND, OR, XOR
+(defamd64format "reg/mem8, reg8"         (:reg/mem8)                      (:reg/mem8 :reg8))                             ;; AND, OR, XOR
+(defamd64format "reg/mem16, reg16"       (:reg/mem16)                     (:reg/mem16 :reg16))                           ;; AND, OR, XOR
+(defamd64format "reg/mem32, reg32"       (:reg/mem32)                     (:reg/mem32 :reg32))                           ;; AND, OR, XOR
+(defamd64format "reg/mem64, reg64"       (:reg/mem64)                     (:reg/mem64 :reg64))                           ;; AND, OR, XOR
+(defamd64format "reg8, reg/mem8"         (:reg8)                          (:reg8 :reg/mem8))                             ;; AND, OR, XOR
+(defamd64format "reg16, reg/mem16"       (:reg16)                         (:reg16 :reg/mem16))                           ;; AND, OR, XOR
+(defamd64format "reg32, reg/mem32"       (:reg32)                         (:reg32 :reg/mem32))                           ;; AND, OR, XOR
+(defamd64format "reg64, reg/mem64"       (:reg64)                         (:reg64 :reg/mem64))                           ;; AND, OR, XOR
 
-(defamd64format ">!reg/mem8"             (:reg/mem8)                      (:rflags))                   ;; SETxx
-(defamd64format ">reg16, reg/mem16"      (:reg16)                         (:rflags :reg16 :reg/mem16)) ;; CMOVxx
-(defamd64format ">reg32, reg/mem32"      (:reg32)                         (:rflags :reg32 :reg/mem32)) ;; CMOVxx
-(defamd64format ">reg64, reg/mem64"      (:reg64)                         (:rflags :reg64 :reg/mem64)) ;; CMOVxx
+(defamd64format ">!reg/mem8"             (:reg/mem8)                      (:rflags))                                     ;; SETxx
+(defamd64format ">reg16, reg/mem16"      (:reg16)                         (:rflags :reg16 :reg/mem16))                   ;; CMOVxx
+(defamd64format ">reg32, reg/mem32"      (:reg32)                         (:rflags :reg32 :reg/mem32))                   ;; CMOVxx
+(defamd64format ">reg64, reg/mem64"      (:reg64)                         (:rflags :reg64 :reg/mem64))                   ;; CMOVxx
 
-(defamd64format "<|AL, imm8"             (:rflags)                        (:al :imm8))         ;; CMP, TEST
-(defamd64format "<|AX, imm16"            (:rflags)                        (:ax :imm16))        ;; CMP, TEST
-(defamd64format "<|EAX, imm32"           (:rflags)                        (:eax :imm32))       ;; CMP, TEST
-(defamd64format "<|RAX, imm32"           (:rflags)                        (:rax :imm32))       ;; CMP, TEST
-(defamd64format "<|reg/mem8, imm8"       (:rflags)                        (:reg/mem8 :imm8))   ;; CMP, TEST
-(defamd64format "<|reg/mem16, imm16"     (:rflags)                        (:reg/mem16 :imm16)) ;; CMP, TEST
-(defamd64format "<|reg/mem32, imm32"     (:rflags)                        (:reg/mem32 :imm32)) ;; CMP, TEST
-(defamd64format "<|reg/mem64, imm32"     (:rflags)                        (:reg/mem64 :imm32)) ;; CMP, TEST
-(defamd64format "<|reg/mem16, imm8"      (:rflags)                        (:reg/mem16 :imm8))  ;; CMP, BT
-(defamd64format "<|reg/mem32, imm8"      (:rflags)                        (:reg/mem32 :imm8))  ;; CMP, BT
-(defamd64format "<|reg/mem64, imm8"      (:rflags)                        (:reg/mem64 :imm8))  ;; CMP, BT
-(defamd64format "<|reg/mem8, reg8"       (:rflags)                        (:reg/mem8 :reg8))   ;; CMP, TEST
-(defamd64format "<|reg/mem16, reg16"     (:rflags)                        (:reg/mem16 :reg16)) ;; CMP, TEST, BT
-(defamd64format "<|reg/mem32, reg32"     (:rflags)                        (:reg/mem32 :reg32)) ;; CMP, TEST, BT
-(defamd64format "<|reg/mem64, reg64"     (:rflags)                        (:reg/mem64 :reg64)) ;; CMP, TEST, BT
-(defamd64format "<|reg8, reg/mem8"       (:rflags)                        (:reg8 :reg/mem8))   ;; CMP
-(defamd64format "<|reg16, reg/mem16"     (:rflags)                        (:reg16 :reg/mem16)) ;; CMP
-(defamd64format "<|reg32, reg/mem32"     (:rflags)                        (:reg32 :reg/mem32)) ;; CMP
-(defamd64format "<|reg64, reg/mem64"     (:rflags)                        (:reg64 :reg/mem64)) ;; CMP
+(defamd64format "<|AL, imm8"             (:rflags)                        (:al :imm8))                                   ;; CMP, TEST
+(defamd64format "<|AX, imm16"            (:rflags)                        (:ax :imm16))                                  ;; CMP, TEST
+(defamd64format "<|EAX, imm32"           (:rflags)                        (:eax :imm32))                                 ;; CMP, TEST
+(defamd64format "<|RAX, imm32"           (:rflags)                        (:rax :imm32))                                 ;; CMP, TEST
+(defamd64format "<|reg/mem8, imm8"       (:rflags)                        (:reg/mem8 :imm8))                             ;; CMP, TEST
+(defamd64format "<|reg/mem16, imm16"     (:rflags)                        (:reg/mem16 :imm16))                           ;; CMP, TEST
+(defamd64format "<|reg/mem32, imm32"     (:rflags)                        (:reg/mem32 :imm32))                           ;; CMP, TEST
+(defamd64format "<|reg/mem64, imm32"     (:rflags)                        (:reg/mem64 :imm32))                           ;; CMP, TEST
+(defamd64format "<|reg/mem16, imm8"      (:rflags)                        (:reg/mem16 :imm8))                            ;; CMP, BT
+(defamd64format "<|reg/mem32, imm8"      (:rflags)                        (:reg/mem32 :imm8))                            ;; CMP, BT
+(defamd64format "<|reg/mem64, imm8"      (:rflags)                        (:reg/mem64 :imm8))                            ;; CMP, BT
+(defamd64format "<|reg/mem8, reg8"       (:rflags)                        (:reg/mem8 :reg8))                             ;; CMP, TEST
+(defamd64format "<|reg/mem16, reg16"     (:rflags)                        (:reg/mem16 :reg16))                           ;; CMP, TEST, BT
+(defamd64format "<|reg/mem32, reg32"     (:rflags)                        (:reg/mem32 :reg32))                           ;; CMP, TEST, BT
+(defamd64format "<|reg/mem64, reg64"     (:rflags)                        (:reg/mem64 :reg64))                           ;; CMP, TEST, BT
+(defamd64format "<|reg8, reg/mem8"       (:rflags)                        (:reg8 :reg/mem8))                             ;; CMP
+(defamd64format "<|reg16, reg/mem16"     (:rflags)                        (:reg16 :reg/mem16))                           ;; CMP
+(defamd64format "<|reg32, reg/mem32"     (:rflags)                        (:reg32 :reg/mem32))                           ;; CMP
+(defamd64format "<|reg64, reg/mem64"     (:rflags)                        (:reg64 :reg/mem64))                           ;; CMP
 
-(defamd64format "reg/mem8"               (:reg/mem8)                      (:reg/mem8))         ;; NOT
-(defamd64format "reg/mem16"              (:reg/mem16)                     (:reg/mem16))        ;; NOT
-(defamd64format "reg/mem32"              (:reg/mem32)                     (:reg/mem32))        ;; NOT
-(defamd64format "reg/mem64"              (:reg/mem64)                     (:reg/mem64))        ;; NOT
+(defamd64format "reg/mem8"               (:reg/mem8)                      (:reg/mem8))                                   ;; NOT
+(defamd64format "reg/mem16"              (:reg/mem16)                     (:reg/mem16))                                  ;; NOT
+(defamd64format "reg/mem32"              (:reg/mem32)                     (:reg/mem32))                                  ;; NOT
+(defamd64format "reg/mem64"              (:reg/mem64)                     (:reg/mem64))                                  ;; NOT
 
-(defamd64format "<reg/mem8"              (:rflags :reg/mem8)              (:reg/mem8))         ;; NEG, DEC, INC
-(defamd64format "<reg/mem16"             (:rflags :reg/mem16)             (:reg/mem16))        ;; NEG, DEC, INC
-(defamd64format "<reg/mem32"             (:rflags :reg/mem32)             (:reg/mem32))        ;; NEG, DEC, INC
-(defamd64format "<reg/mem64"             (:rflags :reg/mem64)             (:reg/mem64))        ;; NEG, DEC, INC
+(defamd64format "<reg/mem8"              (:rflags :reg/mem8)              (:reg/mem8))                                   ;; NEG, DEC, INC
+(defamd64format "<reg/mem16"             (:rflags :reg/mem16)             (:reg/mem16))                                  ;; NEG, DEC, INC
+(defamd64format "<reg/mem32"             (:rflags :reg/mem32)             (:reg/mem32))                                  ;; NEG, DEC, INC
+(defamd64format "<reg/mem64"             (:rflags :reg/mem64)             (:reg/mem64))                                  ;; NEG, DEC, INC
 
-(defamd64format "|reg16, mem32"          ()                               (:reg16 :mem32))     ;; BOUND
-(defamd64format "|reg32, mem64"          ()                               (:reg32 :mem64))     ;; BOUND
+(defamd64format "|reg16, mem32"          ()                               (:reg16 :mem32))                               ;; BOUND
+(defamd64format "|reg32, mem64"          ()                               (:reg32 :mem64))                               ;; BOUND
 
-(defamd64format "<reg16"                 (:rflags :reg16)                 (:reg16))            ;; DEC, INC
-(defamd64format "<reg32"                 (:rflags :reg32)                 (:reg32))            ;; DEC, INC
+(defamd64format "<reg16"                 (:rflags :reg16)                 (:reg16))                                      ;; DEC, INC
+(defamd64format "<reg32"                 (:rflags :reg32)                 (:reg32))                                      ;; DEC, INC
 
-(defamd64format "reg32"                  (:reg32)                         (:reg32))            ;; BSWAP
-(defamd64format "reg64"                  (:reg64)                         (:reg64))            ;; BSWAP
+(defamd64format "reg32"                  (:reg32)                         (:reg32))                                      ;; BSWAP
+(defamd64format "reg64"                  (:reg64)                         (:reg64))                                      ;; BSWAP
 
-(defamd64format "@<>imm8"                (:rflags :rip :rsp :cs :ss :mem) (:rflags :imm8 :rip :rsp :cs :ss :mem)) ;; INT, actually potentially it touches a lot more...
-(defamd64format "@>"                     (:rip)                           (:rflags))                              ;; INTO, actually potentially it touches a lot more...
-(defamd64format "@>immoff8"              (:rip)                           (:rflags :immoff8))  ;; Jxx
-(defamd64format "@>immoff16"             (:rip)                           (:rflags :immoff16)) ;; Jxx
-(defamd64format "@>immoff32"             (:rip)                           (:rflags :immoff32)) ;; Jxx
+;;;;
+;;;; Interrupts
+;;;;
+(defamd64format "$@<>imm8"               (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:rflags :imm8 :rip :rsp :cs :ss :mem)) ;; INT, actually potentially it touches a lot more...
+(defamd64format "$@>"                    (:rip :cpl :cs :tss)                       (:rflags))                              ;; INTO, actually potentially it touches a lot more...
+(defamd64format "$@<"                    (:rip :rflags)                   ())                                               ;; INT3, actually potentially it touches a lot more...
+(defamd64format "$@@<"                   (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:cpl :cs :tss))                        ;; IRET, IRETD, IRETQ
 
-(defamd64format "@CX, immoff8"           (:rip)                           (:cx :immoff8))      ;; JCXZ
-(defamd64format "@ECX, immoff8"          (:rip)                           (:ecx :immoff8))     ;; JECXZ
-(defamd64format "@RCX, immoff8"          (:rip)                           (:rcx :immoff8))     ;; JRCXZ
+;;;;
+;;;; Jumps, calls, returns and branches
+;;;;
+(defamd64format "@immoff8"               (:rip)                           (:immoff8))                                    ;; JMP
+(defamd64format "@immoff16"              (:rip)                           (:immoff16))                                   ;; JMP
+(defamd64format "@immoff32"              (:rip)                           (:immoff32))                                   ;; JMP
+(defamd64format "@reg/mem16"             (:rip)                           (:reg/mem16))                                  ;; JMP
+(defamd64format "@reg/mem32"             (:rip)                           (:reg/mem32))                                  ;; JMP
+(defamd64format "@reg/mem64"             (:rip)                           (:reg/mem64))                                  ;; JMP
 
-(defamd64format "@immoff8"               (:rip)                           (:immoff8))          ;; JMP
-(defamd64format "@immoff16"              (:rip)                           (:immoff16))         ;; JMP
-(defamd64format "@immoff32"              (:rip)                           (:immoff32))         ;; JMP
-(defamd64format "@reg/mem16"             (:rip)                           (:reg/mem16))        ;; JMP
-(defamd64format "@reg/mem32"             (:rip)                           (:reg/mem32))        ;; JMP
-(defamd64format "@reg/mem64"             (:rip)                           (:reg/mem64))        ;; JMP
+(defamd64format "@ptr16:16"              (:rip :cs :tss)                  (:ptr16/16))                                   ;; JMP FAR
+(defamd64format "@ptr16:32"              (:rip :cs :tss)                  (:ptr16/32))                                   ;; JMP FAR
+(defamd64format "@mem32"                 (:rip :cs :tss)                  (:mem32))                                      ;; JMP FAR
+(defamd64format "@mem48"                 (:rip :cs :tss)                  (:mem48))                                      ;; JMP FAR
 
-(defamd64format "@ptr16:16"              (:rip :cs)                       (:ptr16/16))         ;; JMP FAR
-(defamd64format "@ptr16:32"              (:rip :cs)                       (:ptr16/32))         ;; JMP FAR
-(defamd64format "@mem32"                 (:rip :cs)                       (:mem32))            ;; JMP FAR
-(defamd64format "@mem48"                 (:rip :cs)                       (:mem48))            ;; JMP FAR
+(defamd64format "@@immoff16"             (:rip :rsp :mem16)               (:rip :rbp :rsp :immoff16))                    ;; CALL
+(defamd64format "@@immoff32"             (:rip :rsp :mem32)               (:rip :rsp :immoff32))                         ;; CALL
+(defamd64format "@@reg/mem16"            (:rip :rsp :mem16)               (:rip :rsp :reg/mem16))                        ;; CALL
+(defamd64format "@@reg/mem32"            (:rip :rsp :mem32)               (:rip :rsp :reg/mem32))                        ;; CALL
+(defamd64format "@@reg/mem64"            (:rip :rsp :mem64)               (:rip :rsp :reg/mem64))                        ;; CALL
 
-(defamd64format "@@immoff16"             (:rip :rsp :mem16)               (:rip :rbp :rsp :immoff16)) ;; CALL
-(defamd64format "@@immoff32"             (:rip :rsp :mem32)               (:rip :rsp :immoff32))      ;; CALL
-(defamd64format "@@reg/mem16"            (:rip :rsp :mem16)               (:rip :rsp :reg/mem16))     ;; CALL
-(defamd64format "@@reg/mem32"            (:rip :rsp :mem32)               (:rip :rsp :reg/mem32))     ;; CALL
-(defamd64format "@@reg/mem64"            (:rip :rsp :mem64)               (:rip :rsp :reg/mem64))     ;; CALL
+(defamd64format "@@"                     (:rip :rsp)                      (:rip :rsp :mem16))                            ;; RET
+(defamd64format "@@imm8"                 (:rip :rsp)                      (:rip :rsp :mem16 :imm8))                      ;; RET
 
-(defamd64format "@@"                     (:rip :rsp)                      (:rip :rsp :mem16))         ;; RET
-(defamd64format "@@imm8"                 (:rip :rsp)                      (:rip :rsp :mem16 :imm8))   ;; RET
+(defamd64format "@>immoff8"              (:rip)                           (:rflags :immoff8))                            ;; Jxx
+(defamd64format "@>immoff16"             (:rip)                           (:rflags :immoff16))                           ;; Jxx
+(defamd64format "@>immoff32"             (:rip)                           (:rflags :immoff32))                           ;; Jxx
 
-;; Day 1: pp. 53-78
+(defamd64format "@CX, immoff8"           (:rip)                           (:cx :immoff8))                                ;; JCXZ
+(defamd64format "@ECX, immoff8"          (:rip)                           (:ecx :immoff8))                               ;; JECXZ
+(defamd64format "@RCX, immoff8"          (:rip)                           (:rcx :immoff8))                               ;; JRCXZ
 
-(defamd64format "@@@ptr16:16"            (:rip :rsp :cs :cpl :ss :mem16)  (:rip :rsp :cs :cpl :ss :ptr16/16))      ;; CALL FAR
-(defamd64format "@@@ptr16:32"            (:rip :rsp :cs :cpl :ss :mem32)  (:rip :rsp :cs :cpl :ss :ptr16/32))      ;; CALL FAR
-(defamd64format "@@@mem32"               (:rip :rsp :cs :cpl :ss :mem16)  (:rip :rsp :cs :cpl :ss :mem32))         ;; CALL FAR
-(defamd64format "@@@mem48"               (:rip :rsp :cs :cpl :ss :mem32)  (:rip :rsp :cs :cpl :ss :mem48))         ;; CALL FAR
-(defamd64format "@@@"                    (:rip :rsp :cs :cpl :ss :mem32)  (:rip :rsp :cs :cpl :ss :mem16))         ;; RETF
-(defamd64format "@@@imm16"               (:rip :rsp :cs :cpl :ss :mem32)  (:rip :rsp :cs :cpl :ss :mem16 :imm16))  ;; RETF
+(defamd64format "@@@ptr16:16"            (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :ptr16/16))       ;; CALL FAR
+(defamd64format "@@@ptr16:32"            (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :ptr16/32))       ;; CALL FAR
+(defamd64format "@@@mem32"               (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :mem32))          ;; CALL FAR
+(defamd64format "@@@mem48"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :mem48))          ;; CALL FAR
+(defamd64format "@@@"                    (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16))               ;; RETF
+(defamd64format "@@@imm16"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16 :imm16))        ;; RETF
 
-(defamd64format "!AX, AL"                (:ax)                            (:al))               ;; CBW
-(defamd64format "!EAX, AX"               (:eax)                           (:ax))               ;; CWDE
-(defamd64format "!RAX, EAX"              (:rax)                           (:eax))              ;; CDQE
+(defamd64format "!AX, AL"                (:ax)                            (:al))                                         ;; CBW
+(defamd64format "!EAX, AX"               (:eax)                           (:ax))                                         ;; CWDE
+(defamd64format "!RAX, EAX"              (:rax)                           (:eax))                                        ;; CDQE
 
-(defamd64format "2|AX, DX"               (:ax :dx)                        (:ax))               ;; CWD
-(defamd64format "2|EAX, EDX"             (:eax :edx)                      (:eax))              ;; CDQ
-(defamd64format "2|RAX, RDX"             (:rax :rdx)                      (:rax))              ;; CQO
+(defamd64format "2|AX, DX"               (:ax :dx)                        (:ax))                                         ;; CWD
+(defamd64format "2|EAX, EDX"             (:eax :edx)                      (:eax))                                        ;; CDQ
+(defamd64format "2|RAX, RDX"             (:rax :rdx)                      (:rax))                                        ;; CQO
 
-(defamd64format "<"                      (:rflags)                        ())                  ;; CLC, CLD, STC, STD
-(defamd64format "<>"                     (:rflags)                        (:rflags))           ;; CMC
+(defamd64format "<"                      (:rflags)                        ())                                            ;; CLC, CLD, STC, STD
+(defamd64format "$<IF"                   (:rflags)                        (:cpl :cs))                                    ;; CLI, STI
+(defamd64format "<>"                     (:rflags)                        (:rflags))                                     ;; CMC
 
-(defamd64format "|mem8"                  ()                               (:mem8))             ;; CLFLUSH
+(defamd64format "|mem8"                  ()                               (:mem8))                                       ;; CLFLUSH, INVLPG
+(defamd64format "|RAX, ECX"              ()                               (:rax :ecx))                                   ;; INVLPGA
 
-(defamd64format ""                       ()                               ())                  ;; INVD, WBINVD, LFENCE, SFENCE, MFENCE, NOP, PAUSE
-(defamd64format "|!mem16/32/64"          ()                               ())                  ;; NOP                       (the first semantically duplicate format)
-(defamd64format "|!mem8"                 ()                               ())                  ;; PREFETCH{,W,NTA,0,1,2}    (the second semantically duplicate format)
-
-;; Day 2: pp. 79-96
+(defamd64format ""                       ()                               ())                                            ;; LFENCE, SFENCE, MFENCE, NOP, PAUSE
+(defamd64format "|CPL"                   ()                               (:cpl :cs))                                    ;; INVD, WBINVD, HLT
+(defamd64format "|!mem16/32/64"          ()                               ())                                            ;; NOP
+(defamd64format "|!mem8"                 ()                               ())                                            ;; PREFETCH{,W,NTA,0,1,2}
 
 ;;;;
 ;;;; String formats
@@ -600,28 +611,26 @@
 (defamd64format "<!reg32, reg/mem32, imm32"     (:rflags :reg32)          (:reg/mem32 :imm32))                           ;; IMUL
 (defamd64format "<!reg64, reg/mem64, imm32"     (:rflags :reg64)          (:reg/mem64 :imm32))                           ;; IMUL
                                                                                                                          
-(defamd64format "#!AL, DX"                      (:al)                     (:dx))                                         ;; IN
-(defamd64format "#!AX, DX"                      (:ax)                     (:dx))                                         ;; IN
-(defamd64format "#!EAX, DX"                     (:eax)                    (:dx))                                         ;; IN
-(defamd64format "#!AL, imm8"                    (:al)                     (:imm8))                                       ;; IN
-(defamd64format "#!AX, imm8"                    (:ax)                     (:imm8))                                       ;; IN
-(defamd64format "#!EAX, imm8"                   (:eax)                    (:imm8))                                       ;; IN
-                                                                                                                         
-(defamd64format "#|DX, AL"                      ()                        (:dx :al))                                     ;; OUT
-(defamd64format "#|DX, AX"                      ()                        (:dx :ax))                                     ;; OUT
-(defamd64format "#|DX, EAX"                     ()                        (:dx :eax))                                    ;; OUT
-(defamd64format "#imm8, AL"                     ()                        (:imm8 :al))                                   ;; OUT
-(defamd64format "#imm8, AX"                     ()                        (:imm8 :ax))                                   ;; OUT
-(defamd64format "#imm8, EAX"                    ()                        (:imm8 :eax))                                  ;; OUT
-                                                                                                                         
-(defamd64format "#!>mem8, DX"                   (:mem8 :rdi)              (:rflags :es :rdi :dx))                        ;; INS, INSB
-(defamd64format "#!>mem16, DX"                  (:mem16 :rdi)             (:rflags :es :rdi :dx))                        ;; INS, INSW
-(defamd64format "#!>mem32, DX"                  (:mem32 :rdi)             (:rflags :es :rdi :dx))                        ;; INS, INSD
-(defamd64format "#|>DX, mem8"                   (:rsi)                    (:rflags :ds :rsi :dx :mem8))                  ;; OUTS, OUTSB
-(defamd64format "#|>DX, mem16"                  (:rsi)                    (:rflags :ds :rsi :dx :mem16))                 ;; OUTS, OUTSW
-(defamd64format "#|>DX, mem32"                  (:rsi)                    (:rflags :ds :rsi :dx :mem32))                 ;; OUTS, OUTSD
-                                                                                                                         
-;; Day 3: pp. 97-129                                                                                                     
+(defamd64format "#!AL, DX"                      (:al)                     (:dx :tss))                                    ;; IN
+(defamd64format "#!AX, DX"                      (:ax)                     (:dx :tss))                                    ;; IN
+(defamd64format "#!EAX, DX"                     (:eax)                    (:dx :tss))                                    ;; IN
+(defamd64format "#!AL, imm8"                    (:al)                     (:imm8 :tss))                                  ;; IN
+(defamd64format "#!AX, imm8"                    (:ax)                     (:imm8 :tss))                                  ;; IN
+(defamd64format "#!EAX, imm8"                   (:eax)                    (:imm8 :tss))                                  ;; IN
+                                                                                                                               
+(defamd64format "#|DX, AL"                      ()                        (:dx :al  :tss))                               ;; OUT
+(defamd64format "#|DX, AX"                      ()                        (:dx :ax  :tss))                               ;; OUT
+(defamd64format "#|DX, EAX"                     ()                        (:dx :eax :tss))                               ;; OUT
+(defamd64format "#imm8, AL"                     ()                        (:imm8 :al  :tss))                             ;; OUT
+(defamd64format "#imm8, AX"                     ()                        (:imm8 :ax  :tss))                             ;; OUT
+(defamd64format "#imm8, EAX"                    ()                        (:imm8 :eax :tss))                             ;; OUT
+                                                                                                                               
+(defamd64format "#!>mem8, DX"                   (:mem8 :rdi)              (:rflags :es :rdi :dx :tss))                   ;; INS, INSB
+(defamd64format "#!>mem16, DX"                  (:mem16 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSW
+(defamd64format "#!>mem32, DX"                  (:mem32 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSD
+(defamd64format "#|>DX, mem8"                   (:rsi)                    (:rflags :ds :rsi :dx :mem8  :tss))            ;; OUTS, OUTSB
+(defamd64format "#|>DX, mem16"                  (:rsi)                    (:rflags :ds :rsi :dx :mem16 :tss))            ;; OUTS, OUTSW
+(defamd64format "#|>DX, mem32"                  (:rsi)                    (:rflags :ds :rsi :dx :mem32 :tss))            ;; OUTS, OUTSD
                                                                                                                          
 (defamd64format ">!AH"                          (:ah)                     (:rflags))                                     ;; LAHF
 (defamd64format "<|!AH"                         (:rflags)                 (:ah))                                         ;; SAHF
@@ -698,8 +707,8 @@
 ;;;; segment register                                                                                                    
 ;;;;                                                                                                                     
 (defamd64format "!reg16/32/64/mem16, segreg"    (:reg16/32/64/mem16)      (:segreg))                                     ;; MOV
-(defamd64format "!segreg, reg/mem"              (:segreg)                 (:reg/mem16))                                  ;; MOV
-                                                                                                                         
+(defamd64format "!segreg, reg/mem16"            (:segreg)                 (:reg/mem16))                                  ;; MOV
+
 ;;;;                                                                                                                     
 ;;;; MMX/XMM                                                                                                             
 ;;;;                                                                                                                     
@@ -713,6 +722,24 @@
 (defamd64format "!reg/mem64, xmm"               (:reg/mem64)              (:xmm))                                        ;; MOVD
                                                                                                                          
 (defamd64format "!reg32, xmm"                   (:reg32)                  (:xmm))                                        ;; MOVMSKPS, MOVMSKPD
+
+;;;;
+;;;; system
+;;;;                                                                                                                         
+(defamd64format "$!crreg, reg32"                (:crreg)                  (:reg32 :cpl :cs))                             ;; MOV
+(defamd64format "$!crreg, reg64"                (:crreg)                  (:reg64 :cpl :cs))                             ;; MOV
+(defamd64format "!reg32, crreg"                 (:reg32)                  (:crreg :cpl :cs))                             ;; MOV
+(defamd64format "!reg64, crreg"                 (:reg64)                  (:crreg :cpl :cs))                             ;; MOV
+
+(defamd64format "$!CR8, reg32"                  (:cr8)                    (:reg32 :cpl :cs))                             ;; MOV
+(defamd64format "$!CR8, reg64"                  (:cr8)                    (:reg64 :cpl :cs))                             ;; MOV
+(defamd64format "!reg32, CR8"                   (:reg32)                  (:cr8 :cpl :cs))                               ;; MOV
+(defamd64format "!reg64, CR8"                   (:reg64)                  (:cr8 :cpl :cs))                               ;; MOV
+
+(defamd64format "$!drreg, reg32"                (:drreg)                  (:reg32 :cpl :cs))                             ;; MOV
+(defamd64format "$!drreg, reg64"                (:drreg)                  (:reg64 :cpl :cs))                             ;; MOV
+(defamd64format "!reg32, drreg"                 (:reg32)                  (:drreg :cpl :cs))                             ;; MOV
+(defamd64format "!reg64, drreg"                 (:reg64)                  (:drreg :cpl :cs))                             ;; MOV
 
 ;;;;
 ;;;; Stack
@@ -752,25 +779,23 @@
 (defamd64format "![SS:SP], AX, CX, DX, BX, SP, BP, SI, DI"          (:ss :rsp :mem128)         (:di :si :bp :sp :bx :dx :cx :ax)) ;; PUSHA
 (defamd64format "![SS:ESP], EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI" (:ss :rsp :mem256) (:edi :esi :ebp :esp :ebx :edx :ecx :eax)) ;; PUSHAD
 
-(defamd64format "<![SS:SP]"                     (:flags :rsp)             (:ss :rsp :mem16))                             ;; POPF
-(defamd64format "<![SS:ESP]"                    (:eflags :rsp)            (:ss :rsp :mem32))                             ;; POPFD
-(defamd64format "<![SS:RSP]"                    (:rflags :rsp)            (:ss :rsp :mem64))                             ;; POPFQ
+(defamd64format "<>![SS:SP]"                    (:flags  :rsp)            (:flags  :cpl :cs :ss :rsp :mem16))            ;; POPF
+(defamd64format "<>![SS:ESP]"                   (:eflags :rsp)            (:eflags :cpl :cs :ss :rsp :mem32))            ;; POPFD
+(defamd64format "<>![SS:RSP]"                   (:rflags :rsp)            (:rflags :cpl :cs :ss :rsp :mem64))            ;; POPFQ
 
-(defamd64format ">![SS:SP]"                     (:mem16 :rsp)             (:ss :rsp :flags))                             ;; PUSHF
-(defamd64format ">![SS:ESP]"                    (:mem32 :rsp)             (:ss :rsp :eflags))                            ;; PUSHFD
-(defamd64format ">![SS:RSP]"                    (:mem64 :rsp)             (:ss :rsp :rflags))                            ;; PUSHFQ
+(defamd64format ">![SS:SP]"                     (:mem16 :rsp)             (:flags  :ss :rsp))                            ;; PUSHF
+(defamd64format ">![SS:ESP]"                    (:mem32 :rsp)             (:eflags :ss :rsp))                            ;; PUSHFD
+(defamd64format ">![SS:RSP]"                    (:mem64 :rsp)             (:rflags :ss :rsp))                            ;; PUSHFQ
 
-;; Day 4: pp. 130-201
-
-(defamd64format "<>reg/mem8, 1"                 (:rflags :reg/mem8)       (:rflags :reg/mem8 1))                         ;; RCL, RCR
+(defamd64format "<>reg/mem8, 1"                 (:rflags :reg/mem8)       (:rflags :reg/mem8  1))                        ;; RCL, RCR
 (defamd64format "<>reg/mem16, 1"                (:rflags :reg/mem16)      (:rflags :reg/mem16 1))                        ;; RCL, RCR
 (defamd64format "<>reg/mem32, 1"                (:rflags :reg/mem32)      (:rflags :reg/mem32 1))                        ;; RCL, RCR
 (defamd64format "<>reg/mem64, 1"                (:rflags :reg/mem64)      (:rflags :reg/mem64 1))                        ;; RCL, RCR
-(defamd64format "<>reg/mem8, CL"                (:rflags :reg/mem8)       (:rflags :reg/mem8 :cl))                       ;; RCL, RCR
+(defamd64format "<>reg/mem8, CL"                (:rflags :reg/mem8)       (:rflags :reg/mem8  :cl))                      ;; RCL, RCR
 (defamd64format "<>reg/mem16, CL"               (:rflags :reg/mem16)      (:rflags :reg/mem16 :cl))                      ;; RCL, RCR
 (defamd64format "<>reg/mem32, CL"               (:rflags :reg/mem32)      (:rflags :reg/mem32 :cl))                      ;; RCL, RCR
 (defamd64format "<>reg/mem64, CL"               (:rflags :reg/mem64)      (:rflags :reg/mem64 :cl))                      ;; RCL, RCR
-(defamd64format "<>reg/mem8, imm8"              (:rflags :reg/mem8)       (:rflags :reg/mem8 :imm8))                     ;; RCL, RCR
+(defamd64format "<>reg/mem8, imm8"              (:rflags :reg/mem8)       (:rflags :reg/mem8  :imm8))                    ;; RCL, RCR
 (defamd64format "<>reg/mem16, imm8"             (:rflags :reg/mem16)      (:rflags :reg/mem16 :imm8))                    ;; RCL, RCR
 (defamd64format "<>reg/mem32, imm8"             (:rflags :reg/mem32)      (:rflags :reg/mem32 :imm8))                    ;; RCL, RCR
 (defamd64format "<>reg/mem64, imm8"             (:rflags :reg/mem64)      (:rflags :reg/mem64 :imm8))                    ;; RCL, RCR
@@ -815,4 +840,69 @@
 (defamd64format "2|reg32, EAX"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
 (defamd64format "2|reg64, RAX"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
 
+;;;;
+;;;; assorted system stuff
+;;;;
 (defamd64format "AL, seg:[RBX + AL]"            (:al)                     (:segreg :rbx :al))                            ;; XLAT, XLATB
+
+(defamd64format "<$reg/mem16, reg16"            (:segreg)                 (:segreg :reg16))                              ;; ARPL
+(defamd64format "$!GIF"                         (:gif)                    ())                                            ;; CLGI, STGI
+
+(defamd64format "$CR0"                          (:cr0)                    ())                                            ;; CLTS
+
+(defamd64format "<!$reg16, reg/mem16"           (:rflags :reg16)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+(defamd64format "<!$reg32, reg/mem16"           (:rflags :reg32)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+(defamd64format "<!$reg64, reg/mem16"           (:rflags :reg64)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+
+(defamd64format "|$mem48"                       ()                        (:mem48 :cpl :cs))                             ;; LGDT, LIDT
+(defamd64format "|$mem80"                       ()                        (:mem80 :cpl :cs))                             ;; LGDT, LIDT
+
+(defamd64format "!mem48"                        (:mem48)                  ())                                            ;; SGDT, SIDT
+(defamd64format "!mem80"                        (:mem80)                  ())                                            ;; SGDT, SIDT
+
+(defamd64format "!$sysreg16, reg/mem16"         (:sysreg16)               (:reg/mem16 :cpl :cs))                         ;; LIDT, LMSW, LTR
+
+(defamd64format "$segreg:[EAX], ECX, EDX"       ()                        (:segreg :eax :ecx :edx :cpl :cs))             ;; MONITOR
+(defamd64format "$EAX, ECX"                     ()                        (:eax :ecx :cpl :cs))                          ;; MWAIT
+
+(defamd64format "2!2|EDX:EAX, ECX, sysreg64"    (:eax :edx)               (:ecx :sysreg64 :cpl :cs))                     ;; RDMSR, RDPMC
+(defamd64format "2!2|EDX:EAX, sysreg64"         (:eax :edx)               (:sysreg64 :cpl :cs :cr4))                     ;; RDTSC
+(defamd64format "2!2|3!3|EDX:EAX:ECX, sysreg64, sysreg32" (:eax :edx :ecx)(:sysreg64 :sysreg32 :cpl :cs :cr4))           ;; RDTSCP
+
+(defamd64format "$!sysreg64, EDX:EAX, ECX"      (:sysreg64)               (:eax :edx :ecx :cpl :cs))                     ;; RDMSR, RDPMC
+
+(defamd64format "!reg16, sysreg16"              (:reg16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+(defamd64format "!reg32, sysreg16"              (:reg32)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+(defamd64format "!reg64, sysreg16"              (:reg64)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+(defamd64format "!mem16, sysreg16"              (:mem16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+(defamd64format "2|sysreg16, GS"                (:gs :sysreg16)           (:gs :sysreg16 :cpl :cs))                      ;; SWAPGS
+
+(defamd64format "$@<!CX"                        (:eflags :eip :cpl :cs :ss :cx)       (:star))                           ;; SYSCALL (short mode)
+(defamd64format "$@<!2|RCX, R11"                (:rflags :rip :cpl :cs :ss :rcx :r11) (:cstar))                          ;; SYSCALL (long mode)
+(defamd64format "$@<|CX"                        (:eflags :eip :cpl :cs :ss)           (:efer :cpl :cs :star :ecx))       ;; SYSRET (short mode)
+(defamd64format "$@<|RCX, R11"                  (:rflags :rip :cpl :cs :ss)           (:efer :cpl :cs :cstar :rcx :r11)) ;; SYSRET (long mode)
+
+(defamd64format "$@<SS:ESP"                     (:eflags :eip :cpl :cs :ss :esp)      ())                                ;; SYSENTER
+(defamd64format "$@<SS:ESP, CX, DX"             (:eflags :eip :cpl :cs :ss :esp)      (:cx :dx))                         ;; SYSEXIT
+
+(defamd64format "$@"                            (:rip)                                ())                                ;; UD2, VMMCALL
+
+(defamd64format "<$reg/mem16"                   (:rflags)                             (:reg/mem16 :cpl :cs))             ;; VERR, VERW
+
+(defamd64format "$<"                            (:rflags :cr0 :cr3 :cr4 :cr6 :cr7 :efer) (:cr0 :cr3 :cr4 :cr6 :cr7 :efer))                          ;; RSM
+(defamd64format "<|$[EAX]"                      (:rflags :cr0 :cs :ss :eax :edx :esp :ebx :ecx :edx :esi :edi :rgpr :efer :gif) (:eax :efer :cppl)) ;; SKINIT
+
+(defamd64format "$!2|FS, GS, CS, [RAX]"         (:fs :gs :tr :star :lstar :cstar :sfmask) (:rax :mem :cpl :cs :efer))                               ;; VMLOAD
+(defamd64format "$![RAX], CS, FS, GS"           (:mem)                                    (:rax :cpl :cs :efer :fs :gs :tr :star :lstar :cstar))    ;; VMSAVE
+(defamd64format "$<>@![RAX]"                    (:rflags :es :cs :ss :ds :efer :cr0 :cr4 :cr3 :cr2 :rip :rsp :rax :dr6 :dr7 :cpl :mem :gif) 
+                                                (:rflags :rip :rsp :rax :mem :cpl :cs :efer :sysreg64 :es :cs :ss :ds :cr0 :cr4 :cr3))              ;; VMRUN
+
+;;;;
+;;;; Total of 483 instruction formats
+;;;;
+
+;;;;
+;;;; Not an instruction
+;;;;
+;; (defamd64format "$<>@"                       (:gif :efer :cr0 :cr4 :cr3 :rflags :rip :rsp :rax :dr7 :cpl :es :cs :ss :ds)
+;;                                              (:es :cs :ss :ds :efer :cr4 :cr3 :cr2 :cr0 :rflags :rip :rsp :rax :dr7 :dr6 :cpl))                  ;; #VMEXIT

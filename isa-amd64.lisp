@@ -31,37 +31,86 @@
 
 (defparameter *amd64-isa* (make-instance 'amd64-isa))
 
-(defattrset *amd64-isa* :leg-opersz-over
-  (:opersize-over . #x66))
-(defattrset *amd64-isa* :leg-addrsz-over
-  (:addrsize-over . #x67))
-(defattrset *amd64-isa* :leg-segment-over
+(defattrset *amd64-isa* :rex
+  (:rex4 .  #b0100))
+(defattrset *amd64-isa* :nrex
+  (:nrex0 . #b0000) (:nrex1 . #b0001) (:nrex2 . #b0010) (:nrex3 . #b0011)
+                    (:nrex5 . #b0101) (:nrex6 . #b0110) (:nrex7 . #b0111)
+  (:nrex8 . #b1000) (:nrex9 . #b1001) (:nrexa . #b1010) (:nrexb . #b1011)
+  (:nrexc . #b1100) (:nrexd . #b1101) (:nrexe . #b1110) (:nrexf . #b1111))
+(defattrset *amd64-isa* :opersz/p
+  (:opersz .        #x66))
+(defattrset *amd64-isa* :addrsz
+  (:addrsz .        #x67))
+(defattrset *amd64-isa* :segment
   (:seg-over-cs .   #x2e)
   (:seg-over-ds .   #x3e)
   (:seg-over-es .   #x26)
   (:seg-over-fs .   #x64)
   (:seg-over-gs .   #x65)
   (:seg-over-ss .   #x36))
-(defattrset *amd64-isa* :leg-lock
+(defattrset *amd64-isa* :lock
   (:lock .          #xf0))
-(defattrset *amd64-isa* :leg-repeat
-  (:repn .          #xf2)
+(defattrset *amd64-isa* :rep/p
   (:rep .           #xf3))
-;; the only "otherwise"-requiring node, so far
-;; the only non-slot, so far
-;; ...a suspicious amount of only's..
-(defattrset *amd64-isa* :rex-preprefix
-  (:lock .          #b0100))
-(defattrset *amd64-isa* :rex-prefix-w
-  (:w .             #b1))
-(defattrset *amd64-isa* :rex-prefix-r
-  (:r .             #b1))
-(defattrset *amd64-isa* :rex-prefix-x
-  (:x .             #b1))
-(defattrset *amd64-isa* :rex-prefix-b
-  (:b .             #b1))
-(defattrset *amd64-isa* :xop-prefix
-  (:xop-prefix .   #x0f))
+(defattrset *amd64-isa* :repn/p
+  (:repn .          #xf2))
+(defattrset *amd64-isa* :rex-w
+  (nil . #b0) (:w . #b1))
+(defattrset *amd64-isa* :rex-r
+  (nil . #b0) (:r . #b1))
+(defattrset *amd64-isa* :rex-x
+  (nil . #b0) (:x . #b1))
+(defattrset *amd64-isa* :rex-b
+  (nil . #b0) (:b . #b1))
+(defattrset *amd64-isa* :xop
+  (:xop .           #x0f))
+
+(defun make-x86/64-isa (longmodep)
+  `(nil (00 04 (:rex :nrex))
+        (:rex (04 01 (:rex-w))
+              (ban :rex :opersz/p :rep/p :repn/p :addrsz :segment :lock)
+              (:rex-w (01 01) (:rex-r)
+                      (:rex-r (01 01) (:rex-x)
+                              (:rex-x (01 01) (:rex-b)
+                                      (:rex-b (01 08) (:rex-b)
+                                              ;; include keeps the declared window (01 08)
+                                              (include :nrex))))))
+        (:nrex (-04 08 (:opersz/p :rep/p :repn/p :addrsz :segment :lock
+                        :opcode
+                        ,(if longmodep
+                             :opcode-longmode
+                             :opcode-shortmode)))
+               ;; when there's no window declared, include uses the target's one
+               (:addrsz    nil (ban :addrsz)    (include nil))
+               (:segment   nil (ban :segment)   (include nil))
+               (:lock      nil (ban :lock)      (include nil))
+               (:opersz/p  nil
+                           (ban :opcode-ext-var-unprefixed :opersz/p)
+                           (add-at :xop :opcode-ext-var-opersz)
+                           (include nil))
+               (:rep/p     nil
+                           (ban :opcode-ext-var-unprefixed :rep/p :repn/p)
+                           (add-at :xop :opcode-ext-var-rep)
+                           (include nil))
+               (:repn/p    nil
+                           (ban :opcode-ext-var-unprefixed :rep/p :repn/p)
+                           (add-at :xop :opcode-ext-var-repn)
+                           (include nil))
+               (:xop (08 08 (:opcode-ext
+                             ,@(unless longmodep
+                                       `(:opcode-ext-shortmode))
+                             :opcode-ext-var-unprefixed))
+                     (:opcode-ext-var-unprefixed ()
+                                                 )
+                     (:opcode-ext-var-opersz ()
+                                             )
+                     (:opcode-ext-var-rep ()
+                                          )
+                     (:opcode-ext-var-repn ()
+                                           ))
+               (:opcode ()
+                        ))))
 
 (defattrset *amd64-isa* :opcode
   (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#  #| 32bit mode   |#
@@ -97,11 +146,11 @@
   (:call .      #xe8) (:jmp .     #xe9)  #| 32bit mode |#  (:jmp .       #xeb) (:in .        #xec) (:in .        #xed) (:out .     #xee) (:out .       #xef)
   (:clc .       #xf8) (:stc .     #xf9) (:cli .      #xfa) (:sti .       #xfb) (:cld .       #xfc) (:std .       #xfd)  #| 64bit mode|#  (:grp5 .      #xff))
 
-(defattrset *amd64-isa* :longmode-only-opcode
+(defattrset *amd64-isa* :opcode-longmode
    #|  .........           .......           ........  |#  (:movsxd .    #x63)  #|  .........           .........           .......           .........  |#
    #|  .........           .......           ........           .........           .........           .........  |#  (:grp4 .    #xfe)) #|  .........  |#
 
-(defattrset *amd64-isa* :shortmode-only-opcode
+(defattrset *amd64-isa* :opcode-shortmode
    #|  .........           .......           ........           .........           .........           .........  |#  (:push-es . #x06) (:pop-es .    #x07)
    #|  .........           .......           ........           .........           .........           .........  |#  (:push-ss . #x16) (:pop-ss .    #x17)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:daa .       #x27)
@@ -120,7 +169,7 @@
    #|  .........           .......           ........           .........           .........           .........  |#  (:into .    #xce)  #|  .........  |#
    #|  .........           .......  |#  (:jmp .      #xea)  #|  .........           .........           .........           .......           .........  |#)
 
-(defattrset *amd64-isa* :extended-opcode
+(defattrset *amd64-isa* :opcode-ext
   (:grp6 .      #x00) (:grp7 .      #x01) (:lar .       #x02) (:lsl .      #x03)  #|   invalid  |#  (:syscall .  #x05) (:clts .    #x06) (:sysret .   #x07)
   ;; 1[0-7]: prefixed
   (:mov .       #x20) (:mov .       #x21) (:mov .       #x22) (:mov .      #x23)  #|   invalid  |#   #|   invalid  |#   #|   invalid |#   #|   invalid  |#
@@ -155,10 +204,10 @@
   ;; f[8-f]: prefixed
   )
 
-(defattrset *amd64-isa* :shortmode-only-ext-opcode
+(defattrset *amd64-isa* :opcode-ext-shortmode
   #|    .........           .........           .........            ........ |#  (:sysenter .  #x34) (:sysexit .  #x35)  #|   .......            ........ |#)
 
-(defattrset *amd64-isa* :opcode-ext-variant-unprefixed
+(defattrset *amd64-isa* :opcode-ext-var-unprefixed
   (:movups .    #x10) (:movups .    #x11) (:movl/hlps . #x12) (:movlps .    #x13) (:unpcklps .  #x14) (:unpckhps . #x15) (:movh/lhps . #x16) (:movhps .  #x17)
   (:movmskps .  #x50) (:sqrtps .    #x51) (:rsqrtps .   #x52) (:rcpps .     #x53) (:andps .     #x54) (:andnps .   #x55) (:orps .     #x56) (:xorps .    #x57)
   (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .   #x64) (:pcmpgtw .  #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
@@ -176,7 +225,7 @@
   (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .    #xec) (:paddsw .   #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
   (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .      #xfc) (:padw .     #xfd) (:padd .     #xfe)  #|   invalid  |#)
 
-(defattrset *amd64-isa* :opcode-ext-variant-f3-prefixed
+(defattrset *amd64-isa* :opcode-ext-var-rep
   (:movss .     #x10) (:movss .     #x11) (:movsldup .  #x12)  #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:movshdup . #x16)  #|   invalid  |#
    #|   invalid   |#  (:sqrtss .    #x51) (:rsqrtss .   #x52) (:rcpss .     #x53)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
   ;; 6[0-7]: invalid
@@ -195,7 +244,7 @@
   ;; f[8-f]: invalid
   )
 
-(defattrset *amd64-isa* :opcode-ext-variant-66-prefixed
+(defattrset *amd64-isa* :opcode-ext-var-opersz
   (:movupd .    #x10) (:movupd .    #x11) (:movlpd .    #x12) (:movlpd .    #x13) (:unpcklpd .   #x14) (:unpckhpd .   #x15) (:movhpd .   #x16) (:movhpd .   #x17)
   (:movmskpd .  #x50) (:sqrtpd .    #x51)  #|   invalid   |#   #|   invalid   |#  (:andpd .      #x54) (:andnpd .     #x55) (:orpd .     #x56) (:xorpd .    #x57)
   (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .    #x64) (:pcmpgtw .    #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
@@ -213,7 +262,7 @@
   (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .     #xec) (:paddsw .     #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
   (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .       #xfc) (:padw .       #xfd) (:padd .     #xfe)  #|   invalid  |#)
 
-(defattrset *amd64-isa* :opcode-ext-variant-f2-prefixed
+(defattrset *amd64-isa* :opcode-ext-var-repn
   (:movsd .     #x10) (:movsd .     #x11) (:movddup .   #x12)  #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
    #|   invalid   |#  (:sqrtsd .    #x51)  #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
   ;; 6[0-7]: invalid

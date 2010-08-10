@@ -68,10 +68,10 @@
 (defattrset *amd64-isa* :3dnow
   (:3dnow .         #x0f))
 
-;;;
-;;; Need to deal with grp15-ae-{n,}mod11
-;;;
-(defun make-x86/64-isa (longmodep)
+;;;;
+;;;; The assumption:  the "default operand size" for compat/legacy modes is assumed to designate a 32-bit operand size.
+;;;;
+(defun make-x86/64-isa (sixty-four-p)
   `(nil (00 04 (:rex :nrex))
         (:rex (04 01 (:rex-w))
               (ban :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
@@ -83,10 +83,10 @@
                                               (include :nrex))))))
         (:nrex (-04 08 (:opersz/p :rep/p :repn/p :addrsz :segment :lock
                         :opcode
-                        ,(if longmodep
+                        ,(if sixty-four-p
                              :opcode-longmode
                              :opcode-shortmode)
-                        (#x80 #x81 ,@(unless longmode '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
+                        (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
                ;; when there's no window declared, include uses the target's one
                (:addrsz   () (ban :addrsz)  (include nil))
                (:segment  () (ban :segment) (include nil))
@@ -115,7 +115,7 @@
                (#x81 (+ 03 03 (:grp1-81))
                      (:grp1-81 ()
                                ))
-               ,@(unless longmodep
+               ,@(unless sixty-four-p
                   `((#x82 (+ 03 03 (:grp1-82-shortmode))
                           (:grp1-82-shortmode ()
                                               ))))
@@ -162,7 +162,7 @@
                      (:grp11-c7 ()
                                 ))
                (:xop (08 08 (:opcode-ext
-                             ,@(unless longmodep
+                             ,@(unless sixty-four-p
                                        `(:opcode-ext-shortmode))
                              :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
                              (#x00 #x01 #xba #xc7 #xb9 #x71 #x72 #x73 #xae #x18 #x0d)))
@@ -295,11 +295,11 @@
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:daa .       #x27)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aaa .       #x37)
   (:inc .       #x40) (:inc .     #x41) (:inc .      #x42) (:inc .       #x43) (:inc .       #x44) (:inc .       #x45) (:inc .     #x46) (:inc .       #x47)
-  (:pusha/d .   #x60) (:popa/d .  #x61) (:bound .    #x62)  #|  .........           .........           .........           .......           .........  |#
+  (:pusha/d .   #x60) (:popa/d .  #x61) (:bound .    #x62) (:arpl .      #x63)  #|  .........           .........           .......           .........  |#
    #|  .........           .......           ........           .........  |#  (:les .       #xc4) (:lds .       #xc5)  #|  .......           .........  |#
    #|  .........           .......           ........           .........  |#  (:aam .       #xd4) (:aad .       #xd5) (:salc .    #xd6)  #|  .........  |#
-   #|  .........           .......           ........           .........           .........           .........  |#  (:push .    #x0e)  #|  .........  |#
-   #|  .........           .......           ........           .........           .........           .........  |#  (:push .    #x1e) (:pop .       #x1f)
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push-cs . #x0e)  #|  .........  |#
+   #|  .........           .......           ........           .........           .........           .........  |#  (:push-ds . #x1e) (:pop-ds .    #x1f)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:das .       #x2f)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aas .       #x3f)
   (:dec .       #x48) (:dec .     #x49) (:dec .      #x4a) (:dec .       #x4b) (:dec .       #x4c) (:dec .       #x4d) (:dec .     #x4e) (:dec .       #x4f)
@@ -609,7 +609,7 @@
 ;;   BTC, BTR, BTS
 
 (defamd64format "AL, imm8"               (:al)                   (:al :imm8)            (:or #x0c)  (:and #x24)  (:xor #x34))
-(defamd64format "AX, imm16"              (:ax)                   (:ax :imm1)            (:or #x0d)  (:and #x25)  (:xor #x35))
+(defamd64format "AX, imm16"              (:ax)                   (:ax :imm16)           (:or #x0d)  (:and #x25)  (:xor #x35))
 (defamd64format "EAX, imm32"             (:eax)                  (:eax :imm32)          (:or #x0d)  (:and #x25)  (:xor #x35))
 (defamd64format "RAX, imm32"             (:rax)                  (:rax :imm32)          (:or #x0d)  (:and #x25)  (:xor #x35))
 (defamd64format "reg/mem8, imm8"         (:reg/mem8)             (:reg/mem8 :imm8)      (:or #x180) (:and #x480) (:xor #x680))

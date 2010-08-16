@@ -28,6 +28,7 @@
    (root           :reader isa-root)
    (id->attrset                            :initarg :id->attrset)
    (id->argtype                            :initarg :id->argtype)
+   (id->uformat                            :initarg :id->uformat)
    (id->format                             :initarg :id->format)
    (op/code->format                        :initarg :op/code->format)
    (op/arglist->formats                    :initarg :op/arglist->formats)
@@ -35,6 +36,7 @@
   (:default-initargs
    :id->attrset         (make-hash-table :test 'eq)
    :id->argtype         (make-hash-table :test 'eq)
+   :id->uformat         (make-hash-table :test 'eq)
    :id->format          (make-hash-table :test 'equal)
    :op/code->format     (make-hash-table :test 'equal)
    :op/arglist->formats (make-hash-table :test 'equal)
@@ -61,10 +63,24 @@
 (define-isa amd64-isa () ()
   ())
 
+(defstruct (microformat (:conc-name uformat-))
+  (id    nil :type symbol :read-only t)
+  (names nil :type list   :read-only t)
+  (bytes nil :type list   :read-only t))
+
+(define-subcontainer uformat :type microformat :container-slot id->uformat :if-exists :continue)
+
+(defun ensure-microformat (isa name name/byte-pairs)
+  (let ((u (make-microformat :id name :names (mapcar #'car name/byte-pairs) :names (mapcar #'cdr name/byte-pairs))))
+    (setf (uformat isa name) u)))
+
+(defmacro define-microformat (name &body name/byte-pairs)
+  `(ensure-microformat *isa* ,name ',name/byte-pairs))
+
 (defstruct (attribute-set (:conc-name attrset-))
-  (name nil :type symbol :read-only t)
-  (key->value (make-hash-table :test 'eq) :type hash-table)
-  (value->key (make-hash-table :test 'eq) :type hash-table))
+  (name       nil                         :type symbol     :read-only t)
+  (key->value (make-hash-table :test 'eq) :type hash-table :read-only t)
+  (value->key (make-hash-table :test 'eq) :type hash-table :read-only t))
 
 (define-subcontainer attrset :type attribute-set :container-slot id->attrset :if-exists :continue)
 
@@ -79,7 +95,7 @@
     (setf (attrset isa name) a)))
 
 (defmacro define-attribute-set (name &body attrset-spec)
-  `(ensure-attribute-set *isa* ,name '(,@attrset-spec)))
+  `(ensure-attribute-set *isa* ,name ',attrset-spec))
 
 (define-attribute-set :nrex
   (:nrex0 . #b0000) (:nrex1 . #b0001) (:nrex2 . #b0010) (:nrex3 . #b0011)
@@ -105,18 +121,26 @@
   (:rep .           #xf3))
 (define-attribute-set :repn/p
   (:repn .          #xf2))
-(define-attribute-set :rex-w
-  (nil . #b0) (:w . #b1))
-(define-attribute-set :rex-r
-  (nil . #b0) (:r . #b1))
-(define-attribute-set :rex-x
-  (nil . #b0) (:x . #b1))
-(define-attribute-set :rex-b
-  (nil . #b0) (:b . #b1))
 (define-attribute-set :xop
   (:xop .           #x0f))
 (define-attribute-set :3dnow
   (:3dnow .         #x0f))
+
+(define-microformat :uf-rex
+  (:w     (1 0))
+  (:r     (1 1))
+  (:x     (1 2))
+  (:b     (1 3)))
+
+(define-microformat :uf-modrm
+  (:r/m   (3 0))
+  (:reg   (3 3))
+  (:mod   (2 6)))
+
+(define-microformat :uf-sib
+  (:base  (3 0))
+  (:index (3 3))
+  (:scale (2 6)))
 
 (defclass node ()
   ((name :accessor node-name :initarg :name)
@@ -179,7 +203,7 @@
           (argtype isa name) a)))
 
 (defmacro define-argument-types (() &body argtype-specs)
-  `(iter (for (type width) in '(,@argtype-specs))
+  `(iter (for (type width) in ',argtype-specs)
          (ensure-argument-type *isa* type nil t width)))
 
 (defmacro define-immediate-argument-types (() &body argtype-specs)
@@ -191,7 +215,7 @@
   `(ensure-argument-type-physical-tree *isa* ',argtype-spec-tree))
 
 (defmacro define-argument-type-set (name width (&key register-members) &body element-names)
-  `(ensure-argument-type-set *isa* ',name ,width '(,@element-names) ,register-members))
+  `(ensure-argument-type-set *isa* ',name ,width ',element-names ,register-members))
 
 (define-immediate-argument-types ()
     (:imm8 8) (:imm16 16) (:imm32 32) (:imm64 64))
@@ -265,7 +289,7 @@
     (setf (correspondence isa name) c)))
 
 (defmacro define-format-argument/attribute-correspondence (name () &body corr-spec)
-  `(ensure-argument/attribute-correspondence *isa* ,name '(,@corr-spec)))
+  `(ensure-argument/attribute-correspondence *isa* ,name ',corr-spec))
 
 (define-format-argument/attribute-correspondence :segreg-over ()
   (:es . :es) (:cs . :cs) (:ss . :ss) (:ds . :ds) (:fs . :fs) (:gs . :gs))
@@ -314,14 +338,10 @@
 ;;;;
 (defun make-x86/64-isa (sixty-four-p)
   `(nil (00 04 (:rex :nrex))
-        (:rex (04 01 (:rex-w))
+        (:rex (:uf-rex)
               (ban :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
-              (:rex-w (01 01) (:rex-r)
-                      (:rex-r (01 01) (:rex-x)
-                              (:rex-x (01 01) (:rex-b)
-                                      (:rex-b (01 08) (:rex-b)
-                                              ;; include keeps the declared window (01 08)
-                                              (include :nrex))))))
+              (shift -8)
+              (include :nrex))
         (:nrex (-04 08 (:opersz/p :rep/p :repn/p :addrsz :segment :lock
                         :opcode
                         ,(if sixty-four-p
@@ -350,22 +370,22 @@
                                  )
                (:opcode-shortmode ()
                                   )
-               (#x80 (+ 03 03 (:grp1-80))
+               (#x80 (:uf-modrm (:grp1-80))
+                     (dispatch :acc :reg)
                      (:grp1-80 ()
-                               (fetch 02 02)
-                               (shift -6)))
-               (#x81 (+ 03 03 (:grp1-81))
+                               (dispatch :acc :reg :mod)))
+               (#x81 (:uf-modrm (:grp1-81))
+                     (dispatch :acc :reg)
                      (:grp1-81 ()
-                               (fetch 02 02)
-                               (shift -6)))
+                               (dispatch :opcode :reg :mod)))
                ,@(unless sixty-four-p
                   `((#x82 (+ 03 03 (:grp1-82-shortmode))
                           (:grp1-82-shortmode ()
                                               ))))
-               (#x83 (+ 03 03 (:grp1-83))
+               (#x83 (:uf-modrm (:grp1-83))
+                     (dispatch :acc :reg)
                      (:grp1-83 ()
-                               (fetch 02 02)
-                               (shift -6)))
+                               (dispatch :opcode :reg :mod)))
                (#x8f (+ 03 03 (:grp1-8f))
                      (:grp1-8f ()
                                ))
@@ -444,10 +464,10 @@
                                   (#x1f01 (+ -5 3 (:grp7-0f-01-7-3))
                                           (:grp7-0f-01-7-3 ()
                                                            ))))
-                     (#xba (+ 03 03 (:grp8-0f-ba))
+                     (#xba (:uf-modrm (:grp8-0f-ba))
+                           (dispatch :acc :reg)
                            (:grp8-0f-ba ()
-                                        (fetch 02 02)
-                                        (shift -6)))
+                                        (dispatch :opcode :reg :mod)))
                      (#xc7 (+ 03 03 (:grp9-0f-c7))
                            (:grp9-0f-c7 ()
                                         ))
@@ -664,13 +684,13 @@
    #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#)
 
 (define-attribute-set :grp1-80
-  (:add    .  #x080) (:or .        #x180) (:adc .     #x280) (:sbb .     #x380) (:and .     #x480) (:sub .    #x580) (:xor .      #x680) (:cmp .       #x780))
+  (:add .  (#x80 0)) (:or .     (#x80 1)) (:adc .  (#x80 2)) (:sbb .  (#x80 3)) (:and .  (#x80 4)) (:sub . (#x80 5)) (:xor .   (#x80 6)) (:cmp .    (#x80 7)))
 (define-attribute-set :grp1-81
-  (:add .     #x081) (:or .        #x181) (:adc .     #x281) (:sbb .     #x381) (:and .     #x481) (:sub .    #x581) (:xor .      #x681) (:cmp .       #x781))
+  (:add .  (#x81 0)) (:or .     (#x81 1)) (:adc .  (#x81 2)) (:sbb .  (#x81 3)) (:and .  (#x81 4)) (:sub . (#x81 5)) (:xor .   (#x81 6)) (:cmp .    (#x81 7)))
 (define-attribute-set :grp1-82-shortmode
-  (:add .     #x082) (:or .        #x182) (:adc .     #x282) (:sbb .     #x382) (:and .     #x482) (:sub .    #x582) (:xor .      #x682) (:cmp .       #x782))
+  (:add .  (#x82 0)) (:or .     (#x82 1)) (:adc .  (#x82 2)) (:sbb .  (#x82 3)) (:and .  (#x82 4)) (:sub . (#x82 5)) (:xor .   (#x82 6)) (:cmp .    (#x82 7)))
 (define-attribute-set :grp1-83
-  (:add .     #x083) (:or .        #x183) (:adc .     #x283) (:sbb .     #x383) (:and .     #x483) (:sub .    #x583) (:xor .      #x683) (:cmp .       #x783))
+  (:add .  (#x83 0)) (:or .     (#x83 1)) (:adc .  (#x83 2)) (:sbb .  (#x83 3)) (:and .  (#x83 4)) (:sub . (#x83 5)) (:xor .   (#x83 6)) (:cmp .    (#x83 7)))
 (define-attribute-set :grp1-8f
   (:pop .     #x08f)  #|   invalid    |#   #|   invalid  |#   #|   invalid  |#   #|   invalid  |#   #| invalid   |#   #|   invalid   |#   #|   invalid    |#)
 (define-attribute-set :grp2-c0
@@ -715,7 +735,7 @@
   (:monitor . #x1f01) (:mwait .   #x5f01))
 
 (define-attribute-set :grp8-0f-ba
-   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#  (:bt .      #x4ba) (:bts .    #x5ba) (:btr .      #x6ba) (:btc .       #x7ba))
+   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#  (:bt .   (#xba 4)) (:bts . (#xba 5)) (:btr .   (#xba 6)) (:btc .    (#xba 7)))
 (define-attribute-set :grp9-0f-c7 
    #|   invalid  |# (:cmpxchg8/16b . #x1c7) #|  invalid  |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
 (define-attribute-set :grp10-0f-b9
@@ -861,21 +881,30 @@
 (define-instruction-format "<AL, AH, imm8"     ()       ( w :rflags     rw :al         r  :ah         r (:imm8))    (:aad #xd5))
 (define-instruction-format "<2|2!AL, AH, imm8" ()       ( w :rflags     rw :al          w :ah         r (:imm8))    (:aam #xd4))
                                                                                                                   
-(define-instruction-format "<AL, imm8"         ()       ( w :rflags     rw (:al)       r  (:imm8))                  (:add #x04)  (:adc #x14)  (:sbb #x1c)  (:sub #x2c))
-(define-instruction-format "<XAX, immXX"       ()       ( w :rflags     rw (:xax)      r  (:immx))                  (:add #x05)  (:adc #x15)  (:sbb #x1d)  (:sub #x2d))
-(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags     rw (:reg/mem8) r  (:imm8))                  (:add #x080) (:adc #x280) (:sbb #x380) (:sub #x580))
-(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags     rw (:reg/memx) r  (:immx))                  (:add #x081) (:adc #x281) (:sbb #x381) (:sub #x581))
-(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags     rw (:reg/memx) r  (:imm8))                  (:add #x083) (:adc #x283) (:sbb #x383) (:sub #x583) (:bts #x5ba) (:btr #x6ba) (:btc #x7ba))
-(define-instruction-format "<reg/mem8, reg8"   (:modrm) ( w :rflags     rw (:reg/mem8) r  (:reg8))                  (:add #x00)  (:adc #x10)  (:sbb #x18)  (:sub #x28))
-(define-instruction-format "<reg/memXX, regXX" (:modrm) ( w :rflags     rw (:reg/memx) r  (:regx))                  (:add #x01)  (:adc #x11)  (:sbb #x19)  (:sub #x29)  (:bts #xab)  (:btr #xb3)  (:btc #xbb))
-(define-instruction-format "<reg8, reg/mem8"   (:modrm) ( w :rflags     rw (:reg8)     r  (:reg/mem8))              (:add #x02)  (:adc #x12)  (:sbb #x1a)  (:sub #x2a))
-(define-instruction-format "<reg8, reg/memXX"  (:modrm) ( w :rflags     rw (:reg8)     r  (:reg/memx))              (:add #x03)  (:adc #x13)  (:sbb #x1b)  (:sub #x2b))
+(define-instruction-format "<AL, imm8"         ()       ( w :rflags     rw (:al)       r  (:imm8))                   (:add #x04)  (:adc #x14)  (:sbb #x1c)  (:sub #x2c))
+(define-instruction-format "<XAX, immXX"       ()       ( w :rflags     rw (:xax)      r  (:immx))                   (:add #x05)  (:adc #x15)  (:sbb #x1d)  (:sub #x2d))
+(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg))        r  (:imm8)) (:add #x80 0 0) (:adc #x80 2 0) (:sbb #x80 3 0) (:sub #x80 5 0))
+(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm8))  r  (:imm8)) (:add #x80 0 1) (:adc #x80 2 1) (:sbb #x80 3 1) (:sub #x80 5 1))
+(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm32)) r  (:imm8)) (:add #x80 0 2) (:adc #x80 2 2) (:sbb #x80 3 2) (:sub #x80 5 2))
+(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:reg8)                           r  (:imm8)) (:add #x80 0 3) (:adc #x80 2 3) (:sbb #x80 3 3) (:sub #x80 5 3))
+(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:immx)) (:add #x81 0 0) (:adc #x81 2 0) (:sbb #x81 3 0) (:sub #x81 5 0))
+(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:immx)) (:add #x81 0 1) (:adc #x81 2 1) (:sbb #x81 3 1) (:sub #x81 5 1))
+(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:immx)) (:add #x81 0 2) (:adc #x81 2 2) (:sbb #x81 3 2) (:sub #x81 5 2))
+(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:regx)                           r  (:immx)) (:add #x81 0 3) (:adc #x81 2 3) (:sbb #x81 3 3) (:sub #x81 5 3))
+(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:imm8)) (:add #x83 0 0) (:adc #x83 2 0) (:sbb #x83 3 0) (:sub #x83 5 0) (:bts #xba 5 0) (:btr #xba 6 0) (:btc #xba 7 0))
+(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:imm8)) (:add #x83 0 1) (:adc #x83 2 1) (:sbb #x83 3 1) (:sub #x83 5 1) (:bts #xba 5 1) (:btr #xba 6 1) (:btc #xba 7 1))
+(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:imm8)) (:add #x83 0 2) (:adc #x83 2 2) (:sbb #x83 3 2) (:sub #x83 5 2) (:bts #xba 5 2) (:btr #xba 6 2) (:btc #xba 7 2))
+(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:regx)                           r  (:imm8)) (:add #x83 0 3) (:adc #x83 2 3) (:sbb #x83 3 3) (:sub #x83 5 3) (:bts #xba 5 3) (:btr #xba 6 3) (:btc #xba 7 3))
+(define-instruction-format "<reg/mem8, reg8"   (:modrm) ( w :rflags rw (:reg/mem8) r  (:reg8))      (:add #x00)  (:adc #x10)  (:sbb #x18)  (:sub #x28))
+(define-instruction-format "<reg/memXX, regXX" (:modrm) ( w :rflags rw (:reg/memx) r  (:regx))      (:add #x01)  (:adc #x11)  (:sbb #x19)  (:sub #x29)  (:bts #xab)  (:btr #xb3)  (:btc #xbb))
+(define-instruction-format "<reg8, reg/mem8"   (:modrm) ( w :rflags rw (:reg8)     r  (:reg/mem8))  (:add #x02)  (:adc #x12)  (:sbb #x1a)  (:sub #x2a))
+(define-instruction-format "<reg8, reg/memXX"  (:modrm) ( w :rflags rw (:reg8)     r  (:reg/memx))  (:add #x03)  (:adc #x13)  (:sbb #x1b)  (:sub #x2b))
                                                                                                                   
 (define-instruction-format "AL, imm8"          ()       (rw (:al)       r  (:imm8))                                 (:or #x0c)   (:and #x24)  (:xor #x34))
 (define-instruction-format "XAX, immXX"        ()       (rw (:xax)      r  (:immx))                                 (:or #x0d)   (:and #x25)  (:xor #x35))
-(define-instruction-format "reg/mem8, imm8"    (:modrm) (rw (:reg/mem8) r  (:imm8))                                 (:or #x180)  (:and #x480) (:xor #x680))
-(define-instruction-format "reg/memXX, immXX"  (:modrm) (rw (:reg/memx) r  (:immx))                                 (:or #x181)  (:and #x481) (:xor #x681))
-(define-instruction-format "reg/memXX, imm8"   (:modrm) (rw (:reg/memx) r  (:imm8))                                 (:or #x183)  (:and #x483) (:xor #x683))
+(define-instruction-format "reg/mem8, imm8"    (:modrm) (rw (:reg/mem8) r  (:imm8))                                 (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
+(define-instruction-format "reg/memXX, immXX"  (:modrm) (rw (:reg/memx) r  (:immx))                                 (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
+(define-instruction-format "reg/memXX, imm8"   (:modrm) (rw (:reg/memx) r  (:imm8))                                 (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
 (define-instruction-format "reg/mem8, reg8"    (:modrm) (rw (:reg/mem8) r  (:reg8))                                 (:or #x08)   (:and #x20)  (:xor #x30))
 (define-instruction-format "reg/memXX, regXX"  (:modrm) (rw (:reg/memx) r  (:regx))                                 (:or #x09)   (:and #x21)  (:xor #x31))
 (define-instruction-format "reg8, reg/mem8"    (:modrm) (rw (:reg8)     r  (:reg/mem8))                             (:or #x0a)   (:and #x22)  (:xor #x32))

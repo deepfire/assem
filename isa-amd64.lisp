@@ -854,7 +854,7 @@
             (push f (op/arglist-insn-formats isa (cons op arglist))))
       (setf (insn-format isa id) f))))
 
-(defmacro define-instruction-format (id attributes argspec &body insn/opcode-specs)
+(defmacro defiformat (id attributes argspec &body insn/opcode-specs)
   `(ensure-instruction-format *isa* ,id ',attributes ',argspec '(,@insn/opcode-specs)))
 
 ;; Issues:
@@ -877,502 +877,502 @@
 ;;  ! - does not source its first argument
 ;;  2! - does not source its second argument
 
-(define-instruction-format "<>AL"              ()       (rw :rflags     rw :al)                                     (:aaa #x37)  (:aas #x3f)  (:daa #x27)  (:das #x2f))
-(define-instruction-format "<AL, AH, imm8"     ()       ( w :rflags     rw :al         r  :ah         r (:imm8))    (:aad #xd5))
-(define-instruction-format "<2|2!AL, AH, imm8" ()       ( w :rflags     rw :al          w :ah         r (:imm8))    (:aam #xd4))
+(defiformat "<>AL"              ()       (rw :rflags     rw :al)                                     (:aaa #x37)  (:aas #x3f)  (:daa #x27)  (:das #x2f))
+(defiformat "<AL, AH, imm8"     ()       ( w :rflags     rw :al         r  :ah         r (:imm8))    (:aad #xd5))
+(defiformat "<2|2!AL, AH, imm8" ()       ( w :rflags     rw :al          w :ah         r (:imm8))    (:aam #xd4))
                                                                                                                   
-(define-instruction-format "<AL, imm8"         ()       ( w :rflags     rw (:al)       r  (:imm8))                   (:add #x04)  (:adc #x14)  (:sbb #x1c)  (:sub #x2c))
-(define-instruction-format "<XAX, immXX"       ()       ( w :rflags     rw (:xax)      r  (:immx))                   (:add #x05)  (:adc #x15)  (:sbb #x1d)  (:sub #x2d))
-(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg))        r  (:imm8)) (:add #x80 0 0) (:adc #x80 2 0) (:sbb #x80 3 0) (:sub #x80 5 0))
-(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm8))  r  (:imm8)) (:add #x80 0 1) (:adc #x80 2 1) (:sbb #x80 3 1) (:sub #x80 5 1))
-(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm32)) r  (:imm8)) (:add #x80 0 2) (:adc #x80 2 2) (:sbb #x80 3 2) (:sub #x80 5 2))
-(define-instruction-format "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:reg8)                           r  (:imm8)) (:add #x80 0 3) (:adc #x80 2 3) (:sbb #x80 3 3) (:sub #x80 5 3))
-(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:immx)) (:add #x81 0 0) (:adc #x81 2 0) (:sbb #x81 3 0) (:sub #x81 5 0))
-(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:immx)) (:add #x81 0 1) (:adc #x81 2 1) (:sbb #x81 3 1) (:sub #x81 5 1))
-(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:immx)) (:add #x81 0 2) (:adc #x81 2 2) (:sbb #x81 3 2) (:sub #x81 5 2))
-(define-instruction-format "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:regx)                           r  (:immx)) (:add #x81 0 3) (:adc #x81 2 3) (:sbb #x81 3 3) (:sub #x81 5 3))
-(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:imm8)) (:add #x83 0 0) (:adc #x83 2 0) (:sbb #x83 3 0) (:sub #x83 5 0) (:bts #xba 5 0) (:btr #xba 6 0) (:btc #xba 7 0))
-(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:imm8)) (:add #x83 0 1) (:adc #x83 2 1) (:sbb #x83 3 1) (:sub #x83 5 1) (:bts #xba 5 1) (:btr #xba 6 1) (:btc #xba 7 1))
-(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:imm8)) (:add #x83 0 2) (:adc #x83 2 2) (:sbb #x83 3 2) (:sub #x83 5 2) (:bts #xba 5 2) (:btr #xba 6 2) (:btc #xba 7 2))
-(define-instruction-format "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:regx)                           r  (:imm8)) (:add #x83 0 3) (:adc #x83 2 3) (:sbb #x83 3 3) (:sub #x83 5 3) (:bts #xba 5 3) (:btr #xba 6 3) (:btc #xba 7 3))
-(define-instruction-format "<reg/mem8, reg8"   (:modrm) ( w :rflags rw (:reg/mem8) r  (:reg8))      (:add #x00)  (:adc #x10)  (:sbb #x18)  (:sub #x28))
-(define-instruction-format "<reg/memXX, regXX" (:modrm) ( w :rflags rw (:reg/memx) r  (:regx))      (:add #x01)  (:adc #x11)  (:sbb #x19)  (:sub #x29)  (:bts #xab)  (:btr #xb3)  (:btc #xbb))
-(define-instruction-format "<reg8, reg/mem8"   (:modrm) ( w :rflags rw (:reg8)     r  (:reg/mem8))  (:add #x02)  (:adc #x12)  (:sbb #x1a)  (:sub #x2a))
-(define-instruction-format "<reg8, reg/memXX"  (:modrm) ( w :rflags rw (:reg8)     r  (:reg/memx))  (:add #x03)  (:adc #x13)  (:sbb #x1b)  (:sub #x2b))
+(defiformat "<AL, imm8"         ()       ( w :rflags     rw (:al)       r  (:imm8))                   (:add #x04)  (:adc #x14)  (:sbb #x1c)  (:sub #x2c))
+(defiformat "<XAX, immXX"       ()       ( w :rflags     rw (:xax)      r  (:immx))                   (:add #x05)  (:adc #x15)  (:sbb #x1d)  (:sub #x2d))
+(defiformat "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg))        r  (:imm8)) (:add #x80 0 0) (:adc #x80 2 0) (:sbb #x80 3 0) (:sub #x80 5 0))
+(defiformat "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm8))  r  (:imm8)) (:add #x80 0 1) (:adc #x80 2 1) (:sbb #x80 3 1) (:sub #x80 5 1))
+(defiformat "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:mem8 (:segreg :basereg :imm32)) r  (:imm8)) (:add #x80 0 2) (:adc #x80 2 2) (:sbb #x80 3 2) (:sub #x80 5 2))
+(defiformat "<reg/mem8, imm8"   (:modrm) ( w :rflags rw (:reg8)                           r  (:imm8)) (:add #x80 0 3) (:adc #x80 2 3) (:sbb #x80 3 3) (:sub #x80 5 3))
+(defiformat "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:immx)) (:add #x81 0 0) (:adc #x81 2 0) (:sbb #x81 3 0) (:sub #x81 5 0))
+(defiformat "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:immx)) (:add #x81 0 1) (:adc #x81 2 1) (:sbb #x81 3 1) (:sub #x81 5 1))
+(defiformat "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:immx)) (:add #x81 0 2) (:adc #x81 2 2) (:sbb #x81 3 2) (:sub #x81 5 2))
+(defiformat "<reg/memXX, immXX" (:modrm) ( w :rflags rw (:regx)                           r  (:immx)) (:add #x81 0 3) (:adc #x81 2 3) (:sbb #x81 3 3) (:sub #x81 5 3))
+(defiformat "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg))        r  (:imm8)) (:add #x83 0 0) (:adc #x83 2 0) (:sbb #x83 3 0) (:sub #x83 5 0) (:bts #xba 5 0) (:btr #xba 6 0) (:btc #xba 7 0))
+(defiformat "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm8))  r  (:imm8)) (:add #x83 0 1) (:adc #x83 2 1) (:sbb #x83 3 1) (:sub #x83 5 1) (:bts #xba 5 1) (:btr #xba 6 1) (:btc #xba 7 1))
+(defiformat "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:memx (:segreg :basereg :imm32)) r  (:imm8)) (:add #x83 0 2) (:adc #x83 2 2) (:sbb #x83 3 2) (:sub #x83 5 2) (:bts #xba 5 2) (:btr #xba 6 2) (:btc #xba 7 2))
+(defiformat "<reg/memXX, imm8"  (:modrm) ( w :rflags rw (:regx)                           r  (:imm8)) (:add #x83 0 3) (:adc #x83 2 3) (:sbb #x83 3 3) (:sub #x83 5 3) (:bts #xba 5 3) (:btr #xba 6 3) (:btc #xba 7 3))
+(defiformat "<reg/mem8, reg8"   (:modrm) ( w :rflags rw (:reg/mem8) r  (:reg8))      (:add #x00)  (:adc #x10)  (:sbb #x18)  (:sub #x28))
+(defiformat "<reg/memXX, regXX" (:modrm) ( w :rflags rw (:reg/memx) r  (:regx))      (:add #x01)  (:adc #x11)  (:sbb #x19)  (:sub #x29)  (:bts #xab)  (:btr #xb3)  (:btc #xbb))
+(defiformat "<reg8, reg/mem8"   (:modrm) ( w :rflags rw (:reg8)     r  (:reg/mem8))  (:add #x02)  (:adc #x12)  (:sbb #x1a)  (:sub #x2a))
+(defiformat "<reg8, reg/memXX"  (:modrm) ( w :rflags rw (:reg8)     r  (:reg/memx))  (:add #x03)  (:adc #x13)  (:sbb #x1b)  (:sub #x2b))
                                                                                                                   
-(define-instruction-format "AL, imm8"          ()       (rw (:al)       r  (:imm8))                                 (:or #x0c)   (:and #x24)  (:xor #x34))
-(define-instruction-format "XAX, immXX"        ()       (rw (:xax)      r  (:immx))                                 (:or #x0d)   (:and #x25)  (:xor #x35))
-(define-instruction-format "reg/mem8, imm8"    (:modrm) (rw (:reg/mem8) r  (:imm8))                                 (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
-(define-instruction-format "reg/memXX, immXX"  (:modrm) (rw (:reg/memx) r  (:immx))                                 (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
-(define-instruction-format "reg/memXX, imm8"   (:modrm) (rw (:reg/memx) r  (:imm8))                                 (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
-(define-instruction-format "reg/mem8, reg8"    (:modrm) (rw (:reg/mem8) r  (:reg8))                                 (:or #x08)   (:and #x20)  (:xor #x30))
-(define-instruction-format "reg/memXX, regXX"  (:modrm) (rw (:reg/memx) r  (:regx))                                 (:or #x09)   (:and #x21)  (:xor #x31))
-(define-instruction-format "reg8, reg/mem8"    (:modrm) (rw (:reg8)     r  (:reg/mem8))                             (:or #x0a)   (:and #x22)  (:xor #x32))
-(define-instruction-format "regXX, reg/memXX"  (:modrm) (rw (:regx)     r  (:reg/memx))                             (:or #x0b)   (:and #x23)  (:xor #x33))
+(defiformat "AL, imm8"          ()       (rw (:al)       r  (:imm8))                                 (:or #x0c)   (:and #x24)  (:xor #x34))
+(defiformat "XAX, immXX"        ()       (rw (:xax)      r  (:immx))                                 (:or #x0d)   (:and #x25)  (:xor #x35))
+(defiformat "reg/mem8, imm8"    (:modrm) (rw (:reg/mem8) r  (:imm8))                                 (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
+(defiformat "reg/memXX, immXX"  (:modrm) (rw (:reg/memx) r  (:immx))                                 (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
+(defiformat "reg/memXX, imm8"   (:modrm) (rw (:reg/memx) r  (:imm8))                                 (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
+(defiformat "reg/mem8, reg8"    (:modrm) (rw (:reg/mem8) r  (:reg8))                                 (:or #x08)   (:and #x20)  (:xor #x30))
+(defiformat "reg/memXX, regXX"  (:modrm) (rw (:reg/memx) r  (:regx))                                 (:or #x09)   (:and #x21)  (:xor #x31))
+(defiformat "reg8, reg/mem8"    (:modrm) (rw (:reg8)     r  (:reg/mem8))                             (:or #x0a)   (:and #x22)  (:xor #x32))
+(defiformat "regXX, reg/memXX"  (:modrm) (rw (:regx)     r  (:reg/memx))                             (:or #x0b)   (:and #x23)  (:xor #x33))
                                                                                                                   
-(define-instruction-format ">!reg/mem8"        (:modrm) (rw (:reg/mem8) r  :rflags)                                 (:seto  #x90) (:setno  #x91) (:setc   #x92) (:setnc  #x93)
+(defiformat ">!reg/mem8"        (:modrm) (rw (:reg/mem8) r  :rflags)                                 (:seto  #x90) (:setno  #x91) (:setc   #x92) (:setnc  #x93)
                                                                                                                     (:setz  #x94) (:setnz  #x95) (:setna  #x96) (:seta   #x97)
                                                                                                                     (:sets  #x98) (:setns  #x99) (:setp   #x9a) (:setnp  #x9b)
                                                                                                                     (:setl  #x9c) (:setnl  #x9d) (:setng  #x9e) (:setg   #x9f))
 
-(define-instruction-format ">regXX, reg/memXX" (:modrm) (rw (:regx)      r  (:reg/memx) r :rflags)                  (:cmovo #x40) (:cmovno #x41) (:cmovc  #x42) (:cmovnc #x43)
+(defiformat ">regXX, reg/memXX" (:modrm) (rw (:regx)      r  (:reg/memx) r :rflags)                  (:cmovo #x40) (:cmovno #x41) (:cmovc  #x42) (:cmovnc #x43)
                                                                                                                     (:cmovz #x44) (:cmovnz #x45) (:cmovna #x46) (:cmova  #x47)
                                                                                                                     (:cmovs #x48) (:cmovns #x49) (:cmovp  #x4a) (:cmovnp #x4b)
                                                                                                                     (:cmovl #x4c) (:cmovnl #x4d) (:cmovng #x4e) (:cmovg  #x4f))
 
-;; (define-instruction-format "<|AL, imm8"             (:rflags)                        (:al :imm8))                                   ;; CMP, TEST
-;; (define-instruction-format "<|AX, imm16"            (:rflags)                        (:ax :imm16))                                  ;; CMP, TEST
-;; (define-instruction-format "<|EAX, imm32"           (:rflags)                        (:eax :imm32))                                 ;; CMP, TEST
-;; (define-instruction-format "<|RAX, imm32"           (:rflags)                        (:rax :imm32))                                 ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem8, imm8"       (:rflags)                        (:reg/mem8 :imm8))                             ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem16, imm16"     (:rflags)                        (:reg/mem16 :imm16))                           ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem32, imm32"     (:rflags)                        (:reg/mem32 :imm32))                           ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem64, imm32"     (:rflags)                        (:reg/mem64 :imm32))                           ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem16, imm8"      (:rflags)                        (:reg/mem16 :imm8))                            ;; CMP, BT
-;; (define-instruction-format "<|reg/mem32, imm8"      (:rflags)                        (:reg/mem32 :imm8))                            ;; CMP, BT
-;; (define-instruction-format "<|reg/mem64, imm8"      (:rflags)                        (:reg/mem64 :imm8))                            ;; CMP, BT
-;; (define-instruction-format "<|reg/mem8, reg8"       (:rflags)                        (:reg/mem8 :reg8))                             ;; CMP, TEST
-;; (define-instruction-format "<|reg/mem16, reg16"     (:rflags)                        (:reg/mem16 :reg16))                           ;; CMP, TEST, BT
-;; (define-instruction-format "<|reg/mem32, reg32"     (:rflags)                        (:reg/mem32 :reg32))                           ;; CMP, TEST, BT
-;; (define-instruction-format "<|reg/mem64, reg64"     (:rflags)                        (:reg/mem64 :reg64))                           ;; CMP, TEST, BT
-;; (define-instruction-format "<|reg8, reg/mem8"       (:rflags)                        (:reg8 :reg/mem8))                             ;; CMP
-;; (define-instruction-format "<|reg16, reg/mem16"     (:rflags)                        (:reg16 :reg/mem16))                           ;; CMP
-;; (define-instruction-format "<|reg32, reg/mem32"     (:rflags)                        (:reg32 :reg/mem32))                           ;; CMP
-;; (define-instruction-format "<|reg64, reg/mem64"     (:rflags)                        (:reg64 :reg/mem64))                           ;; CMP
+;; (defiformat "<|AL, imm8"             (:rflags)                        (:al :imm8))                                   ;; CMP, TEST
+;; (defiformat "<|AX, imm16"            (:rflags)                        (:ax :imm16))                                  ;; CMP, TEST
+;; (defiformat "<|EAX, imm32"           (:rflags)                        (:eax :imm32))                                 ;; CMP, TEST
+;; (defiformat "<|RAX, imm32"           (:rflags)                        (:rax :imm32))                                 ;; CMP, TEST
+;; (defiformat "<|reg/mem8, imm8"       (:rflags)                        (:reg/mem8 :imm8))                             ;; CMP, TEST
+;; (defiformat "<|reg/mem16, imm16"     (:rflags)                        (:reg/mem16 :imm16))                           ;; CMP, TEST
+;; (defiformat "<|reg/mem32, imm32"     (:rflags)                        (:reg/mem32 :imm32))                           ;; CMP, TEST
+;; (defiformat "<|reg/mem64, imm32"     (:rflags)                        (:reg/mem64 :imm32))                           ;; CMP, TEST
+;; (defiformat "<|reg/mem16, imm8"      (:rflags)                        (:reg/mem16 :imm8))                            ;; CMP, BT
+;; (defiformat "<|reg/mem32, imm8"      (:rflags)                        (:reg/mem32 :imm8))                            ;; CMP, BT
+;; (defiformat "<|reg/mem64, imm8"      (:rflags)                        (:reg/mem64 :imm8))                            ;; CMP, BT
+;; (defiformat "<|reg/mem8, reg8"       (:rflags)                        (:reg/mem8 :reg8))                             ;; CMP, TEST
+;; (defiformat "<|reg/mem16, reg16"     (:rflags)                        (:reg/mem16 :reg16))                           ;; CMP, TEST, BT
+;; (defiformat "<|reg/mem32, reg32"     (:rflags)                        (:reg/mem32 :reg32))                           ;; CMP, TEST, BT
+;; (defiformat "<|reg/mem64, reg64"     (:rflags)                        (:reg/mem64 :reg64))                           ;; CMP, TEST, BT
+;; (defiformat "<|reg8, reg/mem8"       (:rflags)                        (:reg8 :reg/mem8))                             ;; CMP
+;; (defiformat "<|reg16, reg/mem16"     (:rflags)                        (:reg16 :reg/mem16))                           ;; CMP
+;; (defiformat "<|reg32, reg/mem32"     (:rflags)                        (:reg32 :reg/mem32))                           ;; CMP
+;; (defiformat "<|reg64, reg/mem64"     (:rflags)                        (:reg64 :reg/mem64))                           ;; CMP
 
-;; (define-instruction-format "reg/mem8"               (:reg/mem8)                      (:reg/mem8))                                   ;; NOT
-;; (define-instruction-format "reg/mem16"              (:reg/mem16)                     (:reg/mem16))                                  ;; NOT
-;; (define-instruction-format "reg/mem32"              (:reg/mem32)                     (:reg/mem32))                                  ;; NOT
-;; (define-instruction-format "reg/mem64"              (:reg/mem64)                     (:reg/mem64))                                  ;; NOT
+;; (defiformat "reg/mem8"               (:reg/mem8)                      (:reg/mem8))                                   ;; NOT
+;; (defiformat "reg/mem16"              (:reg/mem16)                     (:reg/mem16))                                  ;; NOT
+;; (defiformat "reg/mem32"              (:reg/mem32)                     (:reg/mem32))                                  ;; NOT
+;; (defiformat "reg/mem64"              (:reg/mem64)                     (:reg/mem64))                                  ;; NOT
 
-;; (define-instruction-format "<reg/mem8"              (:rflags :reg/mem8)              (:reg/mem8))                                   ;; NEG, DEC, INC
-;; (define-instruction-format "<reg/mem16"             (:rflags :reg/mem16)             (:reg/mem16))                                  ;; NEG, DEC, INC
-;; (define-instruction-format "<reg/mem32"             (:rflags :reg/mem32)             (:reg/mem32))                                  ;; NEG, DEC, INC
-;; (define-instruction-format "<reg/mem64"             (:rflags :reg/mem64)             (:reg/mem64))                                  ;; NEG, DEC, INC
+;; (defiformat "<reg/mem8"              (:rflags :reg/mem8)              (:reg/mem8))                                   ;; NEG, DEC, INC
+;; (defiformat "<reg/mem16"             (:rflags :reg/mem16)             (:reg/mem16))                                  ;; NEG, DEC, INC
+;; (defiformat "<reg/mem32"             (:rflags :reg/mem32)             (:reg/mem32))                                  ;; NEG, DEC, INC
+;; (defiformat "<reg/mem64"             (:rflags :reg/mem64)             (:reg/mem64))                                  ;; NEG, DEC, INC
 
-;; (define-instruction-format "|reg16, mem32"          ()                               (:reg16 :mem32))                               ;; BOUND
-;; (define-instruction-format "|reg32, mem64"          ()                               (:reg32 :mem64))                               ;; BOUND
+;; (defiformat "|reg16, mem32"          ()                               (:reg16 :mem32))                               ;; BOUND
+;; (defiformat "|reg32, mem64"          ()                               (:reg32 :mem64))                               ;; BOUND
 
-;; (define-instruction-format "<reg16"                 (:rflags :reg16)                 (:reg16))                                      ;; DEC, INC
-;; (define-instruction-format "<reg32"                 (:rflags :reg32)                 (:reg32))                                      ;; DEC, INC
+;; (defiformat "<reg16"                 (:rflags :reg16)                 (:reg16))                                      ;; DEC, INC
+;; (defiformat "<reg32"                 (:rflags :reg32)                 (:reg32))                                      ;; DEC, INC
 
-;; (define-instruction-format "reg32"                  (:reg32)                         (:reg32))                                      ;; BSWAP
-;; (define-instruction-format "reg64"                  (:reg64)                         (:reg64))                                      ;; BSWAP
+;; (defiformat "reg32"                  (:reg32)                         (:reg32))                                      ;; BSWAP
+;; (defiformat "reg64"                  (:reg64)                         (:reg64))                                      ;; BSWAP
 
 ;; ;;;;
 ;; ;;;; Interrupts
 ;; ;;;;
-;; (define-instruction-format "$@<>imm8"               (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:rflags :imm8 :rip :rsp :cs :ss :mem)) ;; INT, actually potentially it touches a lot more...
-;; (define-instruction-format "$@>"                    (:rip :cpl :cs :tss)                       (:rflags))                              ;; INTO, actually potentially it touches a lot more...
-;; (define-instruction-format "$@<"                    (:rip :rflags)                   ())                                               ;; INT3, actually potentially it touches a lot more...
-;; (define-instruction-format "$@@<"                   (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:cpl :cs :tss))                        ;; IRET, IRETD, IRETQ
+;; (defiformat "$@<>imm8"               (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:rflags :imm8 :rip :rsp :cs :ss :mem)) ;; INT, actually potentially it touches a lot more...
+;; (defiformat "$@>"                    (:rip :cpl :cs :tss)                       (:rflags))                              ;; INTO, actually potentially it touches a lot more...
+;; (defiformat "$@<"                    (:rip :rflags)                   ())                                               ;; INT3, actually potentially it touches a lot more...
+;; (defiformat "$@@<"                   (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:cpl :cs :tss))                        ;; IRET, IRETD, IRETQ
 
 ;; ;;;;
 ;; ;;;; Jumps, calls, returns and branches
 ;; ;;;;
-;; (define-instruction-format "@immoff8"               (:rip)                           (:immoff8))                                    ;; JMP
-;; (define-instruction-format "@immoff16"              (:rip)                           (:immoff16))                                   ;; JMP
-;; (define-instruction-format "@immoff32"              (:rip)                           (:immoff32))                                   ;; JMP
-;; (define-instruction-format "@reg/mem16"             (:rip)                           (:reg/mem16))                                  ;; JMP
-;; (define-instruction-format "@reg/mem32"             (:rip)                           (:reg/mem32))                                  ;; JMP
-;; (define-instruction-format "@reg/mem64"             (:rip)                           (:reg/mem64))                                  ;; JMP
+;; (defiformat "@immoff8"               (:rip)                           (:immoff8))                                    ;; JMP
+;; (defiformat "@immoff16"              (:rip)                           (:immoff16))                                   ;; JMP
+;; (defiformat "@immoff32"              (:rip)                           (:immoff32))                                   ;; JMP
+;; (defiformat "@reg/mem16"             (:rip)                           (:reg/mem16))                                  ;; JMP
+;; (defiformat "@reg/mem32"             (:rip)                           (:reg/mem32))                                  ;; JMP
+;; (defiformat "@reg/mem64"             (:rip)                           (:reg/mem64))                                  ;; JMP
 
-;; (define-instruction-format "@ptr16:16"              (:rip :cs :tss)                  (:ptr16/16))                                   ;; JMP FAR
-;; (define-instruction-format "@ptr16:32"              (:rip :cs :tss)                  (:ptr16/32))                                   ;; JMP FAR
-;; (define-instruction-format "@mem32"                 (:rip :cs :tss)                  (:mem32))                                      ;; JMP FAR
-;; (define-instruction-format "@mem48"                 (:rip :cs :tss)                  (:mem48))                                      ;; JMP FAR
+;; (defiformat "@ptr16:16"              (:rip :cs :tss)                  (:ptr16/16))                                   ;; JMP FAR
+;; (defiformat "@ptr16:32"              (:rip :cs :tss)                  (:ptr16/32))                                   ;; JMP FAR
+;; (defiformat "@mem32"                 (:rip :cs :tss)                  (:mem32))                                      ;; JMP FAR
+;; (defiformat "@mem48"                 (:rip :cs :tss)                  (:mem48))                                      ;; JMP FAR
 
-;; (define-instruction-format "@@immoff16"             (:rip :rsp :mem16)               (:rip :rbp :rsp :immoff16))                    ;; CALL
-;; (define-instruction-format "@@immoff32"             (:rip :rsp :mem32)               (:rip :rsp :immoff32))                         ;; CALL
-;; (define-instruction-format "@@reg/mem16"            (:rip :rsp :mem16)               (:rip :rsp :reg/mem16))                        ;; CALL
-;; (define-instruction-format "@@reg/mem32"            (:rip :rsp :mem32)               (:rip :rsp :reg/mem32))                        ;; CALL
-;; (define-instruction-format "@@reg/mem64"            (:rip :rsp :mem64)               (:rip :rsp :reg/mem64))                        ;; CALL
+;; (defiformat "@@immoff16"             (:rip :rsp :mem16)               (:rip :rbp :rsp :immoff16))                    ;; CALL
+;; (defiformat "@@immoff32"             (:rip :rsp :mem32)               (:rip :rsp :immoff32))                         ;; CALL
+;; (defiformat "@@reg/mem16"            (:rip :rsp :mem16)               (:rip :rsp :reg/mem16))                        ;; CALL
+;; (defiformat "@@reg/mem32"            (:rip :rsp :mem32)               (:rip :rsp :reg/mem32))                        ;; CALL
+;; (defiformat "@@reg/mem64"            (:rip :rsp :mem64)               (:rip :rsp :reg/mem64))                        ;; CALL
 
-;; (define-instruction-format "@@"                     (:rip :rsp)                      (:rip :rsp :mem16))                            ;; RET
-;; (define-instruction-format "@@imm8"                 (:rip :rsp)                      (:rip :rsp :mem16 :imm8))                      ;; RET
+;; (defiformat "@@"                     (:rip :rsp)                      (:rip :rsp :mem16))                            ;; RET
+;; (defiformat "@@imm8"                 (:rip :rsp)                      (:rip :rsp :mem16 :imm8))                      ;; RET
 
-;; (define-instruction-format "@>immoff8"              (:rip)                           (:rflags :immoff8))                            ;; Jxx
-;; (define-instruction-format "@>immoff16"             (:rip)                           (:rflags :immoff16))                           ;; Jxx
-;; (define-instruction-format "@>immoff32"             (:rip)                           (:rflags :immoff32))                           ;; Jxx
+;; (defiformat "@>immoff8"              (:rip)                           (:rflags :immoff8))                            ;; Jxx
+;; (defiformat "@>immoff16"             (:rip)                           (:rflags :immoff16))                           ;; Jxx
+;; (defiformat "@>immoff32"             (:rip)                           (:rflags :immoff32))                           ;; Jxx
 
-;; (define-instruction-format "@CX, immoff8"           (:rip)                           (:cx :immoff8))                                ;; JCXZ
-;; (define-instruction-format "@ECX, immoff8"          (:rip)                           (:ecx :immoff8))                               ;; JECXZ
-;; (define-instruction-format "@RCX, immoff8"          (:rip)                           (:rcx :immoff8))                               ;; JRCXZ
+;; (defiformat "@CX, immoff8"           (:rip)                           (:cx :immoff8))                                ;; JCXZ
+;; (defiformat "@ECX, immoff8"          (:rip)                           (:ecx :immoff8))                               ;; JECXZ
+;; (defiformat "@RCX, immoff8"          (:rip)                           (:rcx :immoff8))                               ;; JRCXZ
 
-;; (define-instruction-format "@@@ptr16:16"            (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :ptr16/16))       ;; CALL FAR
-;; (define-instruction-format "@@@ptr16:32"            (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :ptr16/32))       ;; CALL FAR
-;; (define-instruction-format "@@@mem32"               (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :mem32))          ;; CALL FAR
-;; (define-instruction-format "@@@mem48"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :mem48))          ;; CALL FAR
-;; (define-instruction-format "@@@"                    (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16))               ;; RETF
-;; (define-instruction-format "@@@imm16"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16 :imm16))        ;; RETF
+;; (defiformat "@@@ptr16:16"            (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :ptr16/16))       ;; CALL FAR
+;; (defiformat "@@@ptr16:32"            (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :ptr16/32))       ;; CALL FAR
+;; (defiformat "@@@mem32"               (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :mem32))          ;; CALL FAR
+;; (defiformat "@@@mem48"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :mem48))          ;; CALL FAR
+;; (defiformat "@@@"                    (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16))               ;; RETF
+;; (defiformat "@@@imm16"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16 :imm16))        ;; RETF
 
-;; (define-instruction-format "!AX, AL"                (:ax)                            (:al))                                         ;; CBW
-;; (define-instruction-format "!EAX, AX"               (:eax)                           (:ax))                                         ;; CWDE
-;; (define-instruction-format "!RAX, EAX"              (:rax)                           (:eax))                                        ;; CDQE
+;; (defiformat "!AX, AL"                (:ax)                            (:al))                                         ;; CBW
+;; (defiformat "!EAX, AX"               (:eax)                           (:ax))                                         ;; CWDE
+;; (defiformat "!RAX, EAX"              (:rax)                           (:eax))                                        ;; CDQE
 
-;; (define-instruction-format "2|AX, DX"               (:ax :dx)                        (:ax))                                         ;; CWD
-;; (define-instruction-format "2|EAX, EDX"             (:eax :edx)                      (:eax))                                        ;; CDQ
-;; (define-instruction-format "2|RAX, RDX"             (:rax :rdx)                      (:rax))                                        ;; CQO
+;; (defiformat "2|AX, DX"               (:ax :dx)                        (:ax))                                         ;; CWD
+;; (defiformat "2|EAX, EDX"             (:eax :edx)                      (:eax))                                        ;; CDQ
+;; (defiformat "2|RAX, RDX"             (:rax :rdx)                      (:rax))                                        ;; CQO
 
-;; (define-instruction-format "<"                      (:rflags)                        ())                                            ;; CLC, CLD, STC, STD
-;; (define-instruction-format "$<IF"                   (:rflags)                        (:cpl :cs))                                    ;; CLI, STI
-;; (define-instruction-format "<>"                     (:rflags)                        (:rflags))                                     ;; CMC
+;; (defiformat "<"                      (:rflags)                        ())                                            ;; CLC, CLD, STC, STD
+;; (defiformat "$<IF"                   (:rflags)                        (:cpl :cs))                                    ;; CLI, STI
+;; (defiformat "<>"                     (:rflags)                        (:rflags))                                     ;; CMC
 
-;; (define-instruction-format "|mem8"                  ()                               (:mem8))                                       ;; CLFLUSH, INVLPG
-;; (define-instruction-format "|RAX, ECX"              ()                               (:rax :ecx))                                   ;; INVLPGA
+;; (defiformat "|mem8"                  ()                               (:mem8))                                       ;; CLFLUSH, INVLPG
+;; (defiformat "|RAX, ECX"              ()                               (:rax :ecx))                                   ;; INVLPGA
 
-;; (define-instruction-format ""                       ()                               ())                                            ;; LFENCE, SFENCE, MFENCE, NOP, PAUSE
-;; (define-instruction-format "|CPL"                   ()                               (:cpl :cs))                                    ;; INVD, WBINVD, HLT
-;; (define-instruction-format "|!mem16/32/64"          ()                               ())                                            ;; NOP
-;; (define-instruction-format "|!mem8"                 ()                               ())                                            ;; PREFETCH{,W,NTA,0,1,2}
+;; (defiformat ""                       ()                               ())                                            ;; LFENCE, SFENCE, MFENCE, NOP, PAUSE
+;; (defiformat "|CPL"                   ()                               (:cpl :cs))                                    ;; INVD, WBINVD, HLT
+;; (defiformat "|!mem16/32/64"          ()                               ())                                            ;; NOP
+;; (defiformat "|!mem8"                 ()                               ())                                            ;; PREFETCH{,W,NTA,0,1,2}
 
 ;; ;;;;
 ;; ;;;; String formats
 ;; ;;;;                                                                    
-;; (define-instruction-format "<>|mem8, mem8"          (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem8 :mem8))   ;; CMPS, CMPSB
-;; (define-instruction-format "<>|mem16, mem16"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem16 :mem16)) ;; CMPS, CMPSW
-;; (define-instruction-format "<>|mem32, mem32"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem32 :mem32)) ;; CMPS, CMPSD
-;; (define-instruction-format "<>|mem64, mem64"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem64 :mem64)) ;; CMPS, CMPSQ
+;; (defiformat "<>|mem8, mem8"          (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem8 :mem8))   ;; CMPS, CMPSB
+;; (defiformat "<>|mem16, mem16"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem16 :mem16)) ;; CMPS, CMPSW
+;; (defiformat "<>|mem32, mem32"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem32 :mem32)) ;; CMPS, CMPSD
+;; (defiformat "<>|mem64, mem64"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem64 :mem64)) ;; CMPS, CMPSQ
 
-;; (define-instruction-format "!AL, mem8"              (:al  :rsi)                      (:ds :rsi :mem8))                              ;; LODS, LODSB
-;; (define-instruction-format "!AX, mem16"             (:ax  :rsi)                      (:ds :rsi :mem16))                             ;; LODS, LODSW
-;; (define-instruction-format "!EAX, mem32"            (:eax :rsi)                      (:ds :rsi :mem32))                             ;; LODS, LODSD
-;; (define-instruction-format "!RAX, mem64"            (:rax :rsi)                      (:ds :rsi :mem64))                             ;; LODS, LODSQ
+;; (defiformat "!AL, mem8"              (:al  :rsi)                      (:ds :rsi :mem8))                              ;; LODS, LODSB
+;; (defiformat "!AX, mem16"             (:ax  :rsi)                      (:ds :rsi :mem16))                             ;; LODS, LODSW
+;; (defiformat "!EAX, mem32"            (:eax :rsi)                      (:ds :rsi :mem32))                             ;; LODS, LODSD
+;; (defiformat "!RAX, mem64"            (:rax :rsi)                      (:ds :rsi :mem64))                             ;; LODS, LODSQ
 
-;; (define-instruction-format "!mem8, mem8"            (:rsi :rdi :mem8)                (:segreg :rsi :es :rdi :mem8))                 ;; MOVS, MOVSB
-;; (define-instruction-format "!mem16, mem16"          (:rsi :rdi :mem16)               (:segreg :rsi :es :rdi :mem16))                ;; MOVS, MOVSW
-;; (define-instruction-format "!mem32, mem32"          (:rsi :rdi :mem32)               (:segreg :rsi :es :rdi :mem32))                ;; MOVS, MOVSD
-;; (define-instruction-format "!mem64, mem64"          (:rsi :rdi :mem64)               (:segreg :rsi :es :rdi :mem64))                ;; MOVS, MOVSQ
+;; (defiformat "!mem8, mem8"            (:rsi :rdi :mem8)                (:segreg :rsi :es :rdi :mem8))                 ;; MOVS, MOVSB
+;; (defiformat "!mem16, mem16"          (:rsi :rdi :mem16)               (:segreg :rsi :es :rdi :mem16))                ;; MOVS, MOVSW
+;; (defiformat "!mem32, mem32"          (:rsi :rdi :mem32)               (:segreg :rsi :es :rdi :mem32))                ;; MOVS, MOVSD
+;; (defiformat "!mem64, mem64"          (:rsi :rdi :mem64)               (:segreg :rsi :es :rdi :mem64))                ;; MOVS, MOVSQ
 
-;; (define-instruction-format "<>|AL, mem8"            (:rflags :rdi)                   (:rflags :es :rdi :al :mem8))                  ;; SCAS, SCASB
-;; (define-instruction-format "<>|AX, mem16"           (:rflags :rdi)                   (:rflags :es :rdi :ax :mem16))                 ;; SCAS, SCASW
-;; (define-instruction-format "<>|EAX, mem32"          (:rflags :rdi)                   (:rflags :es :rdi :eax :mem32))                ;; SCAS, SCASD
-;; (define-instruction-format "<>|RAX, mem64"          (:rflags :rdi)                   (:rflags :es :rdi :rax :mem64))                ;; SCAS, SCASQ
+;; (defiformat "<>|AL, mem8"            (:rflags :rdi)                   (:rflags :es :rdi :al :mem8))                  ;; SCAS, SCASB
+;; (defiformat "<>|AX, mem16"           (:rflags :rdi)                   (:rflags :es :rdi :ax :mem16))                 ;; SCAS, SCASW
+;; (defiformat "<>|EAX, mem32"          (:rflags :rdi)                   (:rflags :es :rdi :eax :mem32))                ;; SCAS, SCASD
+;; (defiformat "<>|RAX, mem64"          (:rflags :rdi)                   (:rflags :es :rdi :rax :mem64))                ;; SCAS, SCASQ
 
-;; (define-instruction-format "!mem8, AL"              (:mem8  :rdi)                    (:es :rdi :al))                                ;; STOS, STOSB
-;; (define-instruction-format "!mem16, AX"             (:mem16 :rdi)                    (:es :rdi :ax))                                ;; STOS, STOSW
-;; (define-instruction-format "!mem32, EAX"            (:mem32 :rdi)                    (:es :rdi :eax))                               ;; STOS, STOSD
-;; (define-instruction-format "!mem64, RAX"            (:mem64 :rdi)                    (:es :rdi :rax))                               ;; STOS, STOSQ
+;; (defiformat "!mem8, AL"              (:mem8  :rdi)                    (:es :rdi :al))                                ;; STOS, STOSB
+;; (defiformat "!mem16, AX"             (:mem16 :rdi)                    (:es :rdi :ax))                                ;; STOS, STOSW
+;; (defiformat "!mem32, EAX"            (:mem32 :rdi)                    (:es :rdi :eax))                               ;; STOS, STOSD
+;; (defiformat "!mem64, RAX"            (:mem64 :rdi)                    (:es :rdi :rax))                               ;; STOS, STOSQ
 ;; ;;;;
 
-;; (define-instruction-format "<AL, reg/mem8, reg8"    (:rflags :al :reg/mem8)          (:al :reg/mem8 :reg8))                         ;; CMPXCHG
-;; (define-instruction-format "<AX, reg/mem16, reg16"  (:rflags :al :reg/mem16)         (:al :reg/mem16 :reg16))                       ;; CMPXCHG
-;; (define-instruction-format "<EAX, reg/mem32, reg32" (:rflags :al :reg/mem32)         (:al :reg/mem32 :reg32))                       ;; CMPXCHG
-;; (define-instruction-format "<RAX, reg/mem64, reg64" (:rflags :al :reg/mem64)         (:al :reg/mem64 :reg64))                       ;; CMPXCHG
+;; (defiformat "<AL, reg/mem8, reg8"    (:rflags :al :reg/mem8)          (:al :reg/mem8 :reg8))                         ;; CMPXCHG
+;; (defiformat "<AX, reg/mem16, reg16"  (:rflags :al :reg/mem16)         (:al :reg/mem16 :reg16))                       ;; CMPXCHG
+;; (defiformat "<EAX, reg/mem32, reg32" (:rflags :al :reg/mem32)         (:al :reg/mem32 :reg32))                       ;; CMPXCHG
+;; (defiformat "<RAX, reg/mem64, reg64" (:rflags :al :reg/mem64)         (:al :reg/mem64 :reg64))                       ;; CMPXCHG
 
-;; (define-instruction-format "<EDX:EAX, reg/mem64, ECX:EBX"  (:rflags :edx :eax :reg/mem64)  (:edx :eax :reg/mem64 :ecx :edx))        ;; CMPXCHG8B
-;; (define-instruction-format "<RDX:RAX, reg/mem128, RCX:RBX" (:rflags :rdx :rax :reg/mem128) (:rdx :rax :reg/mem128 :rcx :rdx))       ;; CMPXCHG16B
+;; (defiformat "<EDX:EAX, reg/mem64, ECX:EBX"  (:rflags :edx :eax :reg/mem64)  (:edx :eax :reg/mem64 :ecx :edx))        ;; CMPXCHG8B
+;; (defiformat "<RDX:RAX, reg/mem128, RCX:RBX" (:rflags :rdx :rax :reg/mem128) (:rdx :rax :reg/mem128 :rcx :rdx))       ;; CMPXCHG16B
 
-;; (define-instruction-format "EAX, EBX, ECX, EDX"            (:eax :ebx :ecx :edx)     (:eax))                                        ;; CPUID
+;; (defiformat "EAX, EBX, ECX, EDX"            (:eax :ebx :ecx :edx)     (:eax))                                        ;; CPUID
                                                                                                                          
-;; (define-instruction-format "<AL, AH, reg/mem8"             (:rflags :ah :al)         (:ax :reg/mem8))                               ;; DIV, IDIV
-;; (define-instruction-format "<DX, AX, reg/mem16"            (:rflags :dx :ax)         (:dx :ax :reg/mem16))                          ;; DIV, IDIV
-;; (define-instruction-format "<EDX, EAX, reg/mem32"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
-;; (define-instruction-format "<RDX, RAX, reg/mem64"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
-;; (define-instruction-format "<!AX, AL, reg/mem8"            (:rflags :ax)             (:al :reg/mem8))                               ;; MUL, IMUL
-;; (define-instruction-format "<!DX, AX, AX, reg/mem16"       (:rflags :dx :ax)         (:ax :reg/mem16))                              ;; MUL, IMUL
-;; (define-instruction-format "<!EDX, EAX, EAX, reg/mem32"    (:rflags :edx :eax)       (:eax :reg/mem32))                             ;; MUL, IMUL
-;; (define-instruction-format "<!RDX, RAX, RAX, reg/mem64"    (:rflags :rdx :rax)       (:rax :reg/mem64))                             ;; MUL, IMUL
+;; (defiformat "<AL, AH, reg/mem8"             (:rflags :ah :al)         (:ax :reg/mem8))                               ;; DIV, IDIV
+;; (defiformat "<DX, AX, reg/mem16"            (:rflags :dx :ax)         (:dx :ax :reg/mem16))                          ;; DIV, IDIV
+;; (defiformat "<EDX, EAX, reg/mem32"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
+;; (defiformat "<RDX, RAX, reg/mem64"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
+;; (defiformat "<!AX, AL, reg/mem8"            (:rflags :ax)             (:al :reg/mem8))                               ;; MUL, IMUL
+;; (defiformat "<!DX, AX, AX, reg/mem16"       (:rflags :dx :ax)         (:ax :reg/mem16))                              ;; MUL, IMUL
+;; (defiformat "<!EDX, EAX, EAX, reg/mem32"    (:rflags :edx :eax)       (:eax :reg/mem32))                             ;; MUL, IMUL
+;; (defiformat "<!RDX, RAX, RAX, reg/mem64"    (:rflags :rdx :rax)       (:rax :reg/mem64))                             ;; MUL, IMUL
                                                                                                                          
-;; (define-instruction-format "imm16, 0"                      (:rsp :rbp)               (:imm16 0 :rsp :rbp :ss))                      ;; ENTER
-;; (define-instruction-format "imm16, 1"                      (:rsp :rbp)               (:imm16 1 :rsp :rbp :ss))                      ;; ENTER
-;; (define-instruction-format "imm16, imm8"                   (:rsp :rbp)               (:imm16 :imm8 :rsp :rbp :ss))                  ;; ENTER
+;; (defiformat "imm16, 0"                      (:rsp :rbp)               (:imm16 0 :rsp :rbp :ss))                      ;; ENTER
+;; (defiformat "imm16, 1"                      (:rsp :rbp)               (:imm16 1 :rsp :rbp :ss))                      ;; ENTER
+;; (defiformat "imm16, imm8"                   (:rsp :rbp)               (:imm16 :imm8 :rsp :rbp :ss))                  ;; ENTER
                                                                                                                          
-;; (define-instruction-format "BP, SP"                        (:bp :sp)                 (:bp :mem16))                                  ;; LEAVE 
-;; (define-instruction-format "EBP, ESP"                      (:ebp :esp)               (:ebp :mem32))                                 ;; LEAVE 
-;; (define-instruction-format "RBP, RSP"                      (:rbp :rsp)               (:rbp :mem64))                                 ;; LEAVE 
+;; (defiformat "BP, SP"                        (:bp :sp)                 (:bp :mem16))                                  ;; LEAVE 
+;; (defiformat "EBP, ESP"                      (:ebp :esp)               (:ebp :mem32))                                 ;; LEAVE 
+;; (defiformat "RBP, RSP"                      (:rbp :rsp)               (:rbp :mem64))                                 ;; LEAVE 
                                                                                                                          
-;; (define-instruction-format "<!reg16, reg/mem16, imm8"      (:rflags :reg16)          (:reg/mem16 :imm8))                            ;; IMUL
-;; (define-instruction-format "<!reg32, reg/mem32, imm8"      (:rflags :reg32)          (:reg/mem32 :imm8))                            ;; IMUL
-;; (define-instruction-format "<!reg64, reg/mem64, imm8"      (:rflags :reg64)          (:reg/mem64 :imm8))                            ;; IMUL
-;; (define-instruction-format "<!reg16, reg/mem16, imm16"     (:rflags :reg16)          (:reg/mem16 :imm16))                           ;; IMUL
-;; (define-instruction-format "<!reg32, reg/mem32, imm32"     (:rflags :reg32)          (:reg/mem32 :imm32))                           ;; IMUL
-;; (define-instruction-format "<!reg64, reg/mem64, imm32"     (:rflags :reg64)          (:reg/mem64 :imm32))                           ;; IMUL
+;; (defiformat "<!reg16, reg/mem16, imm8"      (:rflags :reg16)          (:reg/mem16 :imm8))                            ;; IMUL
+;; (defiformat "<!reg32, reg/mem32, imm8"      (:rflags :reg32)          (:reg/mem32 :imm8))                            ;; IMUL
+;; (defiformat "<!reg64, reg/mem64, imm8"      (:rflags :reg64)          (:reg/mem64 :imm8))                            ;; IMUL
+;; (defiformat "<!reg16, reg/mem16, imm16"     (:rflags :reg16)          (:reg/mem16 :imm16))                           ;; IMUL
+;; (defiformat "<!reg32, reg/mem32, imm32"     (:rflags :reg32)          (:reg/mem32 :imm32))                           ;; IMUL
+;; (defiformat "<!reg64, reg/mem64, imm32"     (:rflags :reg64)          (:reg/mem64 :imm32))                           ;; IMUL
                                                                                                                          
-;; (define-instruction-format "#!AL, DX"                      (:al)                     (:dx :tss))                                    ;; IN
-;; (define-instruction-format "#!AX, DX"                      (:ax)                     (:dx :tss))                                    ;; IN
-;; (define-instruction-format "#!EAX, DX"                     (:eax)                    (:dx :tss))                                    ;; IN
-;; (define-instruction-format "#!AL, imm8"                    (:al)                     (:imm8 :tss))                                  ;; IN
-;; (define-instruction-format "#!AX, imm8"                    (:ax)                     (:imm8 :tss))                                  ;; IN
-;; (define-instruction-format "#!EAX, imm8"                   (:eax)                    (:imm8 :tss))                                  ;; IN
+;; (defiformat "#!AL, DX"                      (:al)                     (:dx :tss))                                    ;; IN
+;; (defiformat "#!AX, DX"                      (:ax)                     (:dx :tss))                                    ;; IN
+;; (defiformat "#!EAX, DX"                     (:eax)                    (:dx :tss))                                    ;; IN
+;; (defiformat "#!AL, imm8"                    (:al)                     (:imm8 :tss))                                  ;; IN
+;; (defiformat "#!AX, imm8"                    (:ax)                     (:imm8 :tss))                                  ;; IN
+;; (defiformat "#!EAX, imm8"                   (:eax)                    (:imm8 :tss))                                  ;; IN
                                                                                                                                
-;; (define-instruction-format "#|DX, AL"                      ()                        (:dx :al  :tss))                               ;; OUT
-;; (define-instruction-format "#|DX, AX"                      ()                        (:dx :ax  :tss))                               ;; OUT
-;; (define-instruction-format "#|DX, EAX"                     ()                        (:dx :eax :tss))                               ;; OUT
-;; (define-instruction-format "#imm8, AL"                     ()                        (:imm8 :al  :tss))                             ;; OUT
-;; (define-instruction-format "#imm8, AX"                     ()                        (:imm8 :ax  :tss))                             ;; OUT
-;; (define-instruction-format "#imm8, EAX"                    ()                        (:imm8 :eax :tss))                             ;; OUT
+;; (defiformat "#|DX, AL"                      ()                        (:dx :al  :tss))                               ;; OUT
+;; (defiformat "#|DX, AX"                      ()                        (:dx :ax  :tss))                               ;; OUT
+;; (defiformat "#|DX, EAX"                     ()                        (:dx :eax :tss))                               ;; OUT
+;; (defiformat "#imm8, AL"                     ()                        (:imm8 :al  :tss))                             ;; OUT
+;; (defiformat "#imm8, AX"                     ()                        (:imm8 :ax  :tss))                             ;; OUT
+;; (defiformat "#imm8, EAX"                    ()                        (:imm8 :eax :tss))                             ;; OUT
                                                                                                                                
-;; (define-instruction-format "#!>mem8, DX"                   (:mem8 :rdi)              (:rflags :es :rdi :dx :tss))                   ;; INS, INSB
-;; (define-instruction-format "#!>mem16, DX"                  (:mem16 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSW
-;; (define-instruction-format "#!>mem32, DX"                  (:mem32 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSD
-;; (define-instruction-format "#|>DX, mem8"                   (:rsi)                    (:rflags :ds :rsi :dx :mem8  :tss))            ;; OUTS, OUTSB
-;; (define-instruction-format "#|>DX, mem16"                  (:rsi)                    (:rflags :ds :rsi :dx :mem16 :tss))            ;; OUTS, OUTSW
-;; (define-instruction-format "#|>DX, mem32"                  (:rsi)                    (:rflags :ds :rsi :dx :mem32 :tss))            ;; OUTS, OUTSD
+;; (defiformat "#!>mem8, DX"                   (:mem8 :rdi)              (:rflags :es :rdi :dx :tss))                   ;; INS, INSB
+;; (defiformat "#!>mem16, DX"                  (:mem16 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSW
+;; (defiformat "#!>mem32, DX"                  (:mem32 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSD
+;; (defiformat "#|>DX, mem8"                   (:rsi)                    (:rflags :ds :rsi :dx :mem8  :tss))            ;; OUTS, OUTSB
+;; (defiformat "#|>DX, mem16"                  (:rsi)                    (:rflags :ds :rsi :dx :mem16 :tss))            ;; OUTS, OUTSW
+;; (defiformat "#|>DX, mem32"                  (:rsi)                    (:rflags :ds :rsi :dx :mem32 :tss))            ;; OUTS, OUTSD
                                                                                                                          
-;; (define-instruction-format ">!AH"                          (:ah)                     (:rflags))                                     ;; LAHF
-;; (define-instruction-format "<|!AH"                         (:rflags)                 (:ah))                                         ;; SAHF
+;; (defiformat ">!AH"                          (:ah)                     (:rflags))                                     ;; LAHF
+;; (defiformat "<|!AH"                         (:rflags)                 (:ah))                                         ;; SAHF
                                                                                                                          
-;; (define-instruction-format "!DS, reg16, mem32"             (:ds :reg16)              (:mem32))                                      ;; LDS
-;; (define-instruction-format "!DS, reg32, mem48"             (:ds :reg32)              (:mem48))                                      ;; LDS
-;; (define-instruction-format "!ES, reg16, mem32"             (:es :reg16)              (:mem32))                                      ;; LES
-;; (define-instruction-format "!ES, reg32, mem48"             (:es :reg32)              (:mem48))                                      ;; LES
-;; (define-instruction-format "!FS, reg16, mem32"             (:fs :reg16)              (:mem32))                                      ;; LFS
-;; (define-instruction-format "!FS, reg32, mem48"             (:fs :reg32)              (:mem48))                                      ;; LFS
-;; (define-instruction-format "!GS, reg16, mem32"             (:gs :reg16)              (:mem32))                                      ;; LGS
-;; (define-instruction-format "!GS, reg32, mem48"             (:gs :reg32)              (:mem48))                                      ;; LGS
-;; (define-instruction-format "!SS, reg16, mem32"             (:ss :reg16)              (:mem32))                                      ;; LSS
-;; (define-instruction-format "!SS, reg32, mem48"             (:ss :reg32)              (:mem48))                                      ;; LSS
+;; (defiformat "!DS, reg16, mem32"             (:ds :reg16)              (:mem32))                                      ;; LDS
+;; (defiformat "!DS, reg32, mem48"             (:ds :reg32)              (:mem48))                                      ;; LDS
+;; (defiformat "!ES, reg16, mem32"             (:es :reg16)              (:mem32))                                      ;; LES
+;; (defiformat "!ES, reg32, mem48"             (:es :reg32)              (:mem48))                                      ;; LES
+;; (defiformat "!FS, reg16, mem32"             (:fs :reg16)              (:mem32))                                      ;; LFS
+;; (defiformat "!FS, reg32, mem48"             (:fs :reg32)              (:mem48))                                      ;; LFS
+;; (defiformat "!GS, reg16, mem32"             (:gs :reg16)              (:mem32))                                      ;; LGS
+;; (defiformat "!GS, reg32, mem48"             (:gs :reg32)              (:mem48))                                      ;; LGS
+;; (defiformat "!SS, reg16, mem32"             (:ss :reg16)              (:mem32))                                      ;; LSS
+;; (defiformat "!SS, reg32, mem48"             (:ss :reg32)              (:mem48))                                      ;; LSS
                                                                                                                          
-;; (define-instruction-format "!reg16, mem"                   (:reg16)                  (:mem))                                        ;; LEA
-;; (define-instruction-format "!reg32, mem"                   (:reg32)                  (:mem))                                        ;; LEA
-;; (define-instruction-format "!reg64, mem"                   (:reg64)                  (:mem))                                        ;; LEA
+;; (defiformat "!reg16, mem"                   (:reg16)                  (:mem))                                        ;; LEA
+;; (defiformat "!reg32, mem"                   (:reg32)                  (:mem))                                        ;; LEA
+;; (defiformat "!reg64, mem"                   (:reg64)                  (:mem))                                        ;; LEA
                                                                                                                          
-;; (define-instruction-format "@RCX, immoff8"                 (:rip :rcx)               (:rcx :immoff8))                               ;; LOOP
-;; (define-instruction-format "@>RCX, immoff8"                (:rip :rcx)               (:rflags :rcx :immoff8))                       ;; LOOPxx
+;; (defiformat "@RCX, immoff8"                 (:rip :rcx)               (:rcx :immoff8))                               ;; LOOP
+;; (defiformat "@>RCX, immoff8"                (:rip :rcx)               (:rflags :rcx :immoff8))                       ;; LOOPxx
                                                                                                                          
-;; (define-instruction-format "<!reg16, reg/mem16"            (:rflags :reg16)          (:reg/mem16))                                  ;; LZCNT, POPCNT
-;; (define-instruction-format "<!reg32, reg/mem32"            (:rflags :reg32)          (:reg/mem32))                                  ;; LZCNT, POPCNT
-;; (define-instruction-format "<!reg64, reg/mem64"            (:rflags :reg64)          (:reg/mem64))                                  ;; LZCNT, POPCNT
+;; (defiformat "<!reg16, reg/mem16"            (:rflags :reg16)          (:reg/mem16))                                  ;; LZCNT, POPCNT
+;; (defiformat "<!reg32, reg/mem32"            (:rflags :reg32)          (:reg/mem32))                                  ;; LZCNT, POPCNT
+;; (defiformat "<!reg64, reg/mem64"            (:rflags :reg64)          (:reg/mem64))                                  ;; LZCNT, POPCNT
                                                                                                                          
 ;; ;;;;                                                                                                                     
 ;; ;;;; load/stores                                                                                                         
 ;; ;;;;                                                                                                                     
-;; (define-instruction-format "!reg/mem8, reg8"               (:reg/mem8)               (:reg8))                                       ;; MOV
-;; (define-instruction-format "!reg/mem16, reg16"             (:reg/mem16)              (:reg16))                                      ;; MOV
-;; (define-instruction-format "!reg/mem32, reg32"             (:reg/mem32)              (:reg32))                                      ;; MOV
-;; (define-instruction-format "!reg/mem64, reg64"             (:reg/mem64)              (:reg64))                                      ;; MOV
-;; (define-instruction-format "!reg8, reg/mem8"               (:reg8)                   (:reg/mem8))                                   ;; MOV
-;; (define-instruction-format "!reg16, reg/mem16"             (:reg16)                  (:reg/mem16))                                  ;; MOV
-;; (define-instruction-format "!reg32, reg/mem32"             (:reg32)                  (:reg/mem32))                                  ;; MOV
-;; (define-instruction-format "!reg64, reg/mem64"             (:reg64)                  (:reg/mem64))                                  ;; MOV
+;; (defiformat "!reg/mem8, reg8"               (:reg/mem8)               (:reg8))                                       ;; MOV
+;; (defiformat "!reg/mem16, reg16"             (:reg/mem16)              (:reg16))                                      ;; MOV
+;; (defiformat "!reg/mem32, reg32"             (:reg/mem32)              (:reg32))                                      ;; MOV
+;; (defiformat "!reg/mem64, reg64"             (:reg/mem64)              (:reg64))                                      ;; MOV
+;; (defiformat "!reg8, reg/mem8"               (:reg8)                   (:reg/mem8))                                   ;; MOV
+;; (defiformat "!reg16, reg/mem16"             (:reg16)                  (:reg/mem16))                                  ;; MOV
+;; (defiformat "!reg32, reg/mem32"             (:reg32)                  (:reg/mem32))                                  ;; MOV
+;; (defiformat "!reg64, reg/mem64"             (:reg64)                  (:reg/mem64))                                  ;; MOV
 
-;; (define-instruction-format "!reg16, reg/mem8"              (:reg16)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (define-instruction-format "!reg32, reg/mem8"              (:reg32)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (define-instruction-format "!reg64, reg/mem8"              (:reg64)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (define-instruction-format "!reg32, reg/mem16"             (:reg32)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
-;; (define-instruction-format "!reg64, reg/mem16"             (:reg64)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
-;; (define-instruction-format "!reg64, reg/mem32"             (:reg64)                  (:reg/mem32))                                  ;; MOVSXD (weird for 16bit op; separate format?)                     
+;; (defiformat "!reg16, reg/mem8"              (:reg16)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
+;; (defiformat "!reg32, reg/mem8"              (:reg32)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
+;; (defiformat "!reg64, reg/mem8"              (:reg64)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
+;; (defiformat "!reg32, reg/mem16"             (:reg32)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
+;; (defiformat "!reg64, reg/mem16"             (:reg64)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
+;; (defiformat "!reg64, reg/mem32"             (:reg64)                  (:reg/mem32))                                  ;; MOVSXD (weird for 16bit op; separate format?)                     
                                                                                                     
-;; (define-instruction-format "!mem32, reg32"                 (:mem32)                  (:reg32))                                      ;; MOVNTI
-;; (define-instruction-format "!mem64, reg64"                 (:mem64)                  (:reg64))                                      ;; MOVNTI
+;; (defiformat "!mem32, reg32"                 (:mem32)                  (:reg32))                                      ;; MOVNTI
+;; (defiformat "!mem64, reg64"                 (:mem64)                  (:reg64))                                      ;; MOVNTI
                                                                                                                          
 ;; ;;;;                                                                                                                     
 ;; ;;;; RIP-relative load/stores                                                                                            
 ;; ;;;;                                                                                                                     
-;; (define-instruction-format "!AL, immoff8"                  (:al)                     (:immoff8 :mem8))                              ;; MOV
-;; (define-instruction-format "!AX, immoff16"                 (:ax)                     (:immoff16 :mem16))                            ;; MOV
-;; (define-instruction-format "!EAX, immoff32"                (:eax)                    (:immoff32 :mem32))                            ;; MOV
-;; (define-instruction-format "!RAX, immoff64"                (:rax)                    (:immoff64 :mem64))                            ;; MOV
-;; (define-instruction-format "immoff8, AL"                   (:mem8)                   (:immoff8 :al))                                ;; MOV
-;; (define-instruction-format "immoff16, AX"                  (:mem16)                  (:immoff16 :ax))                               ;; MOV
-;; (define-instruction-format "immoff32, EAX"                 (:mem32)                  (:immoff32 :eax))                              ;; MOV
-;; (define-instruction-format "immoff64, RAX"                 (:mem64)                  (:immoff64 :rax))                              ;; MOV
+;; (defiformat "!AL, immoff8"                  (:al)                     (:immoff8 :mem8))                              ;; MOV
+;; (defiformat "!AX, immoff16"                 (:ax)                     (:immoff16 :mem16))                            ;; MOV
+;; (defiformat "!EAX, immoff32"                (:eax)                    (:immoff32 :mem32))                            ;; MOV
+;; (defiformat "!RAX, immoff64"                (:rax)                    (:immoff64 :mem64))                            ;; MOV
+;; (defiformat "immoff8, AL"                   (:mem8)                   (:immoff8 :al))                                ;; MOV
+;; (defiformat "immoff16, AX"                  (:mem16)                  (:immoff16 :ax))                               ;; MOV
+;; (defiformat "immoff32, EAX"                 (:mem32)                  (:immoff32 :eax))                              ;; MOV
+;; (defiformat "immoff64, RAX"                 (:mem64)                  (:immoff64 :rax))                              ;; MOV
                                                                                                                          
 ;; ;;;;                                                                                                                     
 ;; ;;;; constant                                                                                                            
 ;; ;;;;                                                                                                                     
-;; (define-instruction-format "!reg8, imm8"                   (:reg8)                   (:imm8))                                       ;; MOV
-;; (define-instruction-format "!reg16, imm16"                 (:reg16)                  (:imm16))                                      ;; MOV
-;; (define-instruction-format "!reg32, imm32"                 (:reg32)                  (:imm32))                                      ;; MOV
-;; (define-instruction-format "!reg64, imm64"                 (:reg64)                  (:imm64))                                      ;; MOV
-;; (define-instruction-format "!reg/mem8, imm8"               (:reg/mem8)               (:imm8))                                       ;; MOV
-;; (define-instruction-format "!reg/mem16, imm16"             (:reg/mem16)              (:imm16))                                      ;; MOV
-;; (define-instruction-format "!reg/mem32, imm32"             (:reg/mem32)              (:imm32))                                      ;; MOV
-;; (define-instruction-format "!reg/mem64, imm32"             (:reg/mem64)              (:imm32))                                      ;; MOV
+;; (defiformat "!reg8, imm8"                   (:reg8)                   (:imm8))                                       ;; MOV
+;; (defiformat "!reg16, imm16"                 (:reg16)                  (:imm16))                                      ;; MOV
+;; (defiformat "!reg32, imm32"                 (:reg32)                  (:imm32))                                      ;; MOV
+;; (defiformat "!reg64, imm64"                 (:reg64)                  (:imm64))                                      ;; MOV
+;; (defiformat "!reg/mem8, imm8"               (:reg/mem8)               (:imm8))                                       ;; MOV
+;; (defiformat "!reg/mem16, imm16"             (:reg/mem16)              (:imm16))                                      ;; MOV
+;; (defiformat "!reg/mem32, imm32"             (:reg/mem32)              (:imm32))                                      ;; MOV
+;; (defiformat "!reg/mem64, imm32"             (:reg/mem64)              (:imm32))                                      ;; MOV
                                                                                                                          
 ;; ;;;;                                                                                                                     
 ;; ;;;; segment register                                                                                                    
 ;; ;;;;                                                                                                                     
-;; (define-instruction-format "!reg16/32/64/mem16, segreg"    (:reg16/32/64/mem16)      (:segreg))                                     ;; MOV
-;; (define-instruction-format "!segreg, reg/mem16"            (:segreg)                 (:reg/mem16))                                  ;; MOV
+;; (defiformat "!reg16/32/64/mem16, segreg"    (:reg16/32/64/mem16)      (:segreg))                                     ;; MOV
+;; (defiformat "!segreg, reg/mem16"            (:segreg)                 (:reg/mem16))                                  ;; MOV
 
 ;; ;;;;                                                                                                                     
 ;; ;;;; MMX/XMM                                                                                                             
 ;; ;;;;                                                                                                                     
-;; (define-instruction-format "!mmx, reg/mem32"               (:mmx)                    (:reg/mem32))                                  ;; MOVD
-;; (define-instruction-format "!mmx, reg/mem64"               (:mmx)                    (:reg/mem64))                                  ;; MOVD
-;; (define-instruction-format "!reg/mem32, mmx"               (:reg/mem32)              (:mmx))                                        ;; MOVD
-;; (define-instruction-format "!reg/mem64, mmx"               (:reg/mem64)              (:mmx))                                        ;; MOVD
-;; (define-instruction-format "!xmm, reg/mem32"               (:xmm)                    (:reg/mem32))                                  ;; MOVD
-;; (define-instruction-format "!xmm, reg/mem64"               (:xmm)                    (:reg/mem64))                                  ;; MOVD
-;; (define-instruction-format "!reg/mem32, xmm"               (:reg/mem32)              (:xmm))                                        ;; MOVD
-;; (define-instruction-format "!reg/mem64, xmm"               (:reg/mem64)              (:xmm))                                        ;; MOVD
+;; (defiformat "!mmx, reg/mem32"               (:mmx)                    (:reg/mem32))                                  ;; MOVD
+;; (defiformat "!mmx, reg/mem64"               (:mmx)                    (:reg/mem64))                                  ;; MOVD
+;; (defiformat "!reg/mem32, mmx"               (:reg/mem32)              (:mmx))                                        ;; MOVD
+;; (defiformat "!reg/mem64, mmx"               (:reg/mem64)              (:mmx))                                        ;; MOVD
+;; (defiformat "!xmm, reg/mem32"               (:xmm)                    (:reg/mem32))                                  ;; MOVD
+;; (defiformat "!xmm, reg/mem64"               (:xmm)                    (:reg/mem64))                                  ;; MOVD
+;; (defiformat "!reg/mem32, xmm"               (:reg/mem32)              (:xmm))                                        ;; MOVD
+;; (defiformat "!reg/mem64, xmm"               (:reg/mem64)              (:xmm))                                        ;; MOVD
                                                                                                                          
-;; (define-instruction-format "!reg32, xmm"                   (:reg32)                  (:xmm))                                        ;; MOVMSKPS, MOVMSKPD
+;; (defiformat "!reg32, xmm"                   (:reg32)                  (:xmm))                                        ;; MOVMSKPS, MOVMSKPD
 
 ;; ;;;;
 ;; ;;;; system
 ;; ;;;;                                                                                                                         
-;; (define-instruction-format "$!cr, reg32"                   (:cr)                     (:reg32 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "$!cr, reg64"                   (:cr)                     (:reg64 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "!reg32, cr"                    (:reg32)                  (:cr :cpl :cs))                                ;; MOV
-;; (define-instruction-format "!reg64, cr"                    (:reg64)                  (:cr :cpl :cs))                                ;; MOV
+;; (defiformat "$!cr, reg32"                   (:cr)                     (:reg32 :cpl :cs))                             ;; MOV
+;; (defiformat "$!cr, reg64"                   (:cr)                     (:reg64 :cpl :cs))                             ;; MOV
+;; (defiformat "!reg32, cr"                    (:reg32)                  (:cr :cpl :cs))                                ;; MOV
+;; (defiformat "!reg64, cr"                    (:reg64)                  (:cr :cpl :cs))                                ;; MOV
 
-;; (define-instruction-format "$!CR8, reg32"                  (:cr8)                    (:reg32 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "$!CR8, reg64"                  (:cr8)                    (:reg64 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "!reg32, CR8"                   (:reg32)                  (:cr8 :cpl :cs))                               ;; MOV
-;; (define-instruction-format "!reg64, CR8"                   (:reg64)                  (:cr8 :cpl :cs))                               ;; MOV
+;; (defiformat "$!CR8, reg32"                  (:cr8)                    (:reg32 :cpl :cs))                             ;; MOV
+;; (defiformat "$!CR8, reg64"                  (:cr8)                    (:reg64 :cpl :cs))                             ;; MOV
+;; (defiformat "!reg32, CR8"                   (:reg32)                  (:cr8 :cpl :cs))                               ;; MOV
+;; (defiformat "!reg64, CR8"                   (:reg64)                  (:cr8 :cpl :cs))                               ;; MOV
 
-;; (define-instruction-format "$!dr, reg32"                   (:dr)                     (:reg32 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "$!dr, reg64"                   (:dr)                     (:reg64 :cpl :cs))                             ;; MOV
-;; (define-instruction-format "!reg32, dr"                    (:reg32)                  (:dr :cpl :cs))                                ;; MOV
-;; (define-instruction-format "!reg64, dr"                    (:reg64)                  (:dr :cpl :cs))                                ;; MOV
+;; (defiformat "$!dr, reg32"                   (:dr)                     (:reg32 :cpl :cs))                             ;; MOV
+;; (defiformat "$!dr, reg64"                   (:dr)                     (:reg64 :cpl :cs))                             ;; MOV
+;; (defiformat "!reg32, dr"                    (:reg32)                  (:dr :cpl :cs))                                ;; MOV
+;; (defiformat "!reg64, dr"                    (:reg64)                  (:dr :cpl :cs))                                ;; MOV
 
 ;; ;;;;
 ;; ;;;; Stack
 ;; ;;;;
-;; (define-instruction-format "!reg/mem16, [SS:RSP]"          (:reg/mem16 :rsp)         (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!reg/mem32, [SS:RSP]"          (:reg/mem32 :rsp)         (:ss :rsp :mem32))                             ;; POP
-;; (define-instruction-format "!reg/mem64, [SS:RSP]"          (:reg/mem64 :rsp)         (:ss :rsp :mem64))                             ;; POP
-;; (define-instruction-format "!reg16, [SS:RSP]"              (:reg16 :rsp)             (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!reg32, [SS:RSP]"              (:reg32 :rsp)             (:ss :rsp :mem32))                             ;; POP
-;; (define-instruction-format "!reg64, [SS:RSP]"              (:reg64 :rsp)             (:ss :rsp :mem64))                             ;; POP
-;; (define-instruction-format "!DS, [SS:RSP]"                 (:ds :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!ES, [SS:RSP]"                 (:es :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!SS, [SS:RSP]"                 (:ss :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!FS, [SS:RSP]"                 (:fs :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (define-instruction-format "!GS, [SS:RSP]"                 (:gs :rsp)                (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!reg/mem16, [SS:RSP]"          (:reg/mem16 :rsp)         (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!reg/mem32, [SS:RSP]"          (:reg/mem32 :rsp)         (:ss :rsp :mem32))                             ;; POP
+;; (defiformat "!reg/mem64, [SS:RSP]"          (:reg/mem64 :rsp)         (:ss :rsp :mem64))                             ;; POP
+;; (defiformat "!reg16, [SS:RSP]"              (:reg16 :rsp)             (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!reg32, [SS:RSP]"              (:reg32 :rsp)             (:ss :rsp :mem32))                             ;; POP
+;; (defiformat "!reg64, [SS:RSP]"              (:reg64 :rsp)             (:ss :rsp :mem64))                             ;; POP
+;; (defiformat "!DS, [SS:RSP]"                 (:ds :rsp)                (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!ES, [SS:RSP]"                 (:es :rsp)                (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!SS, [SS:RSP]"                 (:ss :rsp)                (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!FS, [SS:RSP]"                 (:fs :rsp)                (:ss :rsp :mem16))                             ;; POP
+;; (defiformat "!GS, [SS:RSP]"                 (:gs :rsp)                (:ss :rsp :mem16))                             ;; POP
 
-;; (define-instruction-format "![SS:RSP], reg/mem16"          (:mem16 :rsp)             (:ss :rsp :reg/mem16))                         ;; PUSH
-;; (define-instruction-format "![SS:RSP], reg/mem32"          (:mem32 :rsp)             (:ss :rsp :reg/mem32))                         ;; PUSH
-;; (define-instruction-format "![SS:RSP], reg/mem64"          (:mem64 :rsp)             (:ss :rsp :reg/mem64))                         ;; PUSH
-;; (define-instruction-format "![SS:RSP], reg16"              (:mem16 :rsp)             (:ss :rsp :reg16))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], reg32"              (:mem32 :rsp)             (:ss :rsp :reg32))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], reg64"              (:mem64 :rsp)             (:ss :rsp :reg64))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], imm8"               (:mem8  :rsp)             (:ss :rsp :imm8))                              ;; PUSH
-;; (define-instruction-format "![SS:RSP], imm16"              (:mem16 :rsp)             (:ss :rsp :imm16))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], imm32"              (:mem32 :rsp)             (:ss :rsp :imm32))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], imm64"              (:mem64 :rsp)             (:ss :rsp :imm64))                             ;; PUSH
-;; (define-instruction-format "![SS:RSP], CS"                 (:mem16 :rsp)             (:ss :rsp :cs))                                ;; PUSH
-;; (define-instruction-format "![SS:RSP], DS"                 (:mem16 :rsp)             (:ss :rsp :ds))                                ;; PUSH
-;; (define-instruction-format "![SS:RSP], ES"                 (:mem16 :rsp)             (:ss :rsp :es))                                ;; PUSH
-;; (define-instruction-format "![SS:RSP], SS"                 (:mem16 :rsp)             (:ss :rsp :ss))                                ;; PUSH
-;; (define-instruction-format "![SS:RSP], FS"                 (:mem16 :rsp)             (:ss :rsp :fs))                                ;; PUSH
-;; (define-instruction-format "![SS:RSP], GS"                 (:mem16 :rsp)             (:ss :rsp :gs))                                ;; PUSH
+;; (defiformat "![SS:RSP], reg/mem16"          (:mem16 :rsp)             (:ss :rsp :reg/mem16))                         ;; PUSH
+;; (defiformat "![SS:RSP], reg/mem32"          (:mem32 :rsp)             (:ss :rsp :reg/mem32))                         ;; PUSH
+;; (defiformat "![SS:RSP], reg/mem64"          (:mem64 :rsp)             (:ss :rsp :reg/mem64))                         ;; PUSH
+;; (defiformat "![SS:RSP], reg16"              (:mem16 :rsp)             (:ss :rsp :reg16))                             ;; PUSH
+;; (defiformat "![SS:RSP], reg32"              (:mem32 :rsp)             (:ss :rsp :reg32))                             ;; PUSH
+;; (defiformat "![SS:RSP], reg64"              (:mem64 :rsp)             (:ss :rsp :reg64))                             ;; PUSH
+;; (defiformat "![SS:RSP], imm8"               (:mem8  :rsp)             (:ss :rsp :imm8))                              ;; PUSH
+;; (defiformat "![SS:RSP], imm16"              (:mem16 :rsp)             (:ss :rsp :imm16))                             ;; PUSH
+;; (defiformat "![SS:RSP], imm32"              (:mem32 :rsp)             (:ss :rsp :imm32))                             ;; PUSH
+;; (defiformat "![SS:RSP], imm64"              (:mem64 :rsp)             (:ss :rsp :imm64))                             ;; PUSH
+;; (defiformat "![SS:RSP], CS"                 (:mem16 :rsp)             (:ss :rsp :cs))                                ;; PUSH
+;; (defiformat "![SS:RSP], DS"                 (:mem16 :rsp)             (:ss :rsp :ds))                                ;; PUSH
+;; (defiformat "![SS:RSP], ES"                 (:mem16 :rsp)             (:ss :rsp :es))                                ;; PUSH
+;; (defiformat "![SS:RSP], SS"                 (:mem16 :rsp)             (:ss :rsp :ss))                                ;; PUSH
+;; (defiformat "![SS:RSP], FS"                 (:mem16 :rsp)             (:ss :rsp :fs))                                ;; PUSH
+;; (defiformat "![SS:RSP], GS"                 (:mem16 :rsp)             (:ss :rsp :gs))                                ;; PUSH
 
-;; (define-instruction-format "!DI, SI, BP, SP, BX, DX, CX, AX, [SS:SP]"          (:di :si :bp :sp :bx :dx :cx :ax)         (:ss :rsp :mem128)) ;; POPA
-;; (define-instruction-format "!EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, [SS:ESP]" (:edi :esi :ebp :esp :ebx :edx :ecx :eax) (:ss :rsp :mem256)) ;; POPAD
+;; (defiformat "!DI, SI, BP, SP, BX, DX, CX, AX, [SS:SP]"          (:di :si :bp :sp :bx :dx :cx :ax)         (:ss :rsp :mem128)) ;; POPA
+;; (defiformat "!EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, [SS:ESP]" (:edi :esi :ebp :esp :ebx :edx :ecx :eax) (:ss :rsp :mem256)) ;; POPAD
 
-;; (define-instruction-format "![SS:SP], AX, CX, DX, BX, SP, BP, SI, DI"          (:ss :rsp :mem128)         (:di :si :bp :sp :bx :dx :cx :ax)) ;; PUSHA
-;; (define-instruction-format "![SS:ESP], EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI" (:ss :rsp :mem256) (:edi :esi :ebp :esp :ebx :edx :ecx :eax)) ;; PUSHAD
+;; (defiformat "![SS:SP], AX, CX, DX, BX, SP, BP, SI, DI"          (:ss :rsp :mem128)         (:di :si :bp :sp :bx :dx :cx :ax)) ;; PUSHA
+;; (defiformat "![SS:ESP], EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI" (:ss :rsp :mem256) (:edi :esi :ebp :esp :ebx :edx :ecx :eax)) ;; PUSHAD
 
-;; (define-instruction-format "<>![SS:SP]"                    (:flags  :rsp)            (:flags  :cpl :cs :ss :rsp :mem16))            ;; POPF
-;; (define-instruction-format "<>![SS:ESP]"                   (:eflags :rsp)            (:eflags :cpl :cs :ss :rsp :mem32))            ;; POPFD
-;; (define-instruction-format "<>![SS:RSP]"                   (:rflags :rsp)            (:rflags :cpl :cs :ss :rsp :mem64))            ;; POPFQ
+;; (defiformat "<>![SS:SP]"                    (:flags  :rsp)            (:flags  :cpl :cs :ss :rsp :mem16))            ;; POPF
+;; (defiformat "<>![SS:ESP]"                   (:eflags :rsp)            (:eflags :cpl :cs :ss :rsp :mem32))            ;; POPFD
+;; (defiformat "<>![SS:RSP]"                   (:rflags :rsp)            (:rflags :cpl :cs :ss :rsp :mem64))            ;; POPFQ
 
-;; (define-instruction-format ">![SS:SP]"                     (:mem16 :rsp)             (:flags  :ss :rsp))                            ;; PUSHF
-;; (define-instruction-format ">![SS:ESP]"                    (:mem32 :rsp)             (:eflags :ss :rsp))                            ;; PUSHFD
-;; (define-instruction-format ">![SS:RSP]"                    (:mem64 :rsp)             (:rflags :ss :rsp))                            ;; PUSHFQ
+;; (defiformat ">![SS:SP]"                     (:mem16 :rsp)             (:flags  :ss :rsp))                            ;; PUSHF
+;; (defiformat ">![SS:ESP]"                    (:mem32 :rsp)             (:eflags :ss :rsp))                            ;; PUSHFD
+;; (defiformat ">![SS:RSP]"                    (:mem64 :rsp)             (:rflags :ss :rsp))                            ;; PUSHFQ
 
-;; (define-instruction-format "<>reg/mem8, 1"                 (:rflags :reg/mem8)       (:rflags :reg/mem8  1))                        ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem16, 1"                (:rflags :reg/mem16)      (:rflags :reg/mem16 1))                        ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem32, 1"                (:rflags :reg/mem32)      (:rflags :reg/mem32 1))                        ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem64, 1"                (:rflags :reg/mem64)      (:rflags :reg/mem64 1))                        ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem8, CL"                (:rflags :reg/mem8)       (:rflags :reg/mem8  :cl))                      ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem16, CL"               (:rflags :reg/mem16)      (:rflags :reg/mem16 :cl))                      ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem32, CL"               (:rflags :reg/mem32)      (:rflags :reg/mem32 :cl))                      ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem64, CL"               (:rflags :reg/mem64)      (:rflags :reg/mem64 :cl))                      ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem8, imm8"              (:rflags :reg/mem8)       (:rflags :reg/mem8  :imm8))                    ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem16, imm8"             (:rflags :reg/mem16)      (:rflags :reg/mem16 :imm8))                    ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem32, imm8"             (:rflags :reg/mem32)      (:rflags :reg/mem32 :imm8))                    ;; RCL, RCR
-;; (define-instruction-format "<>reg/mem64, imm8"             (:rflags :reg/mem64)      (:rflags :reg/mem64 :imm8))                    ;; RCL, RCR
+;; (defiformat "<>reg/mem8, 1"                 (:rflags :reg/mem8)       (:rflags :reg/mem8  1))                        ;; RCL, RCR
+;; (defiformat "<>reg/mem16, 1"                (:rflags :reg/mem16)      (:rflags :reg/mem16 1))                        ;; RCL, RCR
+;; (defiformat "<>reg/mem32, 1"                (:rflags :reg/mem32)      (:rflags :reg/mem32 1))                        ;; RCL, RCR
+;; (defiformat "<>reg/mem64, 1"                (:rflags :reg/mem64)      (:rflags :reg/mem64 1))                        ;; RCL, RCR
+;; (defiformat "<>reg/mem8, CL"                (:rflags :reg/mem8)       (:rflags :reg/mem8  :cl))                      ;; RCL, RCR
+;; (defiformat "<>reg/mem16, CL"               (:rflags :reg/mem16)      (:rflags :reg/mem16 :cl))                      ;; RCL, RCR
+;; (defiformat "<>reg/mem32, CL"               (:rflags :reg/mem32)      (:rflags :reg/mem32 :cl))                      ;; RCL, RCR
+;; (defiformat "<>reg/mem64, CL"               (:rflags :reg/mem64)      (:rflags :reg/mem64 :cl))                      ;; RCL, RCR
+;; (defiformat "<>reg/mem8, imm8"              (:rflags :reg/mem8)       (:rflags :reg/mem8  :imm8))                    ;; RCL, RCR
+;; (defiformat "<>reg/mem16, imm8"             (:rflags :reg/mem16)      (:rflags :reg/mem16 :imm8))                    ;; RCL, RCR
+;; (defiformat "<>reg/mem32, imm8"             (:rflags :reg/mem32)      (:rflags :reg/mem32 :imm8))                    ;; RCL, RCR
+;; (defiformat "<>reg/mem64, imm8"             (:rflags :reg/mem64)      (:rflags :reg/mem64 :imm8))                    ;; RCL, RCR
 
-;; (define-instruction-format "<reg/mem8, 1"                  (:rflags :reg/mem8)       (:reg/mem8 1))                                 ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem16, 1"                 (:rflags :reg/mem16)      (:reg/mem16 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem32, 1"                 (:rflags :reg/mem32)      (:reg/mem32 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem64, 1"                 (:rflags :reg/mem64)      (:reg/mem64 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem8, CL"                 (:rflags :reg/mem8)       (:reg/mem8 :cl))                               ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem16, CL"                (:rflags :reg/mem16)      (:reg/mem16 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem32, CL"                (:rflags :reg/mem32)      (:reg/mem32 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem64, CL"                (:rflags :reg/mem64)      (:reg/mem64 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem8, imm8"               (:rflags :reg/mem8)       (:reg/mem8 :imm8))                             ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem16, imm8"              (:rflags :reg/mem16)      (:reg/mem16 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem32, imm8"              (:rflags :reg/mem32)      (:reg/mem32 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (define-instruction-format "<reg/mem64, imm8"              (:rflags :reg/mem64)      (:reg/mem64 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem8, 1"                  (:rflags :reg/mem8)       (:reg/mem8 1))                                 ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem16, 1"                 (:rflags :reg/mem16)      (:reg/mem16 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem32, 1"                 (:rflags :reg/mem32)      (:reg/mem32 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem64, 1"                 (:rflags :reg/mem64)      (:reg/mem64 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem8, CL"                 (:rflags :reg/mem8)       (:reg/mem8 :cl))                               ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem16, CL"                (:rflags :reg/mem16)      (:reg/mem16 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem32, CL"                (:rflags :reg/mem32)      (:reg/mem32 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem64, CL"                (:rflags :reg/mem64)      (:reg/mem64 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem8, imm8"               (:rflags :reg/mem8)       (:reg/mem8 :imm8))                             ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem16, imm8"              (:rflags :reg/mem16)      (:reg/mem16 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem32, imm8"              (:rflags :reg/mem32)      (:reg/mem32 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
+;; (defiformat "<reg/mem64, imm8"              (:rflags :reg/mem64)      (:reg/mem64 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
 
-;; (define-instruction-format "<reg/mem16, reg16, CL"         (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :cl))                     ;; SHLD, SHRD
-;; (define-instruction-format "<reg/mem32, reg32, CL"         (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :cl))                     ;; SHLD, SHRD
-;; (define-instruction-format "<reg/mem64, reg64, CL"         (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :cl))                     ;; SHLD, SHRD
-;; (define-instruction-format "<reg/mem16, reg16, imm8"       (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :imm8))                   ;; SHLD, SHRD
-;; (define-instruction-format "<reg/mem32, reg32, imm8"       (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :imm8))                   ;; SHLD, SHRD
-;; (define-instruction-format "<reg/mem64, reg64, imm8"       (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :imm8))                   ;; SHLD, SHRD
+;; (defiformat "<reg/mem16, reg16, CL"         (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :cl))                     ;; SHLD, SHRD
+;; (defiformat "<reg/mem32, reg32, CL"         (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :cl))                     ;; SHLD, SHRD
+;; (defiformat "<reg/mem64, reg64, CL"         (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :cl))                     ;; SHLD, SHRD
+;; (defiformat "<reg/mem16, reg16, imm8"       (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :imm8))                   ;; SHLD, SHRD
+;; (defiformat "<reg/mem32, reg32, imm8"       (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :imm8))                   ;; SHLD, SHRD
+;; (defiformat "<reg/mem64, reg64, imm8"       (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :imm8))                   ;; SHLD, SHRD
 
-;; (define-instruction-format "2|reg/mem8,  reg8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XADD, XCHG
-;; (define-instruction-format "2|reg/mem16, reg16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XADD, XCHG
-;; (define-instruction-format "2|reg/mem32, reg32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XADD, XCHG
-;; (define-instruction-format "2|reg/mem64, reg64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XADD, XCHG
+;; (defiformat "2|reg/mem8,  reg8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XADD, XCHG
+;; (defiformat "2|reg/mem16, reg16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XADD, XCHG
+;; (defiformat "2|reg/mem32, reg32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XADD, XCHG
+;; (defiformat "2|reg/mem64, reg64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XADD, XCHG
 
-;; (define-instruction-format "2|AX,  reg16"                  (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
-;; (define-instruction-format "2|EAX, reg32"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
-;; (define-instruction-format "2|RAX, reg64"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
+;; (defiformat "2|AX,  reg16"                  (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
+;; (defiformat "2|EAX, reg32"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
+;; (defiformat "2|RAX, reg64"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
 
 ;; ;;;;
 ;; ;;;; XCHG's identicalities
 ;; ;;;;
-;; (define-instruction-format "2|reg8,  reg/mem8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XCHG
-;; (define-instruction-format "2|reg16, reg/mem16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XCHG
-;; (define-instruction-format "2|reg32, reg/mem32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XCHG
-;; (define-instruction-format "2|reg64, reg/mem64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XCHG
-;; (define-instruction-format "2|reg16, AX"                   (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
-;; (define-instruction-format "2|reg32, EAX"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
-;; (define-instruction-format "2|reg64, RAX"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
+;; (defiformat "2|reg8,  reg/mem8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XCHG
+;; (defiformat "2|reg16, reg/mem16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XCHG
+;; (defiformat "2|reg32, reg/mem32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XCHG
+;; (defiformat "2|reg64, reg/mem64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XCHG
+;; (defiformat "2|reg16, AX"                   (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
+;; (defiformat "2|reg32, EAX"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
+;; (defiformat "2|reg64, RAX"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
 
 ;; ;;;;
 ;; ;;;; assorted system stuff
 ;; ;;;;
-;; (define-instruction-format "AL, seg:[RBX + AL]"            (:al)                     (:segreg :rbx :al))                            ;; XLAT, XLATB
+;; (defiformat "AL, seg:[RBX + AL]"            (:al)                     (:segreg :rbx :al))                            ;; XLAT, XLATB
 
-;; (define-instruction-format "<$reg/mem16, reg16"            (:segreg)                 (:segreg :reg16))                              ;; ARPL
-;; (define-instruction-format "$!GIF"                         (:gif)                    ())                                            ;; CLGI, STGI
+;; (defiformat "<$reg/mem16, reg16"            (:segreg)                 (:segreg :reg16))                              ;; ARPL
+;; (defiformat "$!GIF"                         (:gif)                    ())                                            ;; CLGI, STGI
 
-;; (define-instruction-format "$CR0"                          (:cr0)                    ())                                            ;; CLTS
+;; (defiformat "$CR0"                          (:cr0)                    ())                                            ;; CLTS
 
-;; (define-instruction-format "<!$reg16, reg/mem16"           (:rflags :reg16)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
-;; (define-instruction-format "<!$reg32, reg/mem16"           (:rflags :reg32)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
-;; (define-instruction-format "<!$reg64, reg/mem16"           (:rflags :reg64)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+;; (defiformat "<!$reg16, reg/mem16"           (:rflags :reg16)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+;; (defiformat "<!$reg32, reg/mem16"           (:rflags :reg32)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
+;; (defiformat "<!$reg64, reg/mem16"           (:rflags :reg64)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
 
-;; (define-instruction-format "|$mem48"                       ()                        (:mem48 :cpl :cs))                             ;; LGDT, LIDT
-;; (define-instruction-format "|$mem80"                       ()                        (:mem80 :cpl :cs))                             ;; LGDT, LIDT
+;; (defiformat "|$mem48"                       ()                        (:mem48 :cpl :cs))                             ;; LGDT, LIDT
+;; (defiformat "|$mem80"                       ()                        (:mem80 :cpl :cs))                             ;; LGDT, LIDT
 
-;; (define-instruction-format "!mem48"                        (:mem48)                  ())                                            ;; SGDT, SIDT
-;; (define-instruction-format "!mem80"                        (:mem80)                  ())                                            ;; SGDT, SIDT
+;; (defiformat "!mem48"                        (:mem48)                  ())                                            ;; SGDT, SIDT
+;; (defiformat "!mem80"                        (:mem80)                  ())                                            ;; SGDT, SIDT
 
-;; (define-instruction-format "!$sysreg16, reg/mem16"         (:sysreg16)               (:reg/mem16 :cpl :cs))                         ;; LIDT, LMSW, LTR
+;; (defiformat "!$sysreg16, reg/mem16"         (:sysreg16)               (:reg/mem16 :cpl :cs))                         ;; LIDT, LMSW, LTR
 
-;; (define-instruction-format "$segreg:[EAX], ECX, EDX"       ()                        (:segreg :eax :ecx :edx :cpl :cs))             ;; MONITOR
-;; (define-instruction-format "$EAX, ECX"                     ()                        (:eax :ecx :cpl :cs))                          ;; MWAIT
+;; (defiformat "$segreg:[EAX], ECX, EDX"       ()                        (:segreg :eax :ecx :edx :cpl :cs))             ;; MONITOR
+;; (defiformat "$EAX, ECX"                     ()                        (:eax :ecx :cpl :cs))                          ;; MWAIT
 
-;; (define-instruction-format "2!2|EDX:EAX, ECX, sysreg64"    (:eax :edx)               (:ecx :sysreg64 :cpl :cs))                     ;; RDMSR, RDPMC
-;; (define-instruction-format "2!2|EDX:EAX, sysreg64"         (:eax :edx)               (:sysreg64 :cpl :cs :cr4))                     ;; RDTSC
-;; (define-instruction-format "2!2|3!3|EDX:EAX:ECX, sysreg64, sysreg32" (:eax :edx :ecx)(:sysreg64 :sysreg32 :cpl :cs :cr4))           ;; RDTSCP
+;; (defiformat "2!2|EDX:EAX, ECX, sysreg64"    (:eax :edx)               (:ecx :sysreg64 :cpl :cs))                     ;; RDMSR, RDPMC
+;; (defiformat "2!2|EDX:EAX, sysreg64"         (:eax :edx)               (:sysreg64 :cpl :cs :cr4))                     ;; RDTSC
+;; (defiformat "2!2|3!3|EDX:EAX:ECX, sysreg64, sysreg32" (:eax :edx :ecx)(:sysreg64 :sysreg32 :cpl :cs :cr4))           ;; RDTSCP
 
-;; (define-instruction-format "$!sysreg64, EDX:EAX, ECX"      (:sysreg64)               (:eax :edx :ecx :cpl :cs))                     ;; RDMSR, RDPMC
+;; (defiformat "$!sysreg64, EDX:EAX, ECX"      (:sysreg64)               (:eax :edx :ecx :cpl :cs))                     ;; RDMSR, RDPMC
 
-;; (define-instruction-format "!reg16, sysreg16"              (:reg16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (define-instruction-format "!reg32, sysreg16"              (:reg32)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (define-instruction-format "!reg64, sysreg16"              (:reg64)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (define-instruction-format "!mem16, sysreg16"              (:mem16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (define-instruction-format "2|sysreg16, GS"                (:gs :sysreg16)           (:gs :sysreg16 :cpl :cs))                      ;; SWAPGS
+;; (defiformat "!reg16, sysreg16"              (:reg16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+;; (defiformat "!reg32, sysreg16"              (:reg32)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+;; (defiformat "!reg64, sysreg16"              (:reg64)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+;; (defiformat "!mem16, sysreg16"              (:mem16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
+;; (defiformat "2|sysreg16, GS"                (:gs :sysreg16)           (:gs :sysreg16 :cpl :cs))                      ;; SWAPGS
 
-;; (define-instruction-format "$@<!CX"                        (:eflags :eip :cpl :cs :ss :cx)       (:star))                           ;; SYSCALL (short mode)
-;; (define-instruction-format "$@<!2|RCX, R11"                (:rflags :rip :cpl :cs :ss :rcx :r11) (:cstar))                          ;; SYSCALL (long mode)
-;; (define-instruction-format "$@<|CX"                        (:eflags :eip :cpl :cs :ss)           (:efer :cpl :cs :star :ecx))       ;; SYSRET (short mode)
-;; (define-instruction-format "$@<|RCX, R11"                  (:rflags :rip :cpl :cs :ss)           (:efer :cpl :cs :cstar :rcx :r11)) ;; SYSRET (long mode)
+;; (defiformat "$@<!CX"                        (:eflags :eip :cpl :cs :ss :cx)       (:star))                           ;; SYSCALL (short mode)
+;; (defiformat "$@<!2|RCX, R11"                (:rflags :rip :cpl :cs :ss :rcx :r11) (:cstar))                          ;; SYSCALL (long mode)
+;; (defiformat "$@<|CX"                        (:eflags :eip :cpl :cs :ss)           (:efer :cpl :cs :star :ecx))       ;; SYSRET (short mode)
+;; (defiformat "$@<|RCX, R11"                  (:rflags :rip :cpl :cs :ss)           (:efer :cpl :cs :cstar :rcx :r11)) ;; SYSRET (long mode)
 
-;; (define-instruction-format "$@<SS:ESP"                     (:eflags :eip :cpl :cs :ss :esp)      ())                                ;; SYSENTER
-;; (define-instruction-format "$@<SS:ESP, CX, DX"             (:eflags :eip :cpl :cs :ss :esp)      (:cx :dx))                         ;; SYSEXIT
+;; (defiformat "$@<SS:ESP"                     (:eflags :eip :cpl :cs :ss :esp)      ())                                ;; SYSENTER
+;; (defiformat "$@<SS:ESP, CX, DX"             (:eflags :eip :cpl :cs :ss :esp)      (:cx :dx))                         ;; SYSEXIT
 
-;; (define-instruction-format "$@"                            (:rip)                                ())                                ;; UD2, VMMCALL
+;; (defiformat "$@"                            (:rip)                                ())                                ;; UD2, VMMCALL
 
-;; (define-instruction-format "<$reg/mem16"                   (:rflags)                             (:reg/mem16 :cpl :cs))             ;; VERR, VERW
+;; (defiformat "<$reg/mem16"                   (:rflags)                             (:reg/mem16 :cpl :cs))             ;; VERR, VERW
 
-;; (define-instruction-format "$<"                            (:rflags :cr0 :cr3 :cr4 :cr6 :cr7 :efer) (:cr0 :cr3 :cr4 :cr6 :cr7 :efer))                          ;; RSM
-;; (define-instruction-format "<|$[EAX]"                      (:rflags :cr0 :cs :ss :eax :edx :esp :ebx :ecx :edx :esi :edi :rgpr :efer :gif) (:eax :efer :cppl)) ;; SKINIT
+;; (defiformat "$<"                            (:rflags :cr0 :cr3 :cr4 :cr6 :cr7 :efer) (:cr0 :cr3 :cr4 :cr6 :cr7 :efer))                          ;; RSM
+;; (defiformat "<|$[EAX]"                      (:rflags :cr0 :cs :ss :eax :edx :esp :ebx :ecx :edx :esi :edi :rgpr :efer :gif) (:eax :efer :cppl)) ;; SKINIT
 
-;; (define-instruction-format "$!2|FS, GS, CS, [RAX]"         (:fs :gs :tr :star :lstar :cstar :sfmask) (:rax :mem :cpl :cs :efer))                               ;; VMLOAD
-;; (define-instruction-format "$![RAX], CS, FS, GS"           (:mem)                                    (:rax :cpl :cs :efer :fs :gs :tr :star :lstar :cstar))    ;; VMSAVE
-;; (define-instruction-format "$<>@![RAX]"                    (:rflags :es :cs :ss :ds :efer :cr0 :cr4 :cr3 :cr2 :rip :rsp :rax :dr6 :dr7 :cpl :mem :gif) 
+;; (defiformat "$!2|FS, GS, CS, [RAX]"         (:fs :gs :tr :star :lstar :cstar :sfmask) (:rax :mem :cpl :cs :efer))                               ;; VMLOAD
+;; (defiformat "$![RAX], CS, FS, GS"           (:mem)                                    (:rax :cpl :cs :efer :fs :gs :tr :star :lstar :cstar))    ;; VMSAVE
+;; (defiformat "$<>@![RAX]"                    (:rflags :es :cs :ss :ds :efer :cr0 :cr4 :cr3 :cr2 :rip :rsp :rax :dr6 :dr7 :cpl :mem :gif) 
 ;;                                                            (:rflags :rip :rsp :rax :mem :cpl :cs :efer :sysreg64 :es :cs :ss :ds :cr0 :cr4 :cr3))              ;; VMRUN
 
 ;;;;
@@ -1382,5 +1382,5 @@
 ;;;;
 ;;;; Not an instruction
 ;;;;
-;; (define-instruction-format "$<>@"                       (:gif :efer :cr0 :cr4 :cr3 :rflags :rip :rsp :rax :dr7 :cpl :es :cs :ss :ds)
+;; (defiformat "$<>@"                       (:gif :efer :cr0 :cr4 :cr3 :rflags :rip :rsp :rax :dr7 :cpl :es :cs :ss :ds)
 ;;                                              (:es :cs :ss :ds :efer :cr4 :cr3 :cr2 :cr0 :rflags :rip :rsp :rax :dr7 :dr6 :cpl))                  ;; #VMEXIT

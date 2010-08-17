@@ -63,20 +63,6 @@
 (define-isa amd64-isa () ()
   ())
 
-(defstruct (microformat (:conc-name uformat-))
-  (id    nil :type symbol :read-only t)
-  (names nil :type list   :read-only t)
-  (bytes nil :type list   :read-only t))
-
-(define-subcontainer uformat :type microformat :container-slot id->uformat :if-exists :continue)
-
-(defun ensure-microformat (isa name name/byte-pairs)
-  (let ((u (make-microformat :id name :names (mapcar #'car name/byte-pairs) :names (mapcar #'cdr name/byte-pairs))))
-    (setf (uformat isa name) u)))
-
-(defmacro define-microformat (name &body name/byte-pairs)
-  `(ensure-microformat *isa* ,name ',name/byte-pairs))
-
 (defstruct (attribute-set (:conc-name attrset-))
   (name       nil                            :type symbol     :read-only t)
   (key->value (make-hash-table :test 'eq)    :type hash-table :read-only t)
@@ -125,6 +111,21 @@
   (:xop .           #x0f))
 (define-attribute-set :3dnow
   (:3dnow .         #x0f))
+
+(defstruct (microformat (:conc-name uformat-))
+  "Connect sub-byte bit-structurings to attributes."
+  (id    nil :type symbol :read-only t)
+  (names nil :type list   :read-only t)
+  (bytes nil :type list   :read-only t))
+
+(define-subcontainer uformat :type microformat :container-slot id->uformat :if-exists :continue)
+
+(defun ensure-microformat (isa name name/byte-pairs)
+  (let ((u (make-microformat :id name :names (mapcar #'car name/byte-pairs) :names (mapcar #'cdr name/byte-pairs))))
+    (setf (uformat isa name) u)))
+
+(defmacro define-microformat (name &body name/byte-pairs)
+  `(ensure-microformat *isa* ,name ',name/byte-pairs))
 
 (define-microformat :uf-rex
   (:w     (1 0))
@@ -338,17 +339,17 @@
 ;;;;    2. 16-bit addressing does not exist, period.
 ;;;;
 (defun make-x86/64-isa (sixty-four-p)
-  `(nil (00 04 (:rex :nrex))
+  `(nil ((00 04) (:rex :nrex)) 
         (:rex (:uf-rex)
               (ban :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
               (shift -8)
               (include :nrex))
-        (:nrex (-04 08 (:opersz/p :rep/p :repn/p :addrsz :segment :lock
-                        :opcode
-                        ,(if sixty-four-p
-                             :opcode-longmode
-                             :opcode-shortmode)
-                        (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
+        (:nrex ((-04 08) (:opersz/p :rep/p :repn/p :addrsz :segment :lock
+                                    :opcode
+                                    ,(if sixty-four-p
+                                         :opcode-longmode
+                                         :opcode-shortmode)
+                                    (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
                ;; when there's no window declared, include uses the target's one
                (:addrsz   () (ban :addrsz)  (include nil))
                (:segment  () (ban :segment) (include nil))
@@ -378,59 +379,73 @@
                (#x81 (:uf-modrm (:grp1-81))
                      (dispatch :acc :reg)
                      (:grp1-81 ()
-                               (dispatch :opcode :reg :mod)))
+                               (dispatch :acc :reg :mod)))
                ,@(unless sixty-four-p
-                  `((#x82 (+ 03 03 (:grp1-82-shortmode))
-                          (:grp1-82-shortmode ()
-                                              ))))
+                         `((#x82 (:uf-modrm (:grp1-82-shortmode))
+                                 (dispatch :acc :reg)
+                                 (:grp1-82-shortmode ()
+                                                     ))))
                (#x83 (:uf-modrm (:grp1-83))
                      (dispatch :acc :reg)
                      (:grp1-83 ()
-                               (dispatch :opcode :reg :mod)))
-               (#x8f (+ 03 03 (:grp1-8f))
+                               (dispatch :acc :reg :mod)))
+               (#x8f (:uf-modrm (:grp1-8f))
+                     (dispatch :acc :reg)
                      (:grp1-8f ()
                                ))
-               (#xc0 (+ 03 03 (:grp2-c0))
+               (#xc0 (:uf-modrm (:grp2-c0))
+                     (dispatch :acc :reg)
                      (:grp2-c0 ()
                                ))
-               (#xc1 (+ 03 03 (:grp2-c1))
+               (#xc1 (:uf-modrm (:grp2-c1))
+                     (dispatch :acc :reg)
                      (:grp2-c1 ()
                                ))
-               (#xd0 (+ 03 03 (:grp2-d0))
+               (#xd0 (:uf-modrm (:grp2-d0))
+                     (dispatch :acc :reg)
                      (:grp2-d0 ()
                                ))
-               (#xd1 (+ 03 03 (:grp2-d1))
+               (#xd1 (:uf-modrm (:grp2-d1))
+                     (dispatch :acc :reg)
                      (:grp2-d1 ()
                                ))
-               (#xd2 (+ 03 03 (:grp2-d2))
+               (#xd2 (:uf-modrm (:grp2-d2))
+                     (dispatch :acc :reg)
                      (:grp2-d2 ()
                                ))
-               (#xd3 (+ 03 03 (:grp2-d3))
+               (#xd3 (:uf-modrm (:grp2-d3))
+                     (dispatch :acc :reg)
                      (:grp2-d3 ()
                                ))
-               (#xf6 (+ 03 03 (:grp3-f6))
+               (#xf6 (:uf-modrm (:grp3-f6))
+                     (dispatch :acc :reg)
                      (:grp3-f6 ()
                                ))
-               (#xf7 (+ 03 03 (:grp3-f7))
+               (#xf7 (:uf-modrm (:grp3-f7))
+                     (dispatch :acc :reg)
                      (:grp3-f7 ()
                                ))
-               (#xfe (+ 03 03 (:grp4-fe))
+               (#xfe (:uf-modrm (:grp4-fe))
+                     (dispatch :acc :reg)
                      (:grp4-fe ()
                                ))
-               (#xff (+ 03 03 (:grp5-ff))
+               (#xff (:uf-modrm (:grp5-ff))
+                     (dispatch :acc :reg)
                      (:grp5-ff ()
                                ))
-               (#xc6 (+ 03 03 (:grp11-c6))
+               (#xc6 (:uf-modrm (:grp11-c6))
+                     (dispatch :acc :reg)
                      (:grp11-c6 ()
                                 ))
-               (#xc7 (+ 03 03 (:grp11-c7))
+               (#xc7 (:uf-modrm (:grp11-c7))
+                     (dispatch :acc :reg)
                      (:grp11-c7 ()
                                 ))
-               (:xop (08 08 (:opcode-ext
-                             ,@(unless sixty-four-p
-                                       `(:opcode-ext-shortmode))
-                             :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
-                             (#x00 #x01 #xba #xc7 #xb9 #x71 #x72 #x73 #xae #x18 #x0d)))
+               (:xop (+ (08 08) (:opcode-ext ; + means (append old new)
+                                 ,@(unless sixty-four-p
+                                           `(:opcode-ext-shortmode))
+                                 :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
+                                 (#x0f00 #x0f01 #x0fba #x0fc7 #x0fb9 #x0f71 #x0f72 #x0f73 #x0fae #x0f18 #x0f0d)))
                      (:opcode-ext ()
                                   )
                      (:opcode-ext-unprefixed ()
@@ -441,82 +456,105 @@
                                       )
                      (:opcode-ext-repn ()
                                        )
-                     (#x00 (+ 03 03 (:grp6-0f-00))
-                           (:grp6-0f-00 ()
-                                        ))
-                     (#x01 (+ 03 03 (:grp7-0f-01 (#x101 #x301 #x701)))
-                           (:grp7-0f-01 ()
-                                        )
-                           (#x101 (+ 02 02 (:grp7-0f-01-1-0))
-                                  (:grp7-0f-01-1-0 ()
-                                                   )
-                                  (#x1901 (+ -5 3 (:grp7-0f-01-1-3))
-                                          (:grp7-0f-01-1-3 ()
-                                                           )))
-                           (#x301 (+ 02 02 (:grp7-0f-01-3-0))
-                                  (:grp7-0f-01-3-0 ()
-                                                   )
-                                  (#x1b01 (+ -5 3 (:grp7-0f-01-3-3))
-                                          (:grp7-0f-01-3-3 ()
-                                                           )))
-                           (#x701 (+ 02 02 (:grp7-0f-01-7-0))
-                                  (:grp7-0f-01-7-0 ()
-                                                   )
-                                  (#x1f01 (+ -5 3 (:grp7-0f-01-7-3))
-                                          (:grp7-0f-01-7-3 ()
-                                                           ))))
-                     (#xba (:uf-modrm (:grp8-0f-ba))
-                           (dispatch :acc :reg)
-                           (:grp8-0f-ba ()
-                                        (dispatch :opcode :reg :mod)))
-                     (#xc7 (+ 03 03 (:grp9-0f-c7))
-                           (:grp9-0f-c7 ()
-                                        ))
-                     (#xb9 (+ 03 03 (:grp10-0f-b9))
-                           (:grp10-0f-b9 ()
-                                         ))
-                     (#x71 (+ 01 :opersz/p (#b0 #b1))
-                      (#b0 (+ 03 03 (:grp12-0f-71))
-                           (:grp12-0f-71 ()
-                                         ))
-                      (#b1 (+ 03 03 (:grp12-0f-71-op))
-                           (:grp12-0f-71-op ()
-                                         )))
-                     (#x72 (+ 01 :opersz/p (#b0 #b1))
-                      (#b0 (+ 03 03 (:grp13-0f-72))
-                           (:grp13-0f-72 ()
-                                         ))
-                      (#b1 (+ 03 03 (:grp13-0f-72-op))
-                           (:grp13-0f-72-op ()
-                                         )))
-                     (#x73 (+ 01 :opersz/p (#b0 #b1))
-                      (#b0 (+ 03 03 (:grp14-0f-73))
-                           (:grp14-0f-73 ()
-                                         ))
-                      (#b1 (+ 03 03 (:grp14-0f-73-op))
-                           (:grp14-0f-73-op ()
-                                         )))
-                     (#xae (+ 03 03 (:grp15-0f-ae (#x5ae #x6ae #x7ae)))
-                           (:grp15-0f-ae ()
-                                         )
-                           (#x5ae (+ 02 02 (:grp15-0f-ae-5))
-                                  (:grp15-0f-ae-5 ()
-                                                  ))
-                           (#x6ae (+ 02 02 (:grp15-0f-ae-6))
-                                  (:grp15-0f-ae-6 ()
-                                                  ))
-                           (#x7ae (+ 02 02 (:grp15-0f-ae-7))
-                                  (:grp15-0f-ae-7 ()
-                                                  )))
-                     (#x18 (+ 03 03 (:grp16-0f-18))
-                           (:grp16-0f-18 ()
-                                         ))
-                     (#x78 (+ 03 03 (:grp17-0f-78-op))
-                           (:grp17-0f-78 ()
-                                         ))
-                     (#x0d (+ 03 03 (:grpp-0f-0d))
-                           (:grpp-0f-0d ()
-                                        ))))))
+                     (#x0f00 (:uf-modrm (:grp6-0f-00))
+                             (dispatch :acc :reg)
+                             (:grp6-0f-00 ()
+                                          ))
+                     (#x0f01 (:uf-modrm (:grp7-0f-01 ((#x0f01 1) (#x0f01 3) (#x0f01 7))))
+                             (dispatch :acc :reg)
+                             (:grp7-0f-01 () ; modulo 1 4 7
+                                          )
+                             ((#x0f01 1) (nil (:grp7-0f-01-1-0 (#x0f01 1 3)))
+                              (dispatch :acc :reg :mod)
+                              (:grp7-0f-01-1-0 ()
+                                               )
+                              ((#x0f01 1 3) (nil (:grp7-0f-01-1-3))
+                               (:grp7-0f-01-1-3 ()
+                                                )))
+                             ((#x0f01 3) (nil (:grp7-0f-01-3-0 (#x0f01 3 3)))
+                              (dispatch :acc :reg :mod)
+                              (:grp7-0f-01-3-0 ()
+                                               )
+                              ((#x0f01 3 3) (nil (:grp7-0f-01-3-3))
+                               (dispatch :acc :reg)
+                               (:grp7-0f-01-3-3 ()
+                                                )))
+                             ((#x0f01 7) (nil (:grp7-0f-01-7-0 (#x0f01 7 3)))
+                              (dispatch :acc :reg :mod)
+                              (:grp7-0f-01-7-0 ()
+                                               )
+                              ((#x0f01 7 3) (nil (:grp7-0f-01-7-3))
+                               (dispatch :acc :reg)
+                               (:grp7-0f-01-7-3 ()
+                                                ))))
+                     (#x0fba (:uf-modrm (:grp8-0f-ba))
+                             (dispatch :acc :reg)
+                             (:grp8-0f-ba ()
+                                          (dispatch :acc :reg :mod)))
+                     (#x0fc7 (:uf-modrm (:grp9-0f-c7))
+                             (dispatch :acc :reg)
+                             (:grp9-0f-c7 ()
+                                          ))
+                     (#x0fb9 (:uf-modrm (:grp10-0f-b9))
+                             (dispatch :acc :reg)
+                             (:grp10-0f-b9 ()
+                                           ))
+                     ;; XXX: yeah, the only place we bastardise the opcode...
+                     (#x0f71 (+ :opersz/p (#x00f71 #x10f71))
+                             (#x00f71 (:uf-modrm (:grp12-0f-71))
+                                      (dispatch :acc :reg)
+                                      (:grp12-0f-71 ()
+                                                    ))
+                             (#x10f71 (:uf-modrm (:grp12-0f-71-op))
+                                      (dispatch :acc :reg)
+                                      (:grp12-0f-71-op ()
+                                                       )))
+                     (#x0f72 (+ :opersz/p (#x00f72 #x10f72))
+                             (#x00f72 (:uf-modrm (:grp13-0f-72))
+                                      (dispatch :acc :reg)
+                                      (:grp13-0f-72 ()
+                                                    ))
+                             (#x10f72 (:uf-modrm (:grp13-0f-72-op))
+                                      (dispatch :acc :reg)
+                                      (:grp13-0f-72-op ()
+                                                       )))
+                     (#x0f73 (+ :opersz/p (#x00f73 #x10f73))
+                             (#x00f73 (:uf-modrm (:grp14-0f-73))
+                                      (dispatch :acc :reg)
+                                      (:grp14-0f-73 ()
+                                                    ))
+                             (#x10f73 (:uf-modrm (:grp14-0f-73-op))
+                                      (dispatch :acc :reg)
+                                      (:grp14-0f-73-op ()
+                                                       )))
+                     (#x0fae (:uf-modrm (:grp15-0f-ae ((#x0fae 5) (#x0fae 6) (#x0fae 7))))
+                             (dispatch :acc :reg)
+                             (:grp15-0f-ae ()
+                                           )
+                             ((#x0fae 5) (nil (:grp15-0f-ae-5))
+                              (dispatch :acc :reg :mod)
+                              (:grp15-0f-ae-5 () ; lfence
+                                              ))
+                             ((#x0fae 6) (nil (:grp15-0f-ae-6))
+                              (dispatch :acc :reg :mod)
+                              (:grp15-0f-ae-6 () ; mfence
+                                              ))
+                             ((#x0fae 7) (nil (:grp15-0f-ae-7))
+                              (dispatch :acc :reg :mod)
+                              (:grp15-0f-ae-7 () ; sfence, clflush
+                                              )))
+                     (#x0f18 (:uf-modrm (:grp16-0f-18))
+                             (dispatch :acc :reg)
+                             (:grp16-0f-18 ()
+                                           ))
+                     (#x0f78 (:uf-modrm (:grp17-0f-78-op))
+                             (dispatch :acc :reg)
+                             (:grp17-0f-78 ()
+                                           ))
+                     (#x0f0d (:uf-modrm (:grpp-0f-0d))
+                             (dispatch :acc :reg)
+                             (:grpp-0f-0d ()
+                                          ))))))
 
 (define-attribute-set :opcode
   (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#  #| 32bit mode   |#
@@ -574,207 +612,208 @@
    #|  .........           .......  |#  (:jmp .      #xea)  #|  .........           .........           .........           .......           .........  |#)
 
 (define-attribute-set :opcode-ext
-   #|    grp6               grp7      |#  (:lar .       #x02) (:lsl .      #x03)  #|   invalid  |#  (:syscall .  #x05) (:clts .    #x06) (:sysret .   #x07)
+   #|      grp6                grp7       |#  (:lar .       #x0f02) (:lsl .      #x0f03)  #|   invalid    |#  (:syscall .  #x0f05) (:clts .    #x0f06) (:sysret .   #x0f07)
   ;; 1[0-7]: prefixed
-  (:mov .       #x20) (:mov .       #x21) (:mov .       #x22) (:mov .      #x23)  #|   invalid  |#   #|   invalid  |#   #|   invalid |#   #|   invalid  |#
-  (:wrmsr .     #x30) (:rstsc .     #x31) (:rdmsr .     #x32) (:rdpmc .    #x33)  #| 32bit mode |#   #| 32bit mode |#   #|   invalid |#   #|   invalid  |#
-  (:cmovo .     #x40) (:cmovno .    #x41) (:cmovb .     #x42) (:cmovnb .   #x43) (:cmovz .    #x44) (:cmovnz .   #x45) (:cmovbe .  #x46) (:cmovnbe .  #x47)
+  (:mov .       #x0f20) (:mov .       #x0f21) (:mov .       #x0f22) (:mov .      #x0f23)  #|   invalid    |#   #|   invalid    |#   #|   invalid    |#   #|   invalid    |#
+  (:wrmsr .     #x0f30) (:rstsc .     #x0f31) (:rdmsr .     #x0f32) (:rdpmc .    #x0f33)  #|  32bit mode  |#   #|  32bit mode  |#   #|   invalid    |#   #|   invalid    |#
+  (:cmovo .     #x0f40) (:cmovno .    #x0f41) (:cmovb .     #x0f42) (:cmovnb .   #x0f43) (:cmovz .    #x0f44) (:cmovnz .   #x0f45) (:cmovbe .   #x0f46) (:cmovnbe .  #x0f47)
   ;; 5[0-7]: prefixed
   ;; 6[0-7]: prefixed
   ;; 7[0-7]: prefixed
-  (:jo .        #x80) (:jno .       #x81) (:jb .        #x82) (:jnb .      #x83) (:jz .       #x84) (:jnz .      #x85) (:jbe .     #x86) (:jnbe .     #x87)
-  (:seto .      #x90) (:setno .     #x91) (:setb .      #x92) (:setnb .    #x93) (:setz .     #x94) (:setnz .    #x95) (:setbe .   #x96) (:setnbe .   #x97)
-  (:push .      #xa0) (:pop .       #xa1) (:cpuid .     #xa2) (:bt .       #xa3) (:shld .     #xa4) (:shld .     #xa5)  #|   invalid |#   #|   invalid  |#
-  (:cmpxchg .   #xb0) (:cmpxchg .   #xb1) (:lss .       #xb2) (:btr .      #xb3) (:lfs .      #xb4) (:lgs .      #xb5) (:movzx .   #xb6) (:movzx .    #xb7)
+  (:jo .        #x0f80) (:jno .       #x0f81) (:jb .        #x0f82) (:jnb .      #x0f83) (:jz .       #x0f84) (:jnz .      #x0f85) (:jbe .      #x0f86) (:jnbe .     #x0f87)
+  (:seto .      #x0f90) (:setno .     #x0f91) (:setb .      #x0f92) (:setnb .    #x0f93) (:setz .     #x0f94) (:setnz .    #x0f95) (:setbe .    #x0f96) (:setnbe .   #x0f97)
+  (:push .      #x0fa0) (:pop .       #x0fa1) (:cpuid .     #x0fa2) (:bt .       #x0fa3) (:shld .     #x0fa4) (:shld .     #x0fa5)  #|   invalid    |#   #|   invalid    |#
+  (:cmpxchg .   #x0fb0) (:cmpxchg .   #x0fb1) (:lss .       #x0fb2) (:btr .      #x0fb3) (:lfs .      #x0fb4) (:lgs .      #x0fb5) (:movzx .    #x0fb6) (:movzx .    #x0fb7)
   ;; c[0-7]: prefixed
   ;; d[0-7]: prefixed
   ;; e[0-7]: prefixed
   ;; f[0-7]: prefixed
-  (:invd .      #x08) (:wbinvd .    #x09)  #|   invalid   |#  (:ud2 .      #x0b)  #|   invalid  |#   #|   grp p    |#  (:femms .   #x0e)  #|   3dnow    |#
-   #| modrm group |#  (:nop .       #x19) (:nop .       #x1a) (:nop .      #x1b) (:nop .      #x1c) (:nop .      #x1d) (:nop .     #x1e) (:nop .      #x1f)
+  (:invd .      #x0f08) (:wbinvd .    #x0f09)  #|    invalid    |#  (:ud2 .      #x0f0b)  #|   invalid    |#   #|    grp p     |#  (:femms .    #x0f0e)  #|    3dnow     |#
+   #|  modrm group  |#  (:nop .       #x0f19) (:nop .       #x0f1a) (:nop .      #x0f1b) (:nop .      #x0f1c) (:nop .      #x0f1d) (:nop .      #x0f1e) (:nop .      #x0f1f)
   ;; 2[8-f]: prefixed
   ;; 3[8-f]: invalid
-  (:cmovs .     #x48) (:cmovns .    #x49) (:cmovp .     #x4a) (:cmovnp .   #x4b) (:cmovl .    #x4c) (:cmovnl .   #x4d) (:cmovle .  #x4e) (:cmovnle .  #x4f)
+  (:cmovs .     #x0f48) (:cmovns .    #x0f49) (:cmovp .     #x0f4a) (:cmovnp .   #x0f4b) (:cmovl .    #x0f4c) (:cmovnl .   #x40fd) (:cmovle .   #x40fe) (:cmovnle .  #x0f4f)
   ;; 5[8-f]: prefixed
   ;; 6[8-f]: prefixed
   ;; 7[8-f]: prefixed
-  (:js .        #x88) (:jns .       #x89) (:jp .        #x8a) (:jnp .      #x8b) (:jl .       #x8c) (:jnl .      #x8d) (:jle .     #x8e) (:jnle .     #x8f)
-  (:sets .      #x98) (:setns .     #x99) (:setp .      #x9a) (:setnp .    #x9b) (:setl .     #x9c) (:setnl .    #x9d) (:setle   . #x9e) (:setnle .   #x9f)
-  (:push .      #xa8) (:pop .       #xa9) (:rsm .       #xaa) (:bts .      #xab) (:shrd .     #xac) (:shrd .     #xad) (:grp15-ae . #xae) (:imul .     #xaf)
+  (:js .        #x0f88) (:jns .       #x0f89) (:jp .        #x0f8a) (:jnp .      #x0f8b) (:jl .       #x0f8c) (:jnl .      #x0f8d) (:jle .      #x0f8e) (:jnle .     #x0f8f)
+  (:sets .      #x0f98) (:setns .     #x0f99) (:setp .      #x0f9a) (:setnp .    #x0f9b) (:setl .     #x0f9c) (:setnl .    #x0f9d) (:setle   .  #x0f9e) (:setnle .   #x0f9f)
+  (:push .      #x0fa8) (:pop .       #x0fa9) (:rsm .       #x0faa) (:bts .      #x0fab) (:shrd .     #x0fac) (:shrd .     #x0fad) (:grp15-ae . #x0fae) (:imul .     #x0faf)
   ;; b[8-f]: prefixed
-  (:bswap .     #xc8) (:bswap .     #xc9) (:bswap .     #xca) (:bswap .    #xcb) (:bswap .    #xcc) (:bswap .    #xcd) (:bswap .   #xce) (:bswap .    #xcf)
+  (:bswap .     #x0fc8) (:bswap .     #x0fc9) (:bswap .     #x0fca) (:bswap .    #x0fcb) (:bswap .    #x0fcc) (:bswap .    #x0fcd) (:bswap .    #x0fce) (:bswap .    #x0fcf)
   ;; d[8-f]: prefixed
   ;; e[8-f]: prefixed
   ;; f[8-f]: prefixed
   )
 
 (define-attribute-set :opcode-ext-shortmode
-  #|    .........           .........           .........            ........ |#  (:sysenter .  #x34) (:sysexit .  #x35)  #|   .......            ........ |#)
+  #|    .........             .........             .........             ........    |#  (:sysenter .  #x0f34) (:sysexit .  #x0f35)  #|    .......             ........    |#)
 
 (define-attribute-set :opcode-ext-unprefixed
-  (:movups .    #x10) (:movups .    #x11) (:movl/hlps . #x12) (:movlps .    #x13) (:unpcklps .  #x14) (:unpckhps . #x15) (:movh/lhps . #x16) (:movhps .  #x17)
-  (:movmskps .  #x50) (:sqrtps .    #x51) (:rsqrtps .   #x52) (:rcpps .     #x53) (:andps .     #x54) (:andnps .   #x55) (:orps .     #x56) (:xorps .    #x57)
-  (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .   #x64) (:pcmpgtw .  #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
-  (:pshufw .    #x70)  #|   grp12     |#   #|   grp13     |#   #|   grp14     |#  (:pcmpeqb .   #x74) (:pcmpeqw .  #x75) (:pcmpeqd .  #x76) (:emss .     #x77)
-  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpps .     #xc2) (:movnti .    #xc3) (:pinsrw .    #xc4) (:pextsrw .  #xc5) (:shufps .   #xc6) (:grp9 .     #xc7)
-   #|   invalid   |#  (:psrlw .     #xd1) (:psrld .     #xd2) (:psrlq .     #xd3) (:paddq .     #xd4) (:pmullw .   #xd5)  #|   invalid  |#  (:pmovmskb . #xd7)
-  (:pavgb .     #xe0) (:psraw .     #xe1) (:psrad .     #xe2) (:pavgw .     #xe3) (:pmulhuw .   #xe4) (:pmulhw .   #xe5)  #|   invalid  |#  (:movntq .   #xe7)
-   #|   invalid   |#  (:psllw .     #xf1) (:pslld .     #xf2) (:psllq .     #xf3) (:pmuludq .   #xf4) (:pmaddwd .  #xf5) (:psadbw .   #xf6) (:maskmovq . #xf7)
-  (:movaps .    #x28) (:movaps .    #x29) (:cvtpi2ps .  #x2a) (:movntps .   #x2b) (:cvttps2pi . #x2c) (:cvtps2pi . #x2d) (:ucomiss .  #x2e) (:comiss .   #x2f)
-  (:addps .     #x58) (:mulps .     #x59) (:cvtps2pd .  #x5a) (:cvtdq2ps .  #x5b) (:subps .     #x5c) (:minps .    #x5d) (:divps .    #x5e) (:maxps .    #x5f)
-  (:punpckhwb . #x68) (:punpckhwd . #x69) (:punpckhdq . #x6a) (:packssdw .  #x6b)  #|   invalid   |#   #|   invalid  |#  (:movd .     #x6e) (:movq .     #x6f)
-   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#  (:movd .     #x7e) (:movq .     #x7f)
-   #|   reserved  |#   #|   grp10     |#   #|   grp8      |#  (:btc .       #xbb) (:bsf .       #xbc) (:bsr .      #xbd) (:movsx .    #xbe) (:movsx .    #xbf)
-  (:psubusb .   #xd8) (:psubusw .   #xd9) (:pminub .    #xda) (:pand .      #xdb) (:paddusb .   #xdc) (:paddusw .  #xdd) (:pmaxub .   #xde) (:pandn .    #xdf)
-  (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .    #xec) (:paddsw .   #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
-  (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .      #xfc) (:padw .     #xfd) (:padd .     #xfe)  #|   invalid  |#)
+  (:movups .    #x0f10) (:movups .    #x0f11) (:movl/hlps . #x0f12) (:movlps .    #x0f13) (:unpcklps .  #x0f14) (:unpckhps . #x0f15) (:movh/lhps . #x0f16) (:movhps .   #x0f17)
+  (:movmskps .  #x0f50) (:sqrtps .    #x0f51) (:rsqrtps .   #x0f52) (:rcpps .     #x0f53) (:andps .     #x0f54) (:andnps .   #x0f55) (:orps .      #x0f56) (:xorps .    #x0f57)
+  (:punpcklbw . #x0f60) (:punpcklwd . #x0f61) (:punpckldq . #x0f62) (:packsswb .  #x0f63) (:pcmpgtb .   #x0f64) (:pcmpgtw .  #x0f65) (:pcmpgtd .   #x0f66) (:packuswb . #x0f67)
+  (:pshufw .    #x0f70)  #|    grp12      |#   #|     grp13     |#   #|    grp14      |#  (:pcmpeqb .   #x0f74) (:pcmpeqw .  #x0f75) (:pcmpeqd .   #x0f76) (:emss .     #x0f77)
+  (:xadd .      #x0fc0) (:xadd .      #x0fc1) (:cmpps .     #x0fc2) (:movnti .    #x0fc3) (:pinsrw .    #x0fc4) (:pextsrw .  #x0fc5) (:shufps .    #x0fc6) (:grp9 .     #x0fc7)
+   #|    invalid    |#  (:psrlw .     #x0fd1) (:psrld .     #x0fd2) (:psrlq .     #x0fd3) (:paddq .     #x0fd4) (:pmullw .   #x0fd5)  #|    invalid    |#  (:pmovmskb . #x0fd7)
+  (:pavgb .     #x0fe0) (:psraw .     #x0fe1) (:psrad .     #x0fe2) (:pavgw .     #x0fe3) (:pmulhuw .   #x0fe4) (:pmulhw .   #x0fe5)  #|    invalid    |#  (:movntq .   #x0fe7)
+   #|    invalid    |#  (:psllw .     #x0ff1) (:pslld .     #x0ff2) (:psllq .     #x0ff3) (:pmuludq .   #x0ff4) (:pmaddwd .  #x0ff5) (:psadbw .    #x0ff6) (:maskmovq . #x0ff7)
+  (:movaps .    #x0f28) (:movaps .    #x0f29) (:cvtpi2ps .  #x0f2a) (:movntps .   #x0f2b) (:cvttps2pi . #x0f2c) (:cvtps2pi . #x0f2d) (:ucomiss .   #x0f2e) (:comiss .   #x0f2f)
+  (:addps .     #x0f58) (:mulps .     #x0f59) (:cvtps2pd .  #x0f5a) (:cvtdq2ps .  #x0f5b) (:subps .     #x0f5c) (:minps .    #x0f5d) (:divps .     #x0f5e) (:maxps .    #x0f5f)
+  (:punpckhwb . #x0f68) (:punpckhwd . #x0f69) (:punpckhdq . #x0f6a) (:packssdw .  #x0f6b)  #|    invalid    |#   #|   invalid    |#  (:movd .      #x0f6e) (:movq .     #x0f6f)
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|   invalid    |#  (:movd .      #x0f7e) (:movq .     #x0f7f)
+   #|    reserved   |#   #|    grp10      |#   #|    grp8       |#  (:btc .       #x0fbb) (:bsf .       #x0fbc) (:bsr .      #x0fbd) (:movsx .     #x0fbe) (:movsx .    #x0fbf)
+  (:psubusb .   #x0fd8) (:psubusw .   #x0fd9) (:pminub .    #x0fda) (:pand .      #x0fdb) (:paddusb .   #x0fdc) (:paddusw .  #x0fdd) (:pmaxub .    #x0fde) (:pandn .    #x0fdf)
+  (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .    #x0fec) (:paddsw .   #x0fed) (:pmaxsw .    #x0fee) (:pxor .     #x0fef)
+  (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .      #x0ffc) (:padw .     #x0ffd) (:padd .      #x0ffe)  #|   invalid    |#)
 
 (define-attribute-set :opcode-ext-rep
-  (:movss .     #x10) (:movss .     #x11) (:movsldup .  #x12)  #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:movshdup . #x16)  #|   invalid  |#
-   #|   invalid   |#  (:sqrtss .    #x51) (:rsqrtss .   #x52) (:rcpss .     #x53)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-  (:pshufhw .   #x70) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpss .     #xc2)  #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:movq2dq .  #xd6)  #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#  (:cvtdq2pd . #xe6)  #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#  (:cvtsi2ss .  #x2a) (:movntss .   #x2b) (:cvttss2si . #x2c) (:cvtss2si . #x2d)  #|   invalid  |#   #|   invalid  |#
-  (:addss .     #x58) (:mulss .     #x59) (:cvtss2sd .  #x5a) (:cvttps2dq . #x5b) (:subss .     #x5c) (:minss .    #x5d) (:divss .    #x5e) (:maxss .    #x5f)
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#   #|   invalid  |#  (:movdqu .   #x6f)
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid  |#  (:movq .     #x7e) (:movdqu .   #x7f)
-  (:popcnt .    #xb8) #|    reserved  |#   #|   reserved  |#   #|   reserved  |#   #|   reserved  |#  (:lzcnt .    #xbd)  #|   reserved |#   #|   reserved |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|   invalid  |#
+  (:movss .   #x0f10) (:movss .   #x0f11) (:movsldup . #x0f12)  #|   invalid     |#   #|   invalid     |#   #|  invalid     |#  (:movshdup . #x0f16)  #|   invalid  |#
+   #|   invalid   |#  (:sqrtss .  #x0f51) (:rsqrtss .  #x0f52) (:rcpss .     #x0f53)  #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+  (:pshufhw . #x0f70) #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+  (:xadd .    #x0fc0) (:xadd .    #x0fc1) (:cmpss .    #x0fc2)  #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#  (:movq2dq .  #x0fd6)  #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#  (:cvtdq2pd . #x0fe6)  #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#  (:cvtsi2ss . #x0f2a) (:movntss .   #x0f2b) (:cvttss2si . #x0f2c) (:cvtss2si . #x0f2d)  #|   invalid    |#   #|   invalid  |#
+  (:addss .   #x0f58) (:mulss .   #x0f59) (:cvtss2sd . #x0f5a) (:cvttps2dq . #x0f5b) (:subss .     #x0f5c) (:minss .    #x0f5d) (:divss .    #x0f5e) (:maxss .  #x0f5f)
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|   invalid    |#   #|   invalid    |#  (:movdqu . #x0f6f)
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|   invalid    |#  (:movq .     #x0f7e) (:movdqu . #x0f7f)
+  (:popcnt .  #x0fb8) #|    reserved  |#   #|   reserved   |#   #|   reserved    |#   #|   reserved    |#  (:lzcnt .    #x0fbd)  #|   reserved   |#   #|   reserved |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
+   #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
   )
 
 (define-attribute-set :opcode-ext-opersz
-  (:movupd .    #x10) (:movupd .    #x11) (:movlpd .    #x12) (:movlpd .    #x13) (:unpcklpd .   #x14) (:unpckhpd .   #x15) (:movhpd .   #x16) (:movhpd .   #x17)
-  (:movmskpd .  #x50) (:sqrtpd .    #x51)  #|   invalid   |#   #|   invalid   |#  (:andpd .      #x54) (:andnpd .     #x55) (:orpd .     #x56) (:xorpd .    #x57)
-  (:punpcklbw . #x60) (:punpcklwd . #x61) (:punpckldq . #x62) (:packsswb .  #x63) (:pcmpgtb .    #x64) (:pcmpgtw .    #x65) (:pcmpgtd .  #x66) (:packuswb . #x67)
-  (:pshufd .    #x70)  #|   grp12     |#   #|   grp13     |#   #|   grp14     |#  (:pcmpeqb .    #x74) (:pcmpeqw .    #x75) (:pcmpeqd .  #x76)  #|   invalid  |#
-  (:xadd .      #xc0) (:xadd .      #xc1) (:cmppd .     #xc2)  #|   invalid   |#  (:pinsrw .     #xc4) (:pextsrw .    #xc5) (:shufpd .   #xc6)  #|   invalid  |#
-  (:addsubpd .  #xd0) (:psrlw .     #xd1) (:psrld .     #xd2) (:psrlq .     #xd3) (:paddq .      #xd4) (:pmullw .     #xd5) (:movq .     #xd6) (:pmovmskb . #xd7)
-  (:pavgb .     #xe0) (:psraw .     #xe1) (:psrad .     #xe2) (:pavgw .     #xe3) (:pmulhuw .    #xe4) (:pmulhw .     #xe5) (:cvttpd2d . #xe6) (:movntdq .  #xe7)
-   #|   invalid   |#  (:psllw .     #xf1) (:pslld .     #xf2) (:psllq .     #xf3) (:pmuludq .    #xf4) (:pmaddwd .    #xf5) (:psadbw .   #xf6) (:maskmovdqu . #xf7)
-  (:movapd .    #x28) (:movapd .    #x29) (:cvtpi2pd .  #x2a) (:movntpd .   #x2b) (:cvttpd2pi .  #x2c) (:cvtpd2pi .   #x2d) (:ucomisd .  #x2e) (:comisd .   #x2f)
-  (:addpd .     #x58) (:mulpd .     #x59) (:cvtpd2ps .  #x5a) (:cvtps2dq .  #x5b) (:subpd .      #x5c) (:minpd .      #x5d) (:divpd .    #x5e) (:maxpd .    #x5f)
-  (:punpckhwb . #x68) (:punpckhwd . #x69) (:punpckhdq . #x6a) (:packssdw .  #x6b) (:punpcklqdq . #x6c) (:punpckhqdq . #x6d) (:movd .     #x6e) (:movdqa .   #x6f)
-   #|   grp17     |#  (:extrq .     #x79)  #|   invalid   |#   #|   invalid   |#  (:haddpd .     #x7c) (:hsubpd .     #x7d)  (:movd .    #x7e) (:movdqa .   #x7f)
+  (:movupd .    #x0f10) (:movupd .    #x0f11) (:movlpd .    #x0f12) (:movlpd .    #x0f13) (:unpcklpd .   #x0f14) (:unpckhpd .   #x0f15) (:movhpd .   #x0f16) (:movhpd .   #x0f17)
+  (:movmskpd .  #x0f50) (:sqrtpd .    #x0f51)  #|   invalid     |#   #|   invalid     |#  (:andpd .      #x0f54) (:andnpd .     #x0f55) (:orpd .     #x0f56) (:xorpd .    #x0f57)
+  (:punpcklbw . #x0f60) (:punpcklwd . #x0f61) (:punpckldq . #x0f62) (:packsswb .  #x0f63) (:pcmpgtb .    #x0f64) (:pcmpgtw .    #x0f65) (:pcmpgtd .  #x0f66) (:packuswb . #x0f67)
+  (:pshufd .    #x0f70)  #|   grp12       |#   #|   grp13       |#   #|   grp14       |#  (:pcmpeqb .    #x0f74) (:pcmpeqw .    #x0f75) (:pcmpeqd .  #x0f76)  #|   invalid    |#
+  (:xadd .      #x0fc0) (:xadd .      #x0fc1) (:cmppd .     #x0fc2)  #|   invalid     |#  (:pinsrw .     #x0fc4) (:pextsrw .    #x0fc5) (:shufpd .   #x0fc6)  #|   invalid    |#
+  (:addsubpd .  #x0fd0) (:psrlw .     #x0fd1) (:psrld .     #x0fd2) (:psrlq .     #x0fd3) (:paddq .      #x0fd4) (:pmullw .     #x0fd5) (:movq .     #x0fd6) (:pmovmskb . #x0fd7)
+  (:pavgb .     #x0fe0) (:psraw .     #x0fe1) (:psrad .     #x0fe2) (:pavgw .     #x0fe3) (:pmulhuw .    #x0fe4) (:pmulhw .     #x0fe5) (:cvttpd2d . #x0fe6) (:movntdq .  #x0fe7)
+   #|   invalid     |#  (:psllw .     #x0ff1) (:pslld .     #x0ff2) (:psllq .     #x0ff3) (:pmuludq .    #x0ff4) (:pmaddwd .    #x0ff5) (:psadbw .   #x0ff6) (:maskmovdqu . #x0ff7)
+  (:movapd .    #x0f28) (:movapd .    #x0f29) (:cvtpi2pd .  #x0f2a) (:movntpd .   #x0f2b) (:cvttpd2pi .  #x0f2c) (:cvtpd2pi .   #x0f2d) (:ucomisd .  #x0f2e) (:comisd .   #x0f2f)
+  (:addpd .     #x0f58) (:mulpd .     #x0f59) (:cvtpd2ps .  #x0f5a) (:cvtps2dq .  #x0f5b) (:subpd .      #x0f5c) (:minpd .      #x0f5d) (:divpd .    #x0f5e) (:maxpd .    #x0f5f)
+  (:punpckhwb . #x0f68) (:punpckhwd . #x0f69) (:punpckhdq . #x0f6a) (:packssdw .  #x0f6b) (:punpcklqdq . #x0f6c) (:punpckhqdq . #x0f6d) (:movd .     #x0f6e) (:movdqa .   #x0f6f)
+   #|   grp17       |#  (:extrq .     #x0f79)  #|   invalid     |#   #|   invalid     |#  (:haddpd .     #x0f7c) (:hsubpd .     #x0f7d)  (:movd .    #x0f7e) (:movdqa .   #x0f7f)
   ;; b[8-f]: strange irregularity (heh) -- absence..
-  (:psubusb .   #xd8) (:psubusw .   #xd9) (:pminub .    #xda) (:pand .      #xdb) (:paddusb .    #xdc) (:paddusw .    #xdd) (:pmaxub .   #xde) (:pandn .    #xdf)
-  (:psubsb .    #xe8) (:psubsw .    #xe9) (:pminsw .    #xea) (:por .       #xeb) (:paddsb .     #xec) (:paddsw .     #xed) (:pmaxsw .   #xee) (:pxor .     #xef)
-  (:psubb .     #xf8) (:psubw .     #xf9) (:psubd .     #xfa) (:psubq .     #xfb) (:padb .       #xfc) (:padw .       #xfd) (:padd .     #xfe)  #|   invalid  |#)
+  (:psubusb .   #x0fd8) (:psubusw .   #x0fd9) (:pminub .    #x0fda) (:pand .      #x0fdb) (:paddusb .    #x0fdc) (:paddusw .    #x0fdd) (:pmaxub .   #x0fde) (:pandn .    #x0fdf)
+  (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .     #x0fec) (:paddsw .     #x0fed) (:pmaxsw .   #x0fee) (:pxor .     #x0fef)
+  (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .       #x0ffc) (:padw .       #x0ffd) (:padd .     #x0ffe)  #|   invalid    |#)
 
 (define-attribute-set :opcode-ext-repn
-  (:movsd .     #x10) (:movsd .     #x11) (:movddup .   #x12)  #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  (:sqrtsd .    #x51)  #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-  (:pshuflw .   #x70) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-  (:xadd .      #xc0) (:xadd .      #xc1) (:cmpsd .     #xc2)  #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-  (:addsubps .  #xd0) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#  (:movdq2q .  #xd6)  #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#  (:cvtpd2dq . #xe6)  #|   invalid  |#
-  (:lddqu .     #xf0) #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#   #|   invalid    |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#   #|   invalid   |#  (:cvtsi2sd .  #x2a) (:movntsd .   #x2b) (:cvttsd2si .  #x2c) (:cvtsd2si .   #x2d)  #|   invalid  |#   #|   invalid  |#
-  (:addsd .     #x58) (:mulsd .     #x59) (:cvtsd2ss .  #x5a)  #|   invalid   |#  (:subsd .      #x5c) (:minsd .      #x5d) (:divsd .    #x5e) (:maxsd .    #x5f)
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#
-  (:insertq .   #x78) (:insertq .   #x79)  #|   invalid   |#   #|   invalid   |#  (:haddps .     #x5c) (:hsubps .     #x5d)  #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#
-   #|   invalid   |#  #|    invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|  invalid      |#   #|   invalid  |#   #|   invalid  |#)
+  (:movsd .     #x0f10) (:movsd .     #x0f11) (:movddup .   #x0f12)  #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#  (:sqrtsd .    #x0f51)  #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+  (:pshuflw .   #x0f70)  #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+  (:xadd .      #x0fc0) (:xadd .      #x0fc1) (:cmpsd .     #x0fc2)  #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+  (:addsubps .  #x0fd0)  #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#  (:movdq2q .  #x0fd6)  #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#  (:cvtpd2dq . #x0fe6)  #|   invalid    |#
+  (:lddqu .     #x0ff0)  #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#  (:cvtsi2sd .  #x0f2a) (:movntsd .   #x0f2b) (:cvttsd2si .  #x0f2c) (:cvtsd2si .   #x0f2d)  #|   invalid    |#   #|   invalid    |#
+  (:addsd .     #x0f58) (:mulsd .     #x0f59) (:cvtsd2ss .  #x0f5a)  #|    invalid    |#  (:subsd .      #x0f5c) (:minsd .      #x0f5d) (:divsd .    #x0f5e) (:maxsd .    #x0f5f)
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+  (:insertq .   #x0f78) (:insertq .   #x0f79)  #|    invalid    |#   #|    invalid    |#  (:haddps .     #x0f5c) (:hsubps .     #x0f5d)  #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
+   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#)
 
 (define-attribute-set :grp1-80
-  (:add .  (#x80 0)) (:or .     (#x80 1)) (:adc .  (#x80 2)) (:sbb .  (#x80 3)) (:and .  (#x80 4)) (:sub . (#x80 5)) (:xor .   (#x80 6)) (:cmp .    (#x80 7)))
+  (:add .    (#x80 0)) (:or .     (#x80 1)) (:adc .    (#x80 2)) (:sbb .   (#x80 3)) (:and .     (#x80 4)) (:sub .    (#x80 5)) (:xor .     (#x80 6)) (:cmp .  (#x80 7)))
 (define-attribute-set :grp1-81
-  (:add .  (#x81 0)) (:or .     (#x81 1)) (:adc .  (#x81 2)) (:sbb .  (#x81 3)) (:and .  (#x81 4)) (:sub . (#x81 5)) (:xor .   (#x81 6)) (:cmp .    (#x81 7)))
+  (:add .    (#x81 0)) (:or .     (#x81 1)) (:adc .    (#x81 2)) (:sbb .   (#x81 3)) (:and .     (#x81 4)) (:sub .    (#x81 5)) (:xor .     (#x81 6)) (:cmp .  (#x81 7)))
 (define-attribute-set :grp1-82-shortmode
-  (:add .  (#x82 0)) (:or .     (#x82 1)) (:adc .  (#x82 2)) (:sbb .  (#x82 3)) (:and .  (#x82 4)) (:sub . (#x82 5)) (:xor .   (#x82 6)) (:cmp .    (#x82 7)))
+  (:add .    (#x82 0)) (:or .     (#x82 1)) (:adc .    (#x82 2)) (:sbb .   (#x82 3)) (:and .     (#x82 4)) (:sub .    (#x82 5)) (:xor .     (#x82 6)) (:cmp .  (#x82 7)))
 (define-attribute-set :grp1-83
-  (:add .  (#x83 0)) (:or .     (#x83 1)) (:adc .  (#x83 2)) (:sbb .  (#x83 3)) (:and .  (#x83 4)) (:sub . (#x83 5)) (:xor .   (#x83 6)) (:cmp .    (#x83 7)))
+  (:add .    (#x83 0)) (:or .     (#x83 1)) (:adc .    (#x83 2)) (:sbb .   (#x83 3)) (:and .     (#x83 4)) (:sub .    (#x83 5)) (:xor .     (#x83 6)) (:cmp .  (#x83 7)))
 (define-attribute-set :grp1-8f
-  (:pop .     #x08f)  #|   invalid    |#   #|   invalid  |#   #|   invalid  |#   #|   invalid  |#   #| invalid   |#   #|   invalid   |#   #|   invalid    |#)
+  (:pop .    (#x8f 0))  #|   invalid    |#   #|    invalid   |#   #|   invalid   |#   #|    invalid    |#   #|   invalid    |#   #|   invalid     |#   #|   invalid   |#)
 (define-attribute-set :grp2-c0
-  (:rol .     #x0c0) (:ror .       #x1c0) (:rcl .     #x2c0) (:rcr .     #x3c0) (:shl/sal . #x4c0) (:shr .    #x5c0) (:shl/sal .  #x6c0) (:sar .       #x7c0))
+  (:rol .    (#xc0 0)) (:ror .    (#xc0 1)) (:rcl .    (#xc0 2)) (:rcr .   (#xc0 3)) (:shl/sal . (#xc0 4)) (:shr .    (#xc0 5)) (:shl/sal . (#xc0 6)) (:sar .  (#xc0 7)))
 (define-attribute-set :grp2-c1
-  (:rol .     #x0c1) (:ror .       #x1c1) (:rcl .     #x2c1) (:rcr .     #x3c1) (:shl/sal . #x4c1) (:shr .    #x5c1) (:shl/sal .  #x6c1) (:sar .       #x7c1))
+  (:rol .    (#xc1 0)) (:ror .    (#xc1 1)) (:rcl .    (#xc1 2)) (:rcr .   (#xc1 3)) (:shl/sal . (#xc1 4)) (:shr .    (#xc1 5)) (:shl/sal . (#xc1 6)) (:sar .  (#xc1 7)))
 (define-attribute-set :grp2-d0
-  (:rol .     #x0d0) (:ror .       #x1d0) (:rcl .     #x2d0) (:rcr .     #x3d0) (:shl/sal . #x4d0) (:shr .    #x5d0) (:shl/sal .  #x6d0) (:sar .       #x7d0))
-(define-attribute-set :grp2-d1                                                                                              
-  (:rol .     #x0d1) (:ror .       #x1d1) (:rcl .     #x2d1) (:rcr .     #x3d1) (:shl/sal . #x4d1) (:shr .    #x5d1) (:shl/sal .  #x6d1) (:sar .       #x7d1))
-(define-attribute-set :grp2-d2                                                                                              
-  (:rol .     #x0d2) (:ror .       #x1d2) (:rcl .     #x2d2) (:rcr .     #x3d2) (:shl/sal . #x4d2) (:shr .    #x5d2) (:shl/sal .  #x6d2) (:sar .       #x7d2))
-(define-attribute-set :grp2-d3                                                                                              
-  (:rol .     #x0d3) (:ror .       #x1d3) (:rcl .     #x2d3) (:rcr .     #x3d3) (:shl/sal . #x4d3) (:shr .    #x5d3) (:shl/sal .  #x6d3) (:sar .       #x7d3))
+  (:rol .    (#xd0 0)) (:ror .    (#xd0 1)) (:rcl .    (#xd0 2)) (:rcr .   (#xd0 3)) (:shl/sal . (#xd0 4)) (:shr .    (#xd0 5)) (:shl/sal . (#xd0 6)) (:sar .  (#xd0 7)))
+(define-attribute-set :grp2-d1
+  (:rol .    (#xd1 0)) (:ror .    (#xd1 1)) (:rcl .    (#xd1 2)) (:rcr .   (#xd1 3)) (:shl/sal . (#xd1 4)) (:shr .    (#xd1 5)) (:shl/sal . (#xd1 6)) (:sar .  (#xd1 7)))
+(define-attribute-set :grp2-d2
+  (:rol .    (#xd2 0)) (:ror .    (#xd2 1)) (:rcl .    (#xd2 2)) (:rcr .   (#xd2 3)) (:shl/sal . (#xd2 4)) (:shr .    (#xd2 5)) (:shl/sal . (#xd2 6)) (:sar .  (#xd2 7)))
+(define-attribute-set :grp2-d3                                                                                  
+  (:rol .    (#xd3 0)) (:ror .    (#xd3 1)) (:rcl .    (#xd3 2)) (:rcr .   (#xd3 3)) (:shl/sal . (#xd3 4)) (:shr .    (#xd3 5)) (:shl/sal . (#xd3 6)) (:sar .  (#xd3 7)))
 (define-attribute-set :grp3-f6
-  (:test .    #x0f6) (:test .      #x1f6) (:not .     #x2f6) (:neg .     #x3f6) (:mul .     #x4f6) (:imul .   #x5f6) (:div .      #x6f6) (:idiv .      #x7f6))
+  (:test .   (#xf6 0)) (:test .   (#xf6 1)) (:not .    (#xf6 2)) (:neg .   (#xf6 3)) (:mul .     (#xf6 4)) (:imul .   (#xf6 5)) (:div .     (#xf6 6)) (:idiv . (#xf6 7)))
 (define-attribute-set :grp3-f7
-  (:test .    #x0f7) (:test .      #x1f7) (:not .     #x2f7) (:neg .     #x3f7) (:mul .     #x4f7) (:imul .   #x5f7) (:div .      #x6f7) (:idiv .      #x7f7))
+  (:test .   (#xf7 0)) (:test .   (#xf7 1)) (:not .    (#xf7 2)) (:neg .   (#xf7 3)) (:mul .     (#xf7 4)) (:imul .   (#xf7 5)) (:div .     (#xf7 6)) (:idiv . (#xf7 7)))
 (define-attribute-set :grp4-fe
-  (:inc .     #x0fe) (:dec .       #x1fe)  #|   invalid  |#   #|   invalid  |#   #|   invalid  |#   #| invalid   |#   #|   invalid   |#   #|   invalid    |#)
+  (:inc .    (#xfe 0)) (:dec .    (#xfe 1))  #|    invalid   |#   #|   invalid   |#   #|    invalid    |#   #|   invalid    |#   #|   invalid     |#   #|   invalid   |#)
 (define-attribute-set :grp5-ff
-  (:inc .     #x0ff) (:dec .       #x1ff) (:call .    #x2ff) (:call .    #x3ff) (:jmp .     #x4ff) (:jmp .    #x5ff) (:push .     #x6ff)  #|   invalid    |#)
+  (:inc .    (#xff 0)) (:dec .    (#xff 1)) (:call .   (#xff 2)) (:call .  (#xff 3)) (:jmp .     (#xff 4)) (:jmp .    (#xff 5)) (:push .    (#xff 6))  #|   invalid   |#)
 (define-attribute-set :grp6-0f-00
-  (:sldt .    #x000) (:str .       #x100) (:lldt .    #x200) (:ltr .     #x300) (:verr .    #x400) (:verw .   #x500)  #|   invalid   |#   #|   invalid    |#)
+  (:sldt . (#x0f00 0)) (:str .  (#x0f00 1)) (:lldt . (#x0f00 2)) (:ltr . (#x0f00 3)) (:verr .  (#x0f00 4)) (:verw . (#x0f00 5))  #|   invalid     |#   #|   invalid   |#)
 (define-attribute-set :grp7-0f-01
-  (:sgdt .    #x001)  #|     mod      |#  (:lgdt .    #x201)  #|    mod     |#  (:smsw .    #x401)  #| invalid   |#  (:lmsw .     #x601)  #|     mod      |#)
+  (:sgdt . (#x0f01 0))  #|     mod      |#  (:lgdt . (#x0f01 2))  #|     mod     |#  (:smsw .  (#x0f01 4))  #|  invalid     |#  (:lmsw .  (#x0f01 6))  #|     mod     |#)
 
 ;; extension by mod00 renders them, opcodes, unchanged
 (define-attribute-set :grp7-0f-01-1-0
-  (:sidt .    #x101))
+  (:sidt .   (#x0f01 1 0)))
 (define-attribute-set :grp7-0f-01-3-0
-  (:lidt .    #x301))
+  (:lidt .   (#x0f01 3 0)))
 (define-attribute-set :grp7-0f-01-7-0
-  (:invlpg .  #x701))
+  (:invlpg . (#x0f01 7 0)))
 
-;; mod11, and three r/m bits
+;; reg, mod11, and three r/m bits -- ugh, three-byte opcodes!
 (define-attribute-set :grp7-0f-01-1-3
-  (:swapgs .  #x1901) (:rdtscp .  #x5901))
+  (:swapgs .  (#x0f01 1 3 0)) (:rdtscp .  (#x0f01 1 3 1)))
 (define-attribute-set :grp7-0f-01-3-3
-  (:vmrun .   #x1b01) (:vmmcall . #x5b01) (:vmload . #x9b01) (:vmsave . #xdb01) (:stgi .  #x11b01) (:clgi . #x15b01) (:skinit . #x19b01) (:invlpga . #x1db01))
+  (:vmrun .   (#x0f01 3 3 0)) (:vmmcall . (#x0f01 3 3 1)) (:vmload . (#x0f01 3 3 2)) (:vmsave .  (#x0f01 3 3 3))
+  (:stgi .    (#x0f01 3 3 4)) (:clgi .    (#x0f01 3 3 5)) (:skinit . (#x0f01 3 3 6)) (:invlpga . (#x0f01 3 3 7)))
 (define-attribute-set :grp7-0f-01-7-3
-  (:monitor . #x1f01) (:mwait .   #x5f01))
+  (:monitor . (#x0f01 7 3 0)) (:mwait .   (#x0f01 7 3 1)))
 
 (define-attribute-set :grp8-0f-ba
-   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#  (:bt .   (#xba 4)) (:bts . (#xba 5)) (:btr .   (#xba 6)) (:btc .    (#xba 7)))
+   #|    invalid     |#   #|     invalid     |#   #|    invalid      |#   #|     invalid     |#  (:bt .     (#x0fba 4)) (:bts . (#x0fba 5)) (:btr .    (#x0fba 6)) (:btc .    (#x0fba 7)))
 (define-attribute-set :grp9-0f-c7 
-   #|   invalid  |# (:cmpxchg8/16b . #x1c7) #|  invalid  |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
+   #|    invalid     |# (:cmpxchg8/16b . (#x0fc7 1)) #| invalid      |#   #|     invalid     |#   #|    invalid     |#   #|   invalid   |#   #|    invalid     |#   #|     invalid      |#)
 (define-attribute-set :grp10-0f-b9
-   #|   invalid   |#   #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#) ;; what a genius plan...
+   #|     what       |#   #|        a        |#   #|    genius       |#   #|      plan       |#   #|    ???????     |#   #|   !!!!!!!   |#   #|     genius     |#   #|     !??!?!?      |#)
 (define-attribute-set :grp11-c6
-  (:mov .      #x0c6)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
+  (:mov .    (#x0fc6 0))  #|     invalid     |#   #|    invalid      |#   #|     invalid     |#   #|    invalid     |#   #|   invalid   |#   #|    invalid     |#   #|     invalid      |#)
 (define-attribute-set :grp11-c7
-  (:mov .      #x0c7)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
+  (:mov .    (#x0fc7 0))  #|     invalid     |#   #|    invalid      |#   #|     invalid     |#   #|    invalid     |#   #|   invalid   |#   #|    invalid     |#   #|     invalid      |#)
+;; XXX: this is the only place we commit to the opcode bastardisation sin, really...
 (define-attribute-set :grp12-0f-71
-   #|   invalid   |#   #|   invalid   |#  (:psrlw .   #x271)  #|   invalid  |#  (:psraw .   #x471)  #|  invalid  |#  (:psllw .    #x671)  #|   invalid    |#)
+   #|    invalid     |#   #|     invalid     |#  (:psrlw .  (#x00f71 2))  #|     invalid     |#  (:psraw . (#x00f71 4))  #|   invalid   |#  (:psllw . (#x00f71 6))  #|     invalid      |#)
 (define-attribute-set :grp12-0f-71-op
-   #|   invalid   |#   #|   invalid   |#  (:psrlw .   #x271)  #|   invalid  |#  (:psraw .   #x471)  #|  invalid  |#  (:psllw .    #x671)  #|   invalid    |#)
+   #|    invalid     |#   #|     invalid     |#  (:psrlw .  (#x10f71 2))  #|     invalid     |#  (:psraw . (#x10f71 4))  #|   invalid   |#  (:psllw . (#x10f71 6))  #|     invalid      |#)
 (define-attribute-set :grp13-0f-72
-   #|   invalid   |#   #|   invalid   |#  (:psrld .   #x272)  #|   invalid  |#  (:psrad .   #x472)  #|  invalid  |#  (:pslld .    #x672)  #|   invalid    |#)
+   #|    invalid     |#   #|     invalid     |#  (:psrld .  (#x00f72 2))  #|     invalid     |#  (:psrad . (#x00f72 4))  #|   invalid   |#  (:pslld . (#x00f72 6))  #|     invalid      |#)
 (define-attribute-set :grp13-0f-72-op
-   #|   invalid   |#   #|   invalid   |#  (:psrld .   #x272)  #|   invalid  |#  (:psrad .   #x472)  #|  invalid  |#  (:pslld .    #x672)  #|   invalid    |#)
+   #|    invalid     |#   #|     invalid     |#  (:psrld .  (#x10f72 2))  #|     invalid     |#  (:psrad . (#x10f72 4))  #|   invalid   |#  (:pslld . (#x10f72 6))  #|     invalid      |#)
 (define-attribute-set :grp14-0f-73
-   #|   invalid   |#   #|   invalid   |#  (:psrlq .   #x273)  #|   invalid  |#   #|  invalid   |#   #|  invalid  |#  (:psllq .    #x673)  #|   invalid    |#)
+   #|    invalid     |#   #|     invalid     |#  (:psrlq .  (#x00f73 2))  #|     invalid     |#   #|    invalid     |#   #|   invalid   |#  (:psllq . (#x00f73 6))  #|     invalid      |#)
 (define-attribute-set :grp14-0f-73-op
-   #|   invalid   |#   #|   invalid   |#  (:psrlq .   #x273) (:psrldq .  #x373)  #|  invalid   |#   #|  invalid  |#  (:psllq .    #x673) (:pslldq .    #x773))
+   #|    invalid     |#   #|     invalid     |#  (:psrlq .  (#x10f73 2)) (:psrldq . (#x10f73 3))  #|    invalid     |#   #|   invalid   |#  (:psllq . (#x10f73 6)) (:pslldq . (#x10f73 7)))
 (define-attribute-set :grp15-0f-ae
-  (:fxsave .   #x0ae) (:fxrstor .  #x1ae) (:ldmxcsr . #x2ae) (:stmxcsr . #x3ae)  #|  invalid   |#   #|    mod    |#   #|     mod     |#   #|     mod      |#)
+  (:fxsave . (#x0fae 0)) (:fxrstor . (#x0fae 1)) (:ldmxcsr . (#x0fae 2)) (:stmxcsr . (#x0fae 3))  #|    invalid     |#   #|     mod     |#   #|      mod       |#   #|       mod        |#)
 
-;; extend opcode by two mod bits
-;;        mod00              mod11
+;; reg, mod
 (define-attribute-set :grp15-0f-ae-5
-                      (:mfence .  #x1dae))
+                            (:mfence .  (#x0fae 5 3)))
 (define-attribute-set :grp15-0f-ae-6
-                      (:lfence .  #x1eae))
+                            (:lfence .  (#x0fae 6 3)))
 (define-attribute-set :grp15-0f-ae-7
-  (:clflush .  #x7ae) (:sfence .  #x1fae))
+  (:clflush . (#x0fae 7 0)) (:sfence .  (#x0fae 7 3)))
 
 (define-attribute-set :grp16-0f-18
-  (:prefetch .   #x0) (:prefetch .   #x1) (:prefetch .  #x2) (:prefetch .  #x3) (:nop .       #x4) (:nop .      #x5) (:nop .        #x6) (:nop .         #x7))
+  (:prefetch . (#x0f18 0)) (:prefetch . (#x0f18 1)) (:prefetch . (#x0f18 2)) (:prefetch . (#x0f18 3)) (:nop . (#x0f18 4)) (:nop . (#x0f18 5)) (:nop . (#x0f18 6)) (:nop . (#x0f18 7)))
 (define-attribute-set :grp17-0f-78-op
-  (:extrq .      #x0)  #|   invalid   |#   #|  invalid   |#   #|   invalid  |#   #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
+  (:extrq .    (#x0f78 0))  #|     invalid      |#   #|     invalid      |#   #|      invalid     |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#)
 (define-attribute-set :grpp-0f-0d
-  (:prefetch .   #x0) (:prefetch .   #x1)  #|  reserved  |#  (:prefetch .  #x3)  #|  invalid   |#   #|  invalid  |#   #|   invalid   |#   #|   invalid    |#)
+  (:prefetch . (#x0f0d 0)) (:prefetch . (#x0f0d 1))  #|     reserved     |#  (:prefetch . (#x0f0d 3))  #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#)
 
 
 ;;; ModRM
@@ -896,22 +935,22 @@
 (defiformat "<reg/memXX, imm8"  () ( w :rflags rw ((x :basereg :imm8))  r  (:imm8))     (:add #x83 0 1 :adc #x83 2 1 :sbb #x83 3 1 :sub #x83 5 1 :bts #xba 5 1 :btr #xba 6 1 :btc #xba 7 1))
 (defiformat "<reg/memXX, imm8"  () ( w :rflags rw ((x :basereg :imm32)) r  (:imm8))     (:add #x83 0 2 :adc #x83 2 2 :sbb #x83 3 2 :sub #x83 5 2 :bts #xba 5 2 :btr #xba 6 2 :btc #xba 7 2))
 (defiformat "<reg/memXX, imm8"  () ( w :rflags rw (:regx)               r  (:imm8))     (:add #x83 0 3 :adc #x83 2 3 :sbb #x83 3 3 :sub #x83 5 3 :bts #xba 5 3 :btr #xba 6 3 :btc #xba 7 3))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg))        r  (:reg8))     (:add #x00 0 :adc #x10 0 :sbb #x18 0 :sub #x28 0))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm8))  r  (:reg8))     (:add #x00 1 :adc #x10 1 :sbb #x18 1 :sub #x28 1))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm32)) r  (:reg8))     (:add #x00 2 :adc #x10 2 :sbb #x18 2 :sub #x28 2))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw (:reg8)               r  (:reg8))     (:add #x00 3 :adc #x10 3 :sbb #x18 3 :sub #x28 3))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg))        r  (:regx))     (:add #x01 0 :adc #x11 0 :sbb #x19 0 :sub #x29 0 :bts #xab 0 :btr #xb3 0 :btc #xbb 0))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm8))  r  (:regx))     (:add #x01 1 :adc #x11 1 :sbb #x19 1 :sub #x29 1 :bts #xab 1 :btr #xb3 1 :btc #xbb 1))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm32)) r  (:regx))     (:add #x01 2 :adc #x11 2 :sbb #x19 2 :sub #x29 2 :bts #xab 2 :btr #xb3 2 :btc #xbb 2))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw (:regx) r  (:regx))                   (:add #x01 3 :adc #x11 3 :sbb #x19 3 :sub #x29 3 :bts #xab 3 :btr #xb3 3 :btc #xbb 3))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg)))            (:add #x02 0 :adc #x12 0 :sbb #x1a 0 :sub #x2a 0))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm8)))      (:add #x02 1 :adc #x12 1 :sbb #x1a 1 :sub #x2a 1))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm32)))     (:add #x02 2 :adc #x12 2 :sbb #x1a 2 :sub #x2a 2))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  (:reg8))                   (:add #x02 3 :adc #x12 3 :sbb #x1a 3 :sub #x2a 3))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg)))            (:add #x03 0 :adc #x13 0 :sbb #x1b 0 :sub #x2b 0))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm8)))      (:add #x03 1 :adc #x13 1 :sbb #x1b 1 :sub #x2b 1))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm32)))     (:add #x03 2 :adc #x13 2 :sbb #x1b 2 :sub #x2b 2))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  (:regx))                   (:add #x03 3 :adc #x13 3 :sbb #x1b 3 :sub #x2b 3))
+(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg))        r  (:reg8))     (:add #x00   0 :adc #x10   0 :sbb #x18   0 :sub #x28   0))
+(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm8))  r  (:reg8))     (:add #x00   1 :adc #x10   1 :sbb #x18   1 :sub #x28   1))
+(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm32)) r  (:reg8))     (:add #x00   2 :adc #x10   2 :sbb #x18   2 :sub #x28   2))
+(defiformat "<reg/mem8, reg8"   () ( w :rflags rw (:reg8)               r  (:reg8))     (:add #x00   3 :adc #x10   3 :sbb #x18   3 :sub #x28   3))
+(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg))        r  (:regx))     (:add #x01   0 :adc #x11   0 :sbb #x19   0 :sub #x29   0 :bts #xab   0 :btr #xb3   0 :btc #xbb   0))
+(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm8))  r  (:regx))     (:add #x01   1 :adc #x11   1 :sbb #x19   1 :sub #x29   1 :bts #xab   1 :btr #xb3   1 :btc #xbb   1))
+(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm32)) r  (:regx))     (:add #x01   2 :adc #x11   2 :sbb #x19   2 :sub #x29   2 :bts #xab   2 :btr #xb3   2 :btc #xbb   2))
+(defiformat "<reg/memXX, regXX" () ( w :rflags rw (:regx) r  (:regx))                   (:add #x01   3 :adc #x11   3 :sbb #x19   3 :sub #x29   3 :bts #xab   3 :btr #xb3   3 :btc #xbb   3))
+(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg)))            (:add #x02   0 :adc #x12   0 :sbb #x1a   0 :sub #x2a   0))
+(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm8)))      (:add #x02   1 :adc #x12   1 :sbb #x1a   1 :sub #x2a   1))
+(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm32)))     (:add #x02   2 :adc #x12   2 :sbb #x1a   2 :sub #x2a   2))
+(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  (:reg8))                   (:add #x02   3 :adc #x12   3 :sbb #x1a   3 :sub #x2a   3))
+(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg)))            (:add #x03   0 :adc #x13   0 :sbb #x1b   0 :sub #x2b   0))
+(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm8)))      (:add #x03   1 :adc #x13   1 :sbb #x1b   1 :sub #x2b   1))
+(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm32)))     (:add #x03   2 :adc #x13   2 :sbb #x1b   2 :sub #x2b   2))
+(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  (:regx))                   (:add #x03   3 :adc #x13   3 :sbb #x1b   3 :sub #x2b   3))
                                                                                                                   
 (defiformat "AL, imm8"          () (rw (:al)                 r  (:imm8))                (:or #x0c)   (:and #x24)  (:xor #x34))
 (defiformat "XAX, immXX"        () (rw (:xax)                r  (:immx))                (:or #x0d)   (:and #x25)  (:xor #x35))

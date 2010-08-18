@@ -63,6 +63,12 @@
 (define-isa amd64-isa () ()
   ())
 
+#|
+
+Verbal description of how we will go.
+
+|#
+
 (defstruct (attribute-set (:conc-name attrset-))
   (name       nil                            :type symbol     :read-only t)
   (key->value (make-hash-table :test 'eq)    :type hash-table :read-only t)
@@ -230,6 +236,7 @@
 (define-argument-type-physical-hierarchy () (:rdi 64 (:edi  32 (:di   16 (:dil  8)))))
 (define-argument-type-physical-hierarchy () (:rsp 64 (:esp  32 (:sp   16 (:spl  8)))))
 (define-argument-type-physical-hierarchy () (:rbp 64 (:ebp  32 (:bp   16 (:bpl  8)))))
+(define-argument-type-physical-hierarchy () (:r8  64 (:r8d  32 (:r8w  16 (:r8b  8)))))
 (define-argument-type-physical-hierarchy () (:r9  64 (:r9d  32 (:r9w  16 (:r9b  8)))))
 (define-argument-type-physical-hierarchy () (:r10 64 (:r10d 32 (:r10w 16 (:r10b 8)))))
 (define-argument-type-physical-hierarchy () (:r11 64 (:r11d 32 (:r11w 16 (:r11b 8)))))
@@ -242,19 +249,31 @@
     :al :ah :bl :bh :cl :spl :bpl :sil :dil :ch :dl :dh :r8b  :r9b :r10b :r11b :r12b :r13b :r14b :r15b)
 
 (define-argument-type-set :reg16 16 ()
-    :ax  :bx  :cx  :dx  :sp  :bp  :si  :di              :r8w  :r9w :r10w :r11w :r12w :r13w :r14w :r15w)
+    :ax  :bx  :cx  :dx  :sp  :bp  :si  :di  :r8w  :r9w :r10w :r11w :r12w :r13w :r14w :r15w)
 
 (define-argument-type-set :reg32 32 ()
-    :eax :ebx :ecx :edx :esp :ebp :esi :edi             :r8d  :r9d :r10d :r11d :r12d :r13d :r14d :r15d)
+    :eax :ebx :ecx :edx :esp :ebp :esi :edi :r8d  :r9d :r10d :r11d :r12d :r13d :r14d :r15d)
 
 (define-argument-type-set :reg64 64 ()
-    :rax :rbx :rcx :rdx :rsp :rbp :rsi :rdi             :r8   :r9  :r10  :r11  :r12  :r13  :r14  :r15)
+    :rax :rbx :rcx :rdx :rsp :rbp :rsi :rdi :r8   :r9  :r10  :r11  :r12  :r13  :r14  :r15)
 
 (define-argument-type-set :base32 32 ()
-   :eax  :ecx :edx :ebx :ebp :esi :edi                  :r8d  :r9d :r10d :r11d       :rip  :r14d :r15d)
+    :eax :ecx :edx :ebx           :esi :edi :r8d  :r9d :r10d :r11d             :r14d :r15d)
 
 (define-argument-type-set :base64 64 ()
-    :rax :rcx :rdx :rbx :rbp :rsi :rdi                  :r8   :r9  :r10  :r11        :rip  :r14  :r15)
+    :rax :rcx :rdx :rbx           :rsi :rdi :r8   :r9  :r10  :r11              :r14  :r15)
+
+(define-argument-type-set :base32+ 32 ()
+    :eax :ecx :edx :ebx      :ebp :esi :edi :r8d  :r9d :r10d :r11d             :r14d :r15d)
+
+(define-argument-type-set :base64+ 64 ()
+    :rax :rcx :rdx :rbx      :rbp :rsi :rdi :r8   :r9  :r10  :r11              :r14  :r15)
+
+(define-argument-type-set :base32+2 32 ()
+    :eax :ecx :edx :ebx      :ebp :esi :edi :r8d  :r9d :r10d :r11d :r12d       :r14d :r15d)
+
+(define-argument-type-set :base64+2 64 ()
+    :rax :rcx :rdx :rbx      :rbp :rsi :rdi :r8   :r9  :r10  :r11  :r12        :r14  :r15)
 
 (define-argument-type-set :cr 32 (:register-members t)
     :cr0 :cr1 :cr2 :cr3 :cr4 :cr5 :cr6 :cr7 :cr8 :cr9 :cr0 :cr1 :cr2 :cr3 :cr4 :cr5)
@@ -308,6 +327,18 @@
   ((:rex-w :opersz/p) . :reg64)
   ((:rex-w) .           :reg64))
 
+(define-format-argument/attribute-correspondence :basex ()
+  ((:addrsz/p) .        :base32)
+  (() .                 :base64))
+
+(define-format-argument/attribute-correspondence :basex+ ()
+  ((:addrsz/p) .        :base32+)
+  (() .                 :base64+))
+
+(define-format-argument/attribute-correspondence :basex+2 ()
+  ((:addrsz/p) .        :base32+2)
+  (() .                 :base64+2))
+
 (define-format-argument/attribute-correspondence :xax ()
   ((:opersz/p) .        :ax)
   (() .                 :eax)
@@ -327,44 +358,43 @@
   ((:rex-w) .           :imm64))
 
 ;;;;               
-;;;;   +------------+                                                        +----------------------------+ 
-;;;;   |    legacy  |       REX           op                ModRM            |            SIB             |     displacement         immediate
-;;;;   v  +-------+ |    +-------+    +-------+    +-------+-------+-------+ |  +-------+-------+-------+ v   +-------------+     +-------------+   
-;;;; ---->|   8   |-+-+->|   8   |--->|  8/16 |-+->| 2 mod | 3 reg | 3 r/m |-+->| 2 sca | 3 idx | 3 bas |---+-|  8/16/32/64 |---+-|  8/16/32/64 |---->
-;;;;   |  +-------+ ^ |  +-------+ ^  +-------+ |  +-------+-------+-------+    +-------+-------+-------+ ^ | +-------------+ ^ | +-------------+ ^ 
-;;;;   +------------+ +------------+            +---------------------------------------------------------+ +-----------------+ +-----------------+ 
+;;;;   +------------+                                                                      +----------------------------+ 
+;;;;   |    legacy  |              REX                  op                ModRM            |            SIB             |    displacement        immediate
+;;;;   v  +-------+ |    +------+---+---+---+---+    +------+    +-------+-------+-------+ |  +-------+-------+-------+ v   +------------+     +------------+   
+;;;; ---->|   8   |-+-+->| 0100 | w | r | x | b |--->| 8/16 |-+->| 2 mod | 3 reg | 3 r/m |-+->| 2 sca | 3 idx | 3 bas |---+-| 8/16/32/64 |---+-| 8/16/32/64 |---->
+;;;;   |  +-------+ ^ |  +------+---+---+---+---+ ^  +------+ |  +-------+-------+-------+    +-------+-------+-------+ ^ | +------------+ ^ | +------------+ ^ 
+;;;;   +------------+ +---------------------------+           +---------------------------------------------------------+ +----------------+ +----------------+ 
 ;;;;
 ;;;; The assumptions:
 ;;;;    1. the "default operand size" for compat/legacy modes is assumed to designate a 32-bit operand size.
 ;;;;    2. 16-bit addressing does not exist, period.
 ;;;;
 (defun make-x86/64-isa (sixty-four-p)
-  `(nil ((00 04) (:rex :nrex)) 
-        (:rex (:uf-rex)
+  `(nil ((new 04 04) (:rex :nrex))
+        (:rex (:uf-rex)                                                    ; keyword means -- find microformat, parse, set the attributes, and then
+                                                                           ;      shift the parse window by microformat size
               (ban :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
-              (shift -8)
               (include :nrex))
-        (:nrex ((-04 08) (:opersz/p :rep/p :repn/p :addrsz :segment :lock
-                                    :opcode
-                                    ,(if sixty-four-p
-                                         :opcode-longmode
-                                         :opcode-shortmode)
-                                    (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
-               ;; when there's no window declared, include uses the target's one
-               (:addrsz   () (ban :addrsz)  (include nil))
-               (:segment  () (ban :segment) (include nil))
+        (:nrex ((new 08 00) (:opersz/p :rep/p :repn/p :addrsz :segment :lock
+                                            :opcode
+                                            ,(if sixty-four-p
+                                                 :opcode-longmode
+                                                 :opcode-shortmode)
+                                            (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7)))
+               (:addrsz   () (ban :addrsz)  (include nil))                 ; nil means noop, but also to set the new window from the target include tree,
+               (:segment  () (ban :segment) (include nil))                 ; if there is an include
                (:lock     () (ban :lock)    (include nil))
                (:opersz/p ()
                           (ban :opcode-ext-unprefixed :opersz/p)
-                          (add-at :xop :opcode-ext-opersz (#x78))
+                          (widen-at :xop :opcode-ext-opersz (#x78))
                           (include nil))
                (:rep/p    ()
                           (ban :opcode-ext-unprefixed :rep/p :repn/p)
-                          (add-at :xop :opcode-ext-rep)
+                          (widen-at :xop :opcode-ext-rep)
                           (include nil))
                (:repn/p   ()
                           (ban :opcode-ext-unprefixed :rep/p :repn/p)
-                          (add-at :xop :opcode-ext-repn)
+                          (widen-at :xop :opcode-ext-repn)
                           (include nil))
                (:opcode ()
                         )
@@ -441,7 +471,7 @@
                      (dispatch :acc :reg)
                      (:grp11-c7 ()
                                 ))
-               (:xop (+ (08 08) (:opcode-ext ; + means (append old new)
+               (:xop ((08 -08) (:opcode-ext ; negative width means (setf acc (append new acc))
                                  ,@(unless sixty-four-p
                                            `(:opcode-ext-shortmode))
                                  :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
@@ -917,81 +947,88 @@
 ;;  ! - does not source its first argument
 ;;  2! - does not source its second argument
 
-(defiformat "<>AL"              () (rw :rflags rw :al)                                  (:aaa #x37     :aas #x3f     :daa #x27     :das #x2f))
-(defiformat "<AL, AH, imm8"     () ( w :rflags rw :al   r  :ah  r (:imm8))              (:aad #xd5))
-(defiformat "<2|2!AL, AH, imm8" () ( w :rflags rw :al    w :ah  r (:imm8))              (:aam #xd4))
+(defiformat "<>AL"                    () (rw :rflags rw :al)                                  (:aaa #x37     :aas #x3f     :daa #x27     :das #x2f))
+(defiformat "<AL, AH, imm8"           () ( w :rflags rw :al   r  :ah  r (:imm8))              (:aad #xd5))
+(defiformat "<2|2!AL, AH, imm8"       () ( w :rflags rw :al    w :ah  r (:imm8))              (:aam #xd4))
                                                                                            
-(defiformat "<AL, imm8"         () ( w :rflags rw (:al)  r  (:imm8))                    (:add #x04     :adc #x14     :sbb #x1c     :sub #x2c))
-(defiformat "<XAX, immXX"       () ( w :rflags rw (:xax) r  (:immx))                    (:add #x05     :adc #x15     :sbb #x1d     :sub #x2d))
-(defiformat "<reg/mem8, imm8"   () ( w :rflags rw ((8 :basereg))        r  (:imm8))     (:add #x80 0 0 :adc #x80 2 0 :sbb #x80 3 0 :sub #x80 5 0))
-(defiformat "<reg/mem8, imm8"   () ( w :rflags rw ((8 :basereg :imm8))  r  (:imm8))     (:add #x80 0 1 :adc #x80 2 1 :sbb #x80 3 1 :sub #x80 5 1))
-(defiformat "<reg/mem8, imm8"   () ( w :rflags rw ((8 :basereg :imm32)) r  (:imm8))     (:add #x80 0 2 :adc #x80 2 2 :sbb #x80 3 2 :sub #x80 5 2))
-(defiformat "<reg/mem8, imm8"   () ( w :rflags rw (:reg8)               r  (:imm8))     (:add #x80 0 3 :adc #x80 2 3 :sbb #x80 3 3 :sub #x80 5 3))
-(defiformat "<reg/memXX, immXX" () ( w :rflags rw ((x :basereg))        r  (:immx))     (:add #x81 0 0 :adc #x81 2 0 :sbb #x81 3 0 :sub #x81 5 0))
-(defiformat "<reg/memXX, immXX" () ( w :rflags rw ((x :basereg :imm8))  r  (:immx))     (:add #x81 0 1 :adc #x81 2 1 :sbb #x81 3 1 :sub #x81 5 1))
-(defiformat "<reg/memXX, immXX" () ( w :rflags rw ((x :basereg :imm32)) r  (:immx))     (:add #x81 0 2 :adc #x81 2 2 :sbb #x81 3 2 :sub #x81 5 2))
-(defiformat "<reg/memXX, immXX" () ( w :rflags rw (:regx)               r  (:immx))     (:add #x81 0 3 :adc #x81 2 3 :sbb #x81 3 3 :sub #x81 5 3))
-(defiformat "<reg/memXX, imm8"  () ( w :rflags rw ((x :basereg))        r  (:imm8))     (:add #x83 0 0 :adc #x83 2 0 :sbb #x83 3 0 :sub #x83 5 0 :bts #xba 5 0 :btr #xba 6 0 :btc #xba 7 0))
-(defiformat "<reg/memXX, imm8"  () ( w :rflags rw ((x :basereg :imm8))  r  (:imm8))     (:add #x83 0 1 :adc #x83 2 1 :sbb #x83 3 1 :sub #x83 5 1 :bts #xba 5 1 :btr #xba 6 1 :btc #xba 7 1))
-(defiformat "<reg/memXX, imm8"  () ( w :rflags rw ((x :basereg :imm32)) r  (:imm8))     (:add #x83 0 2 :adc #x83 2 2 :sbb #x83 3 2 :sub #x83 5 2 :bts #xba 5 2 :btr #xba 6 2 :btc #xba 7 2))
-(defiformat "<reg/memXX, imm8"  () ( w :rflags rw (:regx)               r  (:imm8))     (:add #x83 0 3 :adc #x83 2 3 :sbb #x83 3 3 :sub #x83 5 3 :bts #xba 5 3 :btr #xba 6 3 :btc #xba 7 3))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg))        r  (:reg8))     (:add #x00   0 :adc #x10   0 :sbb #x18   0 :sub #x28   0))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm8))  r  (:reg8))     (:add #x00   1 :adc #x10   1 :sbb #x18   1 :sub #x28   1))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw ((8 :basereg :imm32)) r  (:reg8))     (:add #x00   2 :adc #x10   2 :sbb #x18   2 :sub #x28   2))
-(defiformat "<reg/mem8, reg8"   () ( w :rflags rw (:reg8)               r  (:reg8))     (:add #x00   3 :adc #x10   3 :sbb #x18   3 :sub #x28   3))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg))        r  (:regx))     (:add #x01   0 :adc #x11   0 :sbb #x19   0 :sub #x29   0 :bts #xab   0 :btr #xb3   0 :btc #xbb   0))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm8))  r  (:regx))     (:add #x01   1 :adc #x11   1 :sbb #x19   1 :sub #x29   1 :bts #xab   1 :btr #xb3   1 :btc #xbb   1))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw ((x :basereg :imm32)) r  (:regx))     (:add #x01   2 :adc #x11   2 :sbb #x19   2 :sub #x29   2 :bts #xab   2 :btr #xb3   2 :btc #xbb   2))
-(defiformat "<reg/memXX, regXX" () ( w :rflags rw (:regx) r  (:regx))                   (:add #x01   3 :adc #x11   3 :sbb #x19   3 :sub #x29   3 :bts #xab   3 :btr #xb3   3 :btc #xbb   3))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg)))            (:add #x02   0 :adc #x12   0 :sbb #x1a   0 :sub #x2a   0))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm8)))      (:add #x02   1 :adc #x12   1 :sbb #x1a   1 :sub #x2a   1))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  ((8 :basereg :imm32)))     (:add #x02   2 :adc #x12   2 :sbb #x1a   2 :sub #x2a   2))
-(defiformat "<reg8, reg/mem8"   () ( w :rflags rw (:reg8) r  (:reg8))                   (:add #x02   3 :adc #x12   3 :sbb #x1a   3 :sub #x2a   3))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg)))            (:add #x03   0 :adc #x13   0 :sbb #x1b   0 :sub #x2b   0))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm8)))      (:add #x03   1 :adc #x13   1 :sbb #x1b   1 :sub #x2b   1))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  ((x :basereg :imm32)))     (:add #x03   2 :adc #x13   2 :sbb #x1b   2 :sub #x2b   2))
-(defiformat "<reg8, reg/memXX"  () ( w :rflags rw (:reg8) r  (:regx))                   (:add #x03   3 :adc #x13   3 :sbb #x1b   3 :sub #x2b   3))
+(defiformat "<AL, imm8"               () ( w :rflags rw (:al)  r  (:imm8))                    (:add #x04     :adc #x14     :sbb #x1c     :sub #x2c))
+(defiformat "<XAX, immXX"             () ( w :rflags rw (:xax) r  (:immx))                    (:add #x05     :adc #x15     :sbb #x1d     :sub #x2d))
+(defiformat "<8[breg],        imm8"   () ( w :rflags rw ((8 :basex))          r  (:imm8))     (:add #x80 0 0 :adc #x80 2 0 :sbb #x80 3 0 :sub #x80 5 0))
+(defiformat "<8[rip+disp32],  imm8"   () ( w :rflags rw ((8 :rip :imm32))     r  (:imm8))     (:add #x80 0 0 :adc #x80 2 0 :sbb #x80 3 0 :sub #x80 5 0))
+(defiformat "<8[breg+disp8],  imm8"   () ( w :rflags rw ((8 :basex :imm8))    r  (:imm8))     (:add #x80 0 1 :adc #x80 2 1 :sbb #x80 3 1 :sub #x80 5 1))
+(defiformat "<8[breg+disp32], imm8"   () ( w :rflags rw ((8 :basex :imm32))   r  (:imm8))     (:add #x80 0 2 :adc #x80 2 2 :sbb #x80 3 2 :sub #x80 5 2))
+(defiformat "<reg8, imm8"             () ( w :rflags rw (:reg8)               r  (:imm8))     (:add #x80 0 3 :adc #x80 2 3 :sbb #x80 3 3 :sub #x80 5 3))
+(defiformat "<XX[breg],        immXX" () ( w :rflags rw ((x :basex))          r  (:immx))     (:add #x81 0 0 :adc #x81 2 0 :sbb #x81 3 0 :sub #x81 5 0))
+(defiformat "<XX[RIP+disp32],  immXX" () ( w :rflags rw ((x :rip :imm32))     r  (:immx))     (:add #x81 0 0 :adc #x81 2 0 :sbb #x81 3 0 :sub #x81 5 0))
+(defiformat "<XX[breg+disp8],  immXX" () ( w :rflags rw ((x :basex :imm8))    r  (:immx))     (:add #x81 0 1 :adc #x81 2 1 :sbb #x81 3 1 :sub #x81 5 1))
+(defiformat "<XX[breg+disp32], immXX" () ( w :rflags rw ((x :basex :imm32))   r  (:immx))     (:add #x81 0 2 :adc #x81 2 2 :sbb #x81 3 2 :sub #x81 5 2))
+(defiformat "<regXX, immXX"           () ( w :rflags rw (:regx)               r  (:immx))     (:add #x81 0 3 :adc #x81 2 3 :sbb #x81 3 3 :sub #x81 5 3))
+(defiformat "<XX[breg],        imm8"  () ( w :rflags rw ((x :basex))          r  (:imm8))     (:add #x83 0 0 :adc #x83 2 0 :sbb #x83 3 0 :sub #x83 5 0 :bts #xba 5 0 :btr #xba 6 0 :btc #xba 7 0))
+(defiformat "<XX[RIP+disp32],  imm8"  () ( w :rflags rw ((x :rip :imm32))     r  (:imm8))     (:add #x83 0 0 :adc #x83 2 0 :sbb #x83 3 0 :sub #x83 5 0 :bts #xba 5 0 :btr #xba 6 0 :btc #xba 7 0))
+(defiformat "<XX[breg+disp8],  imm8"  () ( w :rflags rw ((x :basex :imm8))    r  (:imm8))     (:add #x83 0 1 :adc #x83 2 1 :sbb #x83 3 1 :sub #x83 5 1 :bts #xba 5 1 :btr #xba 6 1 :btc #xba 7 1))
+(defiformat "<XX[breg+disp32], imm8"  () ( w :rflags rw ((x :basex :imm32))   r  (:imm8))     (:add #x83 0 2 :adc #x83 2 2 :sbb #x83 3 2 :sub #x83 5 2 :bts #xba 5 2 :btr #xba 6 2 :btc #xba 7 2))
+(defiformat "<regXX, imm8"            () ( w :rflags rw (:regx)               r  (:imm8))     (:add #x83 0 3 :adc #x83 2 3 :sbb #x83 3 3 :sub #x83 5 3 :bts #xba 5 3 :btr #xba 6 3 :btc #xba 7 3))
+(defiformat "<8[breg],        reg8"   () ( w :rflags rw ((8 :basex))          r  (:reg8))     (:add #x00   0 :adc #x10   0 :sbb #x18   0 :sub #x28   0))
+(defiformat "<8[RIP+disp32],  reg8"   () ( w :rflags rw ((8 :rip :imm32))     r  (:reg8))     (:add #x00   0 :adc #x10   0 :sbb #x18   0 :sub #x28   0))
+(defiformat "<8[breg+disp8],  reg8"   () ( w :rflags rw ((8 :basex :imm8))    r  (:reg8))     (:add #x00   1 :adc #x10   1 :sbb #x18   1 :sub #x28   1))
+(defiformat "<8[breg+disp32], reg8"   () ( w :rflags rw ((8 :basex :imm32))   r  (:reg8))     (:add #x00   2 :adc #x10   2 :sbb #x18   2 :sub #x28   2))
+(defiformat "<reg8, reg8"             () ( w :rflags rw (:reg8)               r  (:reg8))     (:add #x00   3 :adc #x10   3 :sbb #x18   3 :sub #x28   3))
+(defiformat "<XX[breg],        regXX" () ( w :rflags rw ((x :basex))          r  (:regx))     (:add #x01   0 :adc #x11   0 :sbb #x19   0 :sub #x29   0 :bts #xab   0 :btr #xb3   0 :btc #xbb   0))
+(defiformat "<XX[RIP+disp32],  regXX" () ( w :rflags rw ((x :rip :imm32))     r  (:regx))     (:add #x01   0 :adc #x11   0 :sbb #x19   0 :sub #x29   0 :bts #xab   0 :btr #xb3   0 :btc #xbb   0))
+(defiformat "<XX[breg+disp8],  regXX" () ( w :rflags rw ((x :basex :imm8))    r  (:regx))     (:add #x01   1 :adc #x11   1 :sbb #x19   1 :sub #x29   1 :bts #xab   1 :btr #xb3   1 :btc #xbb   1))
+(defiformat "<XX[breg+disp32], regXX" () ( w :rflags rw ((x :basex :imm32))   r  (:regx))     (:add #x01   2 :adc #x11   2 :sbb #x19   2 :sub #x29   2 :bts #xab   2 :btr #xb3   2 :btc #xbb   2))
+(defiformat "<regXX, regXX"           () ( w :rflags rw (:regx)    r  (:regx))                (:add #x01   3 :adc #x11   3 :sbb #x19   3 :sub #x29   3 :bts #xab   3 :btr #xb3   3 :btc #xbb   3))
+(defiformat "<reg8, 8[breg]"          () ( w :rflags rw (:reg8)    r  ((8 :basex)))           (:add #x02   0 :adc #x12   0 :sbb #x1a   0 :sub #x2a   0))
+(defiformat "<reg8, 8[RIP+disp32]"    () ( w :rflags rw (:reg8)    r  ((8 :rip :imm32)))      (:add #x02   0 :adc #x12   0 :sbb #x1a   0 :sub #x2a   0))
+(defiformat "<reg8, 8[breg+disp8]"    () ( w :rflags rw (:reg8)    r  ((8 :basex :imm8)))     (:add #x02   1 :adc #x12   1 :sbb #x1a   1 :sub #x2a   1))
+(defiformat "<reg8, 8[breg+disp32]"   () ( w :rflags rw (:reg8)    r  ((8 :basex :imm32)))    (:add #x02   2 :adc #x12   2 :sbb #x1a   2 :sub #x2a   2))
+(defiformat "<reg8, reg8"             () ( w :rflags rw (:reg8)    r  (:reg8))                (:add #x02   3 :adc #x12   3 :sbb #x1a   3 :sub #x2a   3))
+(defiformat "<reg8, XX[breg]"         () ( w :rflags rw (:reg8)    r  ((x :basex)))           (:add #x03   0 :adc #x13   0 :sbb #x1b   0 :sub #x2b   0))
+(defiformat "<reg8, XX[RIP+disp32]"   () ( w :rflags rw (:reg8)    r  ((x :rip :imm32)))      (:add #x03   0 :adc #x13   0 :sbb #x1b   0 :sub #x2b   0))
+(defiformat "<reg8, XX[breg+disp8]"   () ( w :rflags rw (:reg8)    r  ((x :basex :imm8)))     (:add #x03   1 :adc #x13   1 :sbb #x1b   1 :sub #x2b   1))
+(defiformat "<reg8, XX[breg+disp32]"  () ( w :rflags rw (:reg8)    r  ((x :basex :imm32)))    (:add #x03   2 :adc #x13   2 :sbb #x1b   2 :sub #x2b   2))
+(defiformat "<reg8, regXX"            () ( w :rflags rw (:reg8)    r  (:regx))                (:add #x03   3 :adc #x13   3 :sbb #x1b   3 :sub #x2b   3))
                                                                                                                   
 (defiformat "AL, imm8"          () (rw (:al)                 r  (:imm8))                (:or #x0c)   (:and #x24)  (:xor #x34))
 (defiformat "XAX, immXX"        () (rw (:xax)                r  (:immx))                (:or #x0d)   (:and #x25)  (:xor #x35))
-(defiformat "reg/mem8, imm8"    () (rw ((8 :basereg))        r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
-(defiformat "reg/mem8, imm8"    () (rw ((8 :basereg :imm8))  r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
-(defiformat "reg/mem8, imm8"    () (rw ((8 :basereg :imm32)) r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
+(defiformat "reg/mem8, imm8"    () (rw ((8 :basex))        r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
+(defiformat "reg/mem8, imm8"    () (rw ((8 :basex :imm8))  r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
+(defiformat "reg/mem8, imm8"    () (rw ((8 :basex :imm32)) r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
 (defiformat "reg/mem8, imm8"    () (rw (:reg8)               r  (:imm8))                (:or #x80 1)  (:and #x80 4) (:xor #x80 6))
-(defiformat "reg/memXX, immXX"  () (rw ((x :basereg))        r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
-(defiformat "reg/memXX, immXX"  () (rw ((x :basereg :imm8))  r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
-(defiformat "reg/memXX, immXX"  () (rw ((x :basereg :imm32)) r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
+(defiformat "reg/memXX, immXX"  () (rw ((x :basex))        r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
+(defiformat "reg/memXX, immXX"  () (rw ((x :basex :imm8))  r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
+(defiformat "reg/memXX, immXX"  () (rw ((x :basex :imm32)) r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
 (defiformat "reg/memXX, immXX"  () (rw (:regx)               r  (:immx))                (:or #x81 1)  (:and #x81 4) (:xor #x81 6))
-(defiformat "reg/memXX, imm8"   () (rw ((x :basereg))        r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
-(defiformat "reg/memXX, imm8"   () (rw ((x :basereg :imm8))  r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
-(defiformat "reg/memXX, imm8"   () (rw ((x :basereg :imm32)) r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
+(defiformat "reg/memXX, imm8"   () (rw ((x :basex))        r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
+(defiformat "reg/memXX, imm8"   () (rw ((x :basex :imm8))  r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
+(defiformat "reg/memXX, imm8"   () (rw ((x :basex :imm32)) r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
 (defiformat "reg/memXX, imm8"   () (rw (:regx)               r  (:imm8))                (:or #x83 1)  (:and #x83 4) (:xor #x83 6))
-(defiformat "reg/mem8, reg8"    () (rw ((8 :basereg))        r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
-(defiformat "reg/mem8, reg8"    () (rw ((8 :basereg :imm8))  r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
-(defiformat "reg/mem8, reg8"    () (rw ((8 :basereg :imm32)) r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
+(defiformat "reg/mem8, reg8"    () (rw ((8 :basex))        r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
+(defiformat "reg/mem8, reg8"    () (rw ((8 :basex :imm8))  r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
+(defiformat "reg/mem8, reg8"    () (rw ((8 :basex :imm32)) r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
 (defiformat "reg/mem8, reg8"    () (rw (:reg8)               r  (:reg8))                (:or #x08)   (:and #x20)  (:xor #x30))
-(defiformat "reg/memXX, regXX"  () (rw ((x :basereg))        r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
-(defiformat "reg/memXX, regXX"  () (rw ((x :basereg :imm8))  r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
-(defiformat "reg/memXX, regXX"  () (rw ((x :basereg :imm32)) r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
+(defiformat "reg/memXX, regXX"  () (rw ((x :basex))        r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
+(defiformat "reg/memXX, regXX"  () (rw ((x :basex :imm8))  r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
+(defiformat "reg/memXX, regXX"  () (rw ((x :basex :imm32)) r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
 (defiformat "reg/memXX, regXX"  () (rw (:reg)                r  (:regx))                (:or #x09)   (:and #x21)  (:xor #x31))
-(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basereg)))                   (:or #x0a)   (:and #x22)  (:xor #x32))
-(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basereg :imm8)))             (:or #x0a)   (:and #x22)  (:xor #x32))
-(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basereg :imm32)))            (:or #x0a)   (:and #x22)  (:xor #x32))
+(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basex)))                   (:or #x0a)   (:and #x22)  (:xor #x32))
+(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basex :imm8)))             (:or #x0a)   (:and #x22)  (:xor #x32))
+(defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  ((8 :basex :imm32)))            (:or #x0a)   (:and #x22)  (:xor #x32))
 (defiformat "reg8, reg/mem8"    () (rw (:reg8)     r  (:reg8))                          (:or #x0a)   (:and #x22)  (:xor #x32))
-(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basereg)))                   (:or #x0b)   (:and #x23)  (:xor #x33))
-(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basereg :imm8)))             (:or #x0b)   (:and #x23)  (:xor #x33))
-(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basereg :imm32)))            (:or #x0b)   (:and #x23)  (:xor #x33))
+(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basex)))                   (:or #x0b)   (:and #x23)  (:xor #x33))
+(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basex :imm8)))             (:or #x0b)   (:and #x23)  (:xor #x33))
+(defiformat "regXX, reg/memXX"  () (rw (:regx)     r  ((x :basex :imm32)))            (:or #x0b)   (:and #x23)  (:xor #x33))
 (defiformat "regXX, reg/memXX"  () (rw (:regx)     r  (:regx))                          (:or #x0b)   (:and #x23)  (:xor #x33))
                                                                                                             
-(defiformat ">!reg/mem8"        () (rw ((8 :basereg))        r  :rflags)               (:seto  #x90 0) (:setno  #x91 0) (:setc   #x92 0) (:setnc  #x93 0)
+(defiformat ">!reg/mem8"        () (rw ((8 :basex))        r  :rflags)               (:seto  #x90 0) (:setno  #x91 0) (:setc   #x92 0) (:setnc  #x93 0)
                                                                                                (:setz  #x94 0) (:setnz  #x95 0) (:setna  #x96 0) (:seta   #x97 0)
                                                                                                (:sets  #x98 0) (:setns  #x99 0) (:setp   #x9a 0) (:setnp  #x9b 0)
                                                                                                (:setl  #x9c 0) (:setnl  #x9d 0) (:setng  #x9e 0) (:setg   #x9f 0))
-(defiformat ">!reg/mem8"        () (rw ((8 :basereg :imm8))  r  :rflags)               (:seto  #x90 1) (:setno  #x91 1) (:setc   #x92 1) (:setnc  #x93 1)
+(defiformat ">!reg/mem8"        () (rw ((8 :basex :imm8))  r  :rflags)               (:seto  #x90 1) (:setno  #x91 1) (:setc   #x92 1) (:setnc  #x93 1)
                                                                                                (:setz  #x94 1) (:setnz  #x95 1) (:setna  #x96 1) (:seta   #x97 1)
                                                                                                (:sets  #x98 1) (:setns  #x99 1) (:setp   #x9a 1) (:setnp  #x9b 1)
                                                                                                (:setl  #x9c 1) (:setnl  #x9d 1) (:setng  #x9e 1) (:setg   #x9f 1))
-(defiformat ">!reg/mem8"        () (rw ((8 :basereg :imm32)) r  :rflags)               (:seto  #x90 2) (:setno  #x91 2) (:setc   #x92 2) (:setnc  #x93 2)
+(defiformat ">!reg/mem8"        () (rw ((8 :basex :imm32)) r  :rflags)               (:seto  #x90 2) (:setno  #x91 2) (:setc   #x92 2) (:setnc  #x93 2)
                                                                                                (:setz  #x94 2) (:setnz  #x95 2) (:setna  #x96 2) (:seta   #x97 2)
                                                                                                (:sets  #x98 2) (:setns  #x99 2) (:setp   #x9a 2) (:setnp  #x9b 2)
                                                                                                (:setl  #x9c 2) (:setnl  #x9d 2) (:setng  #x9e 2) (:setg   #x9f 2))
@@ -1000,15 +1037,15 @@
                                                                                                (:sets  #x98 3) (:setns  #x99 3) (:setp   #x9a 3) (:setnp  #x9b 3)
                                                                                                (:setl  #x9c 3) (:setnl  #x9d 3) (:setng  #x9e 3) (:setg   #x9f 3))
 
-(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basereg)) r :rflags)        (:cmovo #x40 0) (:cmovno #x41 0) (:cmovc  #x42 0) (:cmovnc #x43 0)
+(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basex)) r :rflags)        (:cmovo #x40 0) (:cmovno #x41 0) (:cmovc  #x42 0) (:cmovnc #x43 0)
                                                                                                (:cmovz #x44 0) (:cmovnz #x45 0) (:cmovna #x46 0) (:cmova  #x47 0)
                                                                                                (:cmovs #x48 0) (:cmovns #x49 0) (:cmovp  #x4a 0) (:cmovnp #x4b 0)
                                                                                                (:cmovl #x4c 0) (:cmovnl #x4d 0) (:cmovng #x4e 0) (:cmovg  #x4f 0))
-(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basereg :imm8)) r :rflags)  (:cmovo #x40 1) (:cmovno #x41 1) (:cmovc  #x42 1) (:cmovnc #x43 1)
+(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basex :imm8)) r :rflags)  (:cmovo #x40 1) (:cmovno #x41 1) (:cmovc  #x42 1) (:cmovnc #x43 1)
                                                                                                (:cmovz #x44 1) (:cmovnz #x45 1) (:cmovna #x46 1) (:cmova  #x47 1)
                                                                                                (:cmovs #x48 1) (:cmovns #x49 1) (:cmovp  #x4a 1) (:cmovnp #x4b 1)
                                                                                                (:cmovl #x4c 1) (:cmovnl #x4d 1) (:cmovng #x4e 1) (:cmovg  #x4f 1))
-(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basereg :imm32)) r :rflags) (:cmovo #x40 2) (:cmovno #x41 2) (:cmovc  #x42 2) (:cmovnc #x43 2)
+(defiformat ">regXX, reg/memXX" () (rw (:regx)     r  ((x :basex :imm32)) r :rflags) (:cmovo #x40 2) (:cmovno #x41 2) (:cmovc  #x42 2) (:cmovnc #x43 2)
                                                                                                (:cmovz #x44 2) (:cmovnz #x45 2) (:cmovna #x46 2) (:cmova  #x47 2)
                                                                                                (:cmovs #x48 2) (:cmovns #x49 2) (:cmovp  #x4a 2) (:cmovnp #x4b 2)
                                                                                                (:cmovl #x4c 2) (:cmovnl #x4d 2) (:cmovng #x4e 2) (:cmovg  #x4f 2))

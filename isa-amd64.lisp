@@ -89,6 +89,23 @@ Verbal description of how we will go.
 (defmacro define-attribute-set (name &body attrset-spec)
   `(ensure-attribute-set *isa* ,name ',attrset-spec))
 
+(define-attribute-set :all-legacy
+  (:opersz .        #x66)
+  (:addrsz .        #x67)
+  (:cs .            #x2e)
+  (:ds .            #x3e)
+  (:es .            #x26)
+  (:fs .            #x64)
+  (:gs .            #x65)
+  (:ss .            #x36)
+  (:lock .          #xf0)
+  (:rep .           #xf3)
+  (:repn .          #xf2))
+
+(define-attribute-set :all-rex
+  (:rex0 . #x40) (:rex1 . #x41) (:rex2 . #x42) (:rex3 . #x43) (:rex4 . #x44) (:rex5 . #x45) (:rex6 . #x46) (:rex7 . #x47)
+  (:rex8 . #x48) (:rex9 . #x49) (:rexa . #x4a) (:rexb . #x4b) (:rexc . #x4c) (:rexd . #x4d) (:rexe . #x4e) (:rexf . #x4f))
+
 (define-attribute-set :nrex
   (:nrex0 . #b0000) (:nrex1 . #b0001) (:nrex2 . #b0010) (:nrex3 . #b0011)
                     (:nrex5 . #b0101) (:nrex6 . #b0110) (:nrex7 . #b0111)
@@ -362,6 +379,46 @@ so as to resolve argument or address sizes, for example."))
   ((:rex-w :opersz/p) . :imm64)
   ((:rex-w) .           :imm64))
 
+;; (defun make-dispatch-alternate (sixty-four-p)
+;;   `(((active-sets :all-legacy :all-rex :xop
+;;                   :opcode ,(if sixty-four-p
+;;                                :opcode-longmode
+;;                                :opcode-shortmode)
+;;                   ;; ...and the modrm-extended points of bastardisation
+;;                   (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7))
+;;      (window 08 00)
+;;      (dispatch :window))
+;;     (:all-legacy ((dispatch :window)
+;;                   (seek 08))
+;;                  (:addrsz   ((ban-sets :addrsz)
+;;                              (recurse)))
+;;                  (:segment  ((ban-sets :segment)
+;;                              (recurse)))
+;;                  (:lock     ((ban-sets :lock)
+;;                              (recurse)))
+;;                  (:opersz/p ((ban-sets :opcode-ext-unprefixed :opersz/p)
+;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-opersz (#x78))
+;;                              (recurse)))
+;;                  (:rep/p    ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
+;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-rep)
+;;                              (recurse)))
+;;                  (:repn/p   ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
+;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-repn)
+;;                              (recurse))))
+;;     (:all-rex    ((microformat :uf-rex 04 00)
+;;                   (ban-sets :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
+;;                   (seek 08)
+;;                   (recurse)))
+;;     (:xop        ((active-sets :opcode-ext
+;;                                ,@(unless sixty-four-p
+;;                                          `(:opcode-ext-shortmode))
+;;                                :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
+;;                                ;; ...and the modrm-extended points of bastardisation
+;;                                (#x0f00 #x0f01 #x0fba #x0fc7 #x0fb9 #x0f71 #x0f72 #x0f73 #x0fae #x0f18 #x0f0d))
+;;                   (insert :xop-tree)
+;;                   (dispatch ((08 00) :window))
+;;                   (seek 08)))
+;;     (:opcode     ((insert :op-tree)))))
 ;;;;               
 ;;;;   +------------+                                                                      +----------------------------+ 
 ;;;;   |    legacy  |              REX                  op                ModRM            |            SIB             |    displacement        immediate

@@ -89,22 +89,6 @@ Verbal description of how we will go.
 (defmacro define-attribute-set (name &body attrset-spec)
   `(ensure-attribute-set *isa* ,name ',attrset-spec))
 
-(define-attribute-set :all-legacy
-  (:opersz .        #x66)
-  (:addrsz .        #x67)
-  (:cs .            #x2e)
-  (:ds .            #x3e)
-  (:es .            #x26)
-  (:fs .            #x64)
-  (:gs .            #x65)
-  (:ss .            #x36)
-  (:lock .          #xf0)
-  (:rep .           #xf3)
-  (:repn .          #xf2))
-
-(define-attribute-set :all-rex
-  (:rex0 . #x40) (:rex1 . #x41) (:rex2 . #x42) (:rex3 . #x43) (:rex4 . #x44) (:rex5 . #x45) (:rex6 . #x46) (:rex7 . #x47)
-  (:rex8 . #x48) (:rex9 . #x49) (:rexa . #x4a) (:rexb . #x4b) (:rexc . #x4c) (:rexd . #x4d) (:rexe . #x4e) (:rexf . #x4f))
 
 (define-attribute-set :nrex
   (:nrex0 . #b0000) (:nrex1 . #b0001) (:nrex2 . #b0010) (:nrex3 . #b0011)
@@ -117,7 +101,7 @@ Verbal description of how we will go.
   (:opersz .        #x66))
 (define-attribute-set :addrsz
   (:addrsz .        #x67))
-(define-attribute-set :segment
+(define-attribute-set :overseg
   (:cs .            #x2e)
   (:ds .            #x3e)
   (:es .            #x26)
@@ -134,6 +118,12 @@ Verbal description of how we will go.
   (:xop .           #x0f))
 (define-attribute-set :3dnow
   (:3dnow .         #x0f))
+
+(define-attribute-set :all-rex
+  :rex :nrex)
+
+(define-attribute-set :all-legacy
+  :opersz/p :addrsz :overseg :lock :rep/p :repn/p)
 
 (defstruct (microformat (:conc-name uformat-))
   "Connect sub-byte bit-structurings to attributes."
@@ -295,7 +285,7 @@ Verbal description of how we will go.
     :rax :rcx :rdx :rbx      :rbp :rsi :rdi :r8   :r9  :r10  :r11  :r12        :r14  :r15)
 
 (define-argument-type-set :cr 32 (:register-members t)
-    :cr0 :cr1 :cr2 :cr3 :cr4 :cr5 :cr6 :cr7 :cr8 :cr9 :cr0 :cr1 :cr2 :cr3 :cr4 :cr5)
+    :cr0 :cr1 :cr2 :cr3 :cr4 :cr5 :cr6 :cr7 :cr8 :cr9 :cr10 :cr11 :cr12 :cr13 :cr14 :cr15)
 
 (define-argument-type-set :dr 32 (:register-members t)
     :dr0 :dr1 :dr2 :dr3 :dr4 :dr5 :dr6 :dr7 :dr8 :dr9 :dr10 :dr11 :dr12 :dr13 :dr14 :dr15)
@@ -380,10 +370,10 @@ so as to resolve argument or address sizes, for example."))
   ((:rex-w) .           :imm64))
 
 ;; (defun make-dispatch-alternate (sixty-four-p)
-;;   `(((active-sets :all-legacy :all-rex :xop
+;;   `(((active-set :all-legacy :all-rex :xop
 ;;                   :opcode ,(if sixty-four-p
 ;;                                :opcode-longmode
-;;                                :opcode-shortmode)
+;;                                :opcode-compatmode)
 ;;                   ;; ...and the modrm-extended points of bastardisation
 ;;                   (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7))
 ;;      (window 08 00)
@@ -392,27 +382,27 @@ so as to resolve argument or address sizes, for example."))
 ;;                   (seek 08))
 ;;                  (:addrsz   ((ban-sets :addrsz)
 ;;                              (recurse)))
-;;                  (:segment  ((ban-sets :segment)
+;;                  (:overseg  ((ban-sets :overseg)
 ;;                              (recurse)))
 ;;                  (:lock     ((ban-sets :lock)
 ;;                              (recurse)))
-;;                  (:opersz/p ((ban-sets :opcode-ext-unprefixed :opersz/p)
-;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-opersz (#x78))
+;;                  (:opersz/p ((ban-sets :xopcode-unprefixed :opersz/p)
+;;                              (allow-sets-at-subtree :xop-tree :xopcode-opersz (#x78))
 ;;                              (recurse)))
-;;                  (:rep/p    ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
-;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-rep)
+;;                  (:rep/p    ((ban-sets :xopcode-unprefixed :rep/p :repn/p)
+;;                              (allow-sets-at-subtree :xop-tree :xopcode-rep)
 ;;                              (recurse)))
-;;                  (:repn/p   ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
-;;                              (allow-sets-at-subtree :xop-tree :opcode-ext-repn)
+;;                  (:repn/p   ((ban-sets :xopcode-unprefixed :rep/p :repn/p)
+;;                              (allow-sets-at-subtree :xop-tree :xopcode-repn)
 ;;                              (recurse))))
 ;;     (:all-rex    ((microformat :uf-rex 04 00)
-;;                   (ban-sets :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
+;;                   (ban-sets :rex :addrsz :overseg :lock :opersz/p :rep/p :repn/p)
 ;;                   (seek 08)
 ;;                   (recurse)))
-;;     (:xop        ((active-sets :opcode-ext
+;;     (:xop        ((active-set :xopcode
 ;;                                ,@(unless sixty-four-p
-;;                                          `(:opcode-ext-shortmode))
-;;                                :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
+;;                                          `(:xopcode-compatmode))
+;;                                :xopcode-unprefixed :xopcode-unprefixed-modrm
 ;;                                ;; ...and the modrm-extended points of bastardisation
 ;;                                (#x0f00 #x0f01 #x0fba #x0fc7 #x0fb9 #x0f71 #x0f72 #x0f73 #x0fae #x0f18 #x0f0d))
 ;;                   (insert :xop-tree)
@@ -428,282 +418,342 @@ so as to resolve argument or address sizes, for example."))
 ;;;;   +------------+ +---------------------------+           +---------------------------------------------------------+ +----------------+ +----------------+ 
 ;;;;
 ;;;; The assumptions:
-;;;;    1. the "default operand size" for compat/legacy modes is assumed to designate a 32-bit operand size.
+;;;;    1. the "default operand size" for compat modes is assumed to designate a 32-bit operand size.
 ;;;;    2. 16-bit addressing does not exist, period.
 ;;;;
 (defun make-root-tree (sixty-four-p)
-  `(nil ((active-sets :rex :nrex)
+  `(nil ((active-set :rex :nrex)
          (window 04 04)
          (dispatch :window))
-        (:rex ((ban-sets :rex :addrsz :segment :lock :opersz/p :rep/p :repn/p)
+        (:rex ((ban-sets :rex :addrsz :overseg :lock :opersz/p :rep/p :repn/p)
                (microformat :uf-rex 04 00)
                (seek 08)
                (insert-subtree :nrex)))
-        (:nrex ((active-sets :opersz/p :rep/p :repn/p :addrsz :segment :lock
-                             :opcode
-                             ,(if sixty-four-p
-                                  :opcode-longmode
-                                  :opcode-shortmode)
+        (:nrex ((active-set :opersz/p :rep/p :repn/p :addrsz :overseg :lock
+                             :opcode :opcode-modrmless-regspec
+                             ,@(if sixty-four-p
+                                   '(:opcode-longmode)
+                                   '(:opcode-compatmode :opcode-modrmless-regspec-compatmode))
                              (#x80 #x81 ,@(unless sixty-four-p '(#x82)) #x83 #x8f #xc0 #xc1 #xd0 #xd1 #xd2 #xd3 #xf6 #xf7 #xfe #xff #xc6 #xc7))
                 (window 08 00)
                 (dispatch :window)
                 (seek 08))
                (:addrsz   ((ban-sets :addrsz)
                            (insert-subtree nil)))
-               (:segment  ((ban-sets :segment)
+               (:overseg  ((ban-sets :overseg)
                            (insert-subtree nil)))
                (:lock     ((ban-sets :lock)
                            (insert-subtree nil)))
-               (:opersz/p ((ban-sets :opcode-ext-unprefixed :opersz/p)
-                           (allow-sets-at-subtree :xop :opcode-ext-opersz (#x78))
+               (:opersz/p ((ban-sets :xopcode-unprefixed :opersz/p)
+                           (allow-sets-at-subtree :xop :xopcode-opersz (#x78))
                            (insert-subtree nil)))
-               (:rep/p    ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
-                           (allow-sets-at-subtree :xop :opcode-ext-rep)
+               (:rep/p    ((ban-sets :xopcode-unprefixed :rep/p :repn/p)
+                           (allow-sets-at-subtree :xop :xopcode-rep)
                            (insert-subtree nil)))
-               (:repn/p   ((ban-sets :opcode-ext-unprefixed :rep/p :repn/p)
-                           (allow-sets-at-subtree :xop :opcode-ext-repn)
+               (:repn/p   ((ban-sets :xopcode-unprefixed :rep/p :repn/p)
+                           (allow-sets-at-subtree :xop :xopcode-repn)
                            (insert-subtree nil)))
-               (:opcode ()
-                        ;; what do we dispatch on, here?
-                        )
-               (:opcode-longmode ()
-                                 )
-               (:opcode-shortmode ()
-                                  )
-               (#x80 ((active-sets :grp1-80)
+               (:opcode                               ((mnemonic :window))
+                                                      ;; what do we dispatch on, here?
+                                                      )
+               (:opcode-modrmless-regspec             ((active-set :opcode-modrmless-regspec-internal)
+                                                       (mnemonic (05 03))
+                                                       (format :window)
+                                                       (argument 0 (:b (03 00)))))
+               (:opcode-modrmless-regspec-compatmode  ((active-set :opcode-modrmless-regspec-compatmode-internal)
+                                                       (mnemonic (05 03))
+                                                       (format :window)
+                                                       (argument 0 (:b (03 00)))))
+               (:opcode-longmode                      ((mnemonic :window))
+                                                      )
+               (:opcode-compatmode                    ((mnemonic :window))
+                                                      )
+               (#x80 ((active-set :grp1-80)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp1-80 ()
-                               (dispatch-next-tree :window :reg :mod)))
-               (#x81 ((active-sets :grp1-81)
+                               (mnemonic/format :window :reg :mod)))
+               (#x81 ((active-set :grp1-81)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp1-81 ()
-                               (dispatch-next-tree :window :reg :mod)))
+                               (mnemonic/format :window :reg :mod)))
                ,@(unless sixty-four-p
-                         `((#x82 ((active-sets :grp1-82-shortmode)
+                         `((#x82 ((active-set :grp1-82-compatmode)
                                   (microformat :uf-modrm 08 00)
                                   (dispatch :window :reg))
-                                 (:grp1-82-shortmode ()
+                                 (:grp1-82-compatmode ()
                                                      ))))
-               (#x83 ((active-sets :grp1-83)
+               (#x83 ((active-set :grp1-83)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp1-83 ()
-                               (dispatch-next-tree :window :reg :mod)))
-               (#x8f ((active-sets :grp1-8f)
+                               (mnemonic/format :window :reg :mod)))
+               (#x8f ((active-set :grp1-8f)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp1-8f ()
                                ))
-               (#xc0 ((active-sets :grp2-c0)
+               (#xc0 ((active-set :grp2-c0)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-c0 ()
                                ))
-               (#xc1 ((active-sets :grp2-c1)
+               (#xc1 ((active-set :grp2-c1)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-c1 ()
                                ))
-               (#xd0 ((active-sets :grp2-d0)
+               (#xd0 ((active-set :grp2-d0)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-d0 ()
                                ))
-               (#xd1 ((active-sets :grp2-d1)
+               (#xd1 ((active-set :grp2-d1)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-d1 ()
                                ))
-               (#xd2 ((active-sets :grp2-d2)
+               (#xd2 ((active-set :grp2-d2)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-d2 ()
                                ))
-               (#xd3 ((active-sets :grp2-d3)
+               (#xd3 ((active-set :grp2-d3)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp2-d3 ()
                                ))
-               (#xf6 ((active-sets :grp3-f6)
+               (#xf6 ((active-set :grp3-f6)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp3-f6 ()
                                ))
-               (#xf7 ((active-sets :grp3-f7)
+               (#xf7 ((active-set :grp3-f7)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp3-f7 ()
                                ))
-               (#xfe ((active-sets :grp4-fe)
+               (#xfe ((active-set :grp4-fe)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp4-fe ()
                                ))
-               (#xff ((active-sets :grp5-ff)
+               (#xff ((active-set :grp5-ff)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp5-ff ()
                                ))
-               (#xc6 ((active-sets :grp11-c6)
+               (#xc6 ((active-set :grp11-c6)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp11-c6 ()
                                 ))
-               (#xc7 ((active-sets :grp11-c7)
+               (#xc7 ((active-set :grp11-c7)
                       (microformat :uf-modrm 08 00)
                       (dispatch :window :reg))
                      (:grp11-c7 ()
                                 ))
-               (:xop ((active-sets :opcode-ext
+               (:xop ((active-set :xopcode
                                    ,@(unless sixty-four-p
-                                             `(:opcode-ext-shortmode))
-                                   :opcode-ext-unprefixed :opcode-ext-unprefixed-modrm
+                                             `(:xopcode-compatmode))
+                                   :xopcode-unprefixed :xopcode-unprefixed-modrm
                                    (#x0f00 #x0f01 #x0fba #x0fc7 #x0fb9 #x0f71 #x0f72 #x0f73 #x0fae #x0f18 #x0f0d))
                       (dispatch ((08 00) :window))
                       (seek 08))
-                     (:opcode-ext ()
-                                  )
-                     (:opcode-ext-unprefixed ()
-                                             )
-                     (:opcode-ext-opersz ()
-                                         )
-                     (:opcode-ext-rep ()
-                                      )
-                     (:opcode-ext-repn ()
-                                       )
-                     (#x0f00 ((active-sets :grp6-0f-00)
+                     (:xopcode                    ((mnemonic :window)
+                                                   (format :window))
+                                                  )
+                     (:xopcode-modrmless-regspec  ((active-set :xopcode-modrmless-regspec-internal)
+                                                   (mnemonic (05 03))
+                                                   (format :window)
+                                                   (argument 0 (:b (03 00)))))
+                     (:xopcode-unprefixed         ((mnemonic :window)
+                                                   (format :window))
+                                                  )
+                     (:xopcode-opersz             ((mnemonic :window)
+                                                   (format :window))
+                                                  )
+                     (:xopcode-rep                ((mnemonic :window)
+                                                   (format :window))
+                                                  )
+                     (:xopcode-repn               ((mnemonic :window)
+                                                   (format :window))
+                                                  )
+                     (#x0f00 ((active-set :grp6-0f-00)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp6-0f-00 ()
                                           ))
-                     (#x0f01 ((active-sets :grp7-0f-01 ((#x0f01 1) (#x0f01 3) (#x0f01 7)))
+                     (#x0f01 ((active-set :grp7-0f-01 ((#x0f01 1) (#x0f01 3) (#x0f01 7)))
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp7-0f-01 () ; modulo 1 4 7
                                           )
-                             ((#x0f01 1) ((active-sets :grp7-0f-01-1-0 (#x0f01 1 3))
+                             ((#x0f01 1) ((active-set :grp7-0f-01-1-0 (#x0f01 1 3))
                                           (dispatch :window :reg :mod))
                               (:grp7-0f-01-1-0 ()
                                                )
-                              ((#x0f01 1 3) ((active-sets :grp7-0f-01-1-3))
+                              ((#x0f01 1 3) ((active-set :grp7-0f-01-1-3))
                                (:grp7-0f-01-1-3 ()
                                                 )))
-                             ((#x0f01 3) ((active-sets :grp7-0f-01-3-0 (#x0f01 3 3))
+                             ((#x0f01 3) ((active-set :grp7-0f-01-3-0 (#x0f01 3 3))
                                           (dispatch :window :reg :mod))
                               (:grp7-0f-01-3-0 ()
                                                )
-                              ((#x0f01 3 3) ((active-sets :grp7-0f-01-3-3)
+                              ((#x0f01 3 3) ((active-set :grp7-0f-01-3-3)
                                              (dispatch :window :reg))
                                (:grp7-0f-01-3-3 ()
                                                 )))
-                             ((#x0f01 7) ((active-sets :grp7-0f-01-7-0 (#x0f01 7 3))
+                             ((#x0f01 7) ((active-set :grp7-0f-01-7-0 (#x0f01 7 3))
                                           (dispatch :window :reg :mod))
                               (:grp7-0f-01-7-0 ()
                                                )
-                              ((#x0f01 7 3) ((active-sets :grp7-0f-01-7-3)
+                              ((#x0f01 7 3) ((active-set :grp7-0f-01-7-3)
                                              (dispatch :window :reg))
                                (:grp7-0f-01-7-3 ()
                                                 ))))
-                     (#x0fba ((active-sets :grp8-0f-ba)
+                     (#x0fba ((active-set :grp8-0f-ba)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
-                             (:grp8-0f-ba ((dispatch-next-tree :window :reg :mod))
+                             (:grp8-0f-ba ((mnemonic/format :window :reg :mod))
                                           ))
-                     (#x0fc7 ((active-sets :grp9-0f-c7)
+                     (#x0fc7 ((active-set :grp9-0f-c7)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp9-0f-c7 ()
                                           ))
-                     (#x0fb9 ((active-sets :grp10-0f-b9)
+                     (#x0fb9 ((active-set :grp10-0f-b9)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp10-0f-b9 ()
                                            ))
                      ;; XXX: yeah, the only place we bastardise the opcode...
-                     (#x0f71 ((active-sets (#x00f71 #x10f71))
+                     (#x0f71 ((active-set (#x00f71 #x10f71))
                               (dispatch (:opersz/p :window)))
-                             (#x00f71 ((active-sets :grp12-0f-71)
+                             (#x00f71 ((active-set :grp12-0f-71)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp12-0f-71 ()
                                                     ))
-                             (#x10f71 ((active-sets :grp12-0f-71-op)
+                             (#x10f71 ((active-set :grp12-0f-71-op)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp12-0f-71-op ()
                                                        )))
-                     (#x0f72 ((active-sets (#x00f72 #x10f72))
+                     (#x0f72 ((active-set (#x00f72 #x10f72))
                               (dispatch (:opersz/p :window)))
-                             (#x00f72 ((active-sets :grp13-0f-72)
+                             (#x00f72 ((active-set :grp13-0f-72)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp13-0f-72 ()
                                                     ))
-                             (#x10f72 ((active-sets :grp13-0f-72-op)
+                             (#x10f72 ((active-set :grp13-0f-72-op)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp13-0f-72-op ()
                                                        )))
-                     (#x0f73 ((active-sets (#x00f73 #x10f73)
+                     (#x0f73 ((active-set (#x00f73 #x10f73)
                               (dispatch (:opersz/p :window))))
-                             (#x00f73 ((active-sets :grp14-0f-73)
+                             (#x00f73 ((active-set :grp14-0f-73)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp14-0f-73 ()
                                                     ))
-                             (#x10f73 ((active-sets :grp14-0f-73-op)
+                             (#x10f73 ((active-set :grp14-0f-73-op)
                                        (microformat :uf-modrm 08 00)
                                        (dispatch :window :reg))
                                       (:grp14-0f-73-op ()
                                                        )))
-                     (#x0fae ((active-sets :grp15-0f-ae ((#x0fae 5) (#x0fae 6) (#x0fae 7)))
+                     (#x0fae ((active-set :grp15-0f-ae ((#x0fae 5) (#x0fae 6) (#x0fae 7)))
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp15-0f-ae ()
                                            )
-                             ((#x0fae 5) ((active-sets :grp15-0f-ae-5)
+                             ((#x0fae 5) ((active-set :grp15-0f-ae-5)
                                           (dispatch :window :reg :mod))
                               (:grp15-0f-ae-5 () ; lfence
                                               ))
-                             ((#x0fae 6) ((active-sets :grp15-0f-ae-6)
+                             ((#x0fae 6) ((active-set :grp15-0f-ae-6)
                                           (dispatch :window :reg :mod))
                               (:grp15-0f-ae-6 () ; mfence
                                               ))
-                             ((#x0fae 7) ((active-sets :grp15-0f-ae-7)
+                             ((#x0fae 7) ((active-set :grp15-0f-ae-7)
                                           (dispatch :window :reg :mod))
                               (:grp15-0f-ae-7 () ; sfence, clflush
                                               )))
-                     (#x0f18 ((active-sets :grp16-0f-18)
+                     (#x0f18 ((active-set :grp16-0f-18)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp16-0f-18 ()
                                            ))
-                     (#x0f78 ((active-sets :grp17-0f-78-op)
+                     (#x0f78 ((active-set :grp17-0f-78-op)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grp17-0f-78 ()
                                            ))
-                     (#x0f0d ((active-sets :grpp-0f-0d)
+                     (#x0f0d ((active-set :grpp-0f-0d)
                               (microformat :uf-modrm 08 00)
                               (dispatch :window :reg))
                              (:grpp-0f-0d ()
                                           ))))))
 
+;;;;
+;;;; "modrmless" argument register specification:
+;;;; universal push 5, xchg 9, mov b | pop 5, mov b
+;;;; compat    inc 4                 | dec 4
+;;;;                                 | bswap 0fc
+;;;;
+;;;; Warning: all these excessive modrmless-regspec tables are a bit ugly, definitely pending a nicer way to describe it...
+;;;;
+(define-attribute-set :push
+  (:push .      #x50) (:push .    #x51) (:push .     #x52) (:push .      #x53) (:push .      #x54) (:push .      #x55) (:push .    #x56) (:push .     #x57))
+(define-attribute-set :xchg
+  (:xchg .      #x90) (:xchg .    #x91) (:xchg .     #x92) (:xchg .      #x93) (:xchg .      #x94) (:xchg .      #x95) (:xchg .    #x96) (:xchg .     #x97))
+(define-attribute-set :mov0-7
+  (:mov .       #xb0) (:mov .     #xb1) (:mov .      #xb2) (:mov .       #xb3) (:mov .       #xb4) (:mov .       #xb5) (:mov .     #xb6) (:mov .      #xb7))
+(define-attribute-set :inc
+  (:inc .       #x40) (:inc .     #x41) (:inc .      #x42) (:inc .       #x43) (:inc .       #x44) (:inc .       #x45) (:inc .     #x46) (:inc .      #x47))
+(define-attribute-set :pop
+  (:pop .       #x58) (:pop .     #x59) (:pop .      #x5a) (:pop .       #x5b) (:pop .       #x5c) (:pop .       #x5d) (:pop .     #x5e) (:pop .      #x5f))
+(define-attribute-set :mov8-f
+  (:mov .       #xb8) (:mov .     #xb9) (:mov .      #xba) (:mov .       #xbb) (:mov .       #xbc) (:mov .       #xbd) (:mov .     #xbe) (:mov .      #xbf))
+(define-attribute-set :dec
+  (:dec .        #x8) (:dec .     #x49) (:dec .      #x4a) (:dec .       #x4b) (:dec .       #x4c) (:dec .       #x4d) (:dec .     #x4e) (:dec .      #x4f))
+(define-attribute-set :bswap
+  (:bswap .   #x0fc8) (:bswap . #x0fc9) (:bswap .  #x0fca) (:bswap .   #x0fcb) (:bswap .   #x0fcc) (:bswap .   #x0fcd) (:bswap . #x0fce) (:bswap .  #x0fcf))
+
+(define-attribute-set :opcode-modrmless-regspec
+  :push :xchg :mov0-7 :pop :mov8-f)
+ 
+(define-attribute-set :opcode-modrmless-regspec-compatmode
+  :inc :dec)
+ 
+(define-attribute-set :xopcode-modrmless-regspec
+  :bswap)
+
+(define-attribute-set :opcode-modrmless-regspec-internal
+  (:push . #x10) (:xchg . #x18) (:mov . 22) (:pop . 11) (:mov . 23))
+
+(define-attribute-set :opcode-modrmless-regspec-compatmode-internal
+  (:inc . 8) (:dec . 9))
+
+(define-attribute-set :xopcode-modrmless-regspec-internal
+  (:bswap . #x505))
+
 (define-attribute-set :opcode
-  (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#  #| 32bit mode   |#
-  (:adc .       #x10) (:adc .     #x11) (:adc .      #x12) (:adc .       #x13) (:adc .       #x14) (:adc .       #x15)  #| 32bit mode|#  #| 32bit mode   |#
-  (:and .       #x20) (:and .     #x21) (:and .      #x22) (:and .       #x23) (:and .       #x24) (:and .       #x25)  #| ES seg    |#  #| 32bit mode   |#
-  (:xor .       #x30) (:xor .     #x31) (:xor .      #x32) (:xor .       #x33) (:xor .       #x34) (:xor .       #x35)  #| SS seg    |#  #| 32bit mode   |#
-   #|   rex       |#   #|   rex     |#   #|   rex      |#   #|   rex       |#   #|   rex       |#   #|   rex       |#   #|   rex     |#  #|    rex       |#
-  (:push .      #x50) (:push .    #x51) (:push .     #x52) (:push .      #x53) (:push .      #x54) (:push .      #x55) (:push .    #x56) (:push .      #x57)
-   #| 32bit mode  |#   #| 32bit mode|#   #| 32bit mode |#   #| 64bit mode  |#   #|   FS seg     |#   #|   GS seg    |#   #| oper size |#   #| addr size   |#
+  (:add .       #x00) (:add .     #x01) (:add .      #x02) (:add .       #x03) (:add .       #x04) (:add .       #x05)  #| 32bit mode|#   #| 32bit mode  |#
+  (:adc .       #x10) (:adc .     #x11) (:adc .      #x12) (:adc .       #x13) (:adc .       #x14) (:adc .       #x15)  #| 32bit mode|#   #| 32bit mode  |#
+  (:and .       #x20) (:and .     #x21) (:and .      #x22) (:and .       #x23) (:and .       #x24) (:and .       #x25)  #| ES seg    |#   #| 32bit mode  |#
+  (:xor .       #x30) (:xor .     #x31) (:xor .      #x32) (:xor .       #x33) (:xor .       #x34) (:xor .       #x35)  #| SS seg    |#   #| 32bit mode  |#
+   #|   rex       |#   #|   rex     |#   #|   rex      |#   #|   rex       |#   #|   rex       |#   #|   rex       |#   #|   rex     |#   #|    rex      |#
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
+   #| 32bit mode  |#   #| 32bit mode|#   #| 32bit mode |#   #| 64bit mode  |#   #|   FS seg    |#   #|   GS seg    |#   #| oper size |#   #| addr size   |#
   (:jo .        #x70) (:jno .     #x71) (:jb .       #x72) (:jnb .       #x73) (:jz .        #x74) (:jnz .       #x75) (:jbe .     #x76) (:jnbe .      #x77)
    #|   grp1      |#   #|   grp1    |#   #| 32bit grp  |#   #|   grp1      |#  (:test .      #x84) (:test .      #x85) (:xchg .    #x86) (:xchg .      #x87)
-  (:xchg .      #x90) (:xchg .    #x91) (:xchg .     #x92) (:xchg .      #x93) (:xchg .      #x94) (:xchg .      #x95) (:xchg .    #x96) (:xchg .      #x97)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
   (:mov .       #xa0) (:mov .     #xa1) (:mov .      #xa2) (:mov .       #xa3) (:movsb .     #xa4) (:movsw/d/q . #xa5) (:cmpsb .   #xa6) (:cmpsw/d/q . #xa7)
-  (:mov .       #xb0) (:mov .     #xb1) (:mov .      #xb2) (:mov .       #xb3) (:mov .       #xb4) (:mov .       #xb5) (:mov .     #xb6) (:mov .       #xb7)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
    #|   grp2      |#   #|   grp2    |#  (:ret-near . #xc2) (:ret-near .  #xc3)  #| 32bit mode  |#   #| 32bit mode  |#   #|   grp11   |#   #|   grp11     |#
    #|   grp2      |#   #|   grp2    |#   #|   grp2     |#   #|   grp2      |#   #| 32bit mode  |#   #| 32bit mode  |#   #| 32bit mode|#  (:xlat .      #xd7)
   (:loopne/nz . #xe0) (:loope/z . #xe1) (:loop .     #xe2) (:jxcxz .     #xe3) (:in .        #xe4) (:in .        #xe5) (:out .     #xe6) (:out .       #xe7)
@@ -713,13 +763,13 @@ so as to resolve argument or address sizes, for example."))
   (:sub .       #x28) (:sub .     #x29) (:sub .      #x2a) (:sub .       #x2b) (:sub .       #x2c) (:sub .       #x2d)  #| CS seg    |#   #| 32bit mode  |# 
   (:cmp .       #x38) (:cmp .     #x39) (:cmp .      #x3a) (:cmp .       #x3b) (:cmp .       #x3c) (:cmp .       #x3d)  #| DS seg    |#   #| 32bit mode  |# 
    #|   rex       |#   #|   rex     |#   #|   rex      |#   #|   rex       |#   #|   rex       |#   #|   rex       |#   #|   rex     |#  #|    rex       |#
-  (:pop .       #x58) (:pop .     #x59) (:pop .      #x5a) (:pop .       #x5b) (:pop .       #x5c) (:pop .       #x5d) (:pop .     #x5e) (:pop .       #x5f)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
   (:push .      #x68) (:imul .    #x69) (:push .     #x6a) (:imul .      #x6b) (:insb .      #x6c) (:insw/d .    #x6d) (:outsb .   #x6e) (:outsw/d .   #x6f)
   (:js .        #x78) (:jns .     #x79) (:jp .       #x7a) (:jnp .       #x7b) (:jl .        #x7c) (:jnl .       #x7d) (:jle .     #x7e) (:jnle .      #x7f)
   (:mov .       #x88) (:mov .     #x89) (:mov .      #x8a) (:mov .       #x8b) (:mov .       #x8c) (:lea .       #x8d) (:mov .     #x8e)  #|   grp1      |#
   (:cbwde/qe .  #x98) (:cwdqo .   #x99)  #| 32bit mode |#  (:f/wait .    #x9b) (:pushf/d/q . #x9c) (:popf/d/q .  #x9d) (:sahf .    #x9e) (:lahf .      #x9f)
   (:test .      #xa8) (:test .    #xa9) (:stosb .    #xaa) (:stosw/d/q . #xab) (:lodsb .     #xac) (:lodsw/d/q . #xad) (:scasb .   #xae) (:scasw/d/q . #xaf)
-  (:mov .       #xb8) (:mov .     #xb9) (:mov .      #xba) (:mov .       #xbb) (:mov .       #xbc) (:mov .       #xbd) (:mov .     #xbe) (:mov .       #xbf)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
   (:enter .     #xc8) (:leave .   #xc9) (:ret .      #xca) (:ret .       #xcb) (:int3 .      #xcc) (:int .       #xcd)  #| 32bit mode|#  (:iret/d/q .  #xcf)
    #|   x87       |#   #|   x87     |#   #|   x87      |#   #|   x87       |#   #|   x87       |#   #|   x87       |#   #|   x87     |#  #|    x87       |#
   (:call .      #xe8) (:jmp .     #xe9)  #| 32bit mode |#  (:jmp .       #xeb) (:in .        #xec) (:in .        #xed) (:out .     #xee) (:out .       #xef)
@@ -728,12 +778,12 @@ so as to resolve argument or address sizes, for example."))
 (define-attribute-set :opcode-longmode
    #|  .........           .......           ........  |#  (:movsxd .    #x63)) #|  .........           .........           .......           .........  |#
 
-(define-attribute-set :opcode-shortmode
+(define-attribute-set :opcode-compatmode
    #|  .........           .......           ........           .........           .........           .........  |#  (:push-es . #x06) (:pop-es .    #x07)
    #|  .........           .......           ........           .........           .........           .........  |#  (:push-ss . #x16) (:pop-ss .    #x17)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:daa .       #x27)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aaa .       #x37)
-  (:inc .       #x40) (:inc .     #x41) (:inc .      #x42) (:inc .       #x43) (:inc .       #x44) (:inc .       #x45) (:inc .     #x46) (:inc .       #x47)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
   (:pusha/d .   #x60) (:popa/d .  #x61) (:bound .    #x62) (:arpl .      #x63)  #|  .........           .........           .......           .........  |#
    #|  .........           .......           ........           .........  |#  (:les .       #xc4) (:lds .       #xc5)  #|  .......           .........  |#
    #|  .........           .......           ........           .........  |#  (:aam .       #xd4) (:aad .       #xd5) (:salc .    #xd6)  #|  .........  |#
@@ -741,55 +791,55 @@ so as to resolve argument or address sizes, for example."))
    #|  .........           .......           ........           .........           .........           .........  |#  (:push-ds . #x1e) (:pop-ds .    #x1f)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:das .       #x2f)
    #|  .........           .......           ........           .........           .........           .........           .......  |#  (:aas .       #x3f)
-  (:dec .       #x48) (:dec .     #x49) (:dec .      #x4a) (:dec .       #x4b) (:dec .       #x4c) (:dec .       #x4d) (:dec .     #x4e) (:dec .       #x4f)
+   #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
    #|  .........           .......  |#  (:call .     #x9a)  #|  .........           .........           .........           .......           .........  |#
    #|  .........           .......           ........           .........           .........           .........  |#  (:into .    #xce)  #|  .........  |#
    #|  .........           .......  |#  (:jmp .      #xea)  #|  .........           .........           .........           .......           .........  |#)
 
-(define-attribute-set :opcode-ext
+(define-attribute-set :xopcode
    #|      grp6                grp7       |#  (:lar .       #x0f02) (:lsl .      #x0f03)  #|   invalid    |#  (:syscall .  #x0f05) (:clts .    #x0f06) (:sysret .   #x0f07)
-  ;; 1[0-7]: prefixed
+  ;; 1[0-7]: prefixable
   (:mov .       #x0f20) (:mov .       #x0f21) (:mov .       #x0f22) (:mov .      #x0f23)  #|   invalid    |#   #|   invalid    |#   #|   invalid    |#   #|   invalid    |#
   (:wrmsr .     #x0f30) (:rstsc .     #x0f31) (:rdmsr .     #x0f32) (:rdpmc .    #x0f33)  #|  32bit mode  |#   #|  32bit mode  |#   #|   invalid    |#   #|   invalid    |#
   (:cmovo .     #x0f40) (:cmovno .    #x0f41) (:cmovb .     #x0f42) (:cmovnb .   #x0f43) (:cmovz .    #x0f44) (:cmovnz .   #x0f45) (:cmovbe .   #x0f46) (:cmovnbe .  #x0f47)
-  ;; 5[0-7]: prefixed
-  ;; 6[0-7]: prefixed
-  ;; 7[0-7]: prefixed
+  ;; 5[0-7]: prefixable
+  ;; 6[0-7]: prefixable
+  ;; 7[0-7]: prefixable
   (:jo .        #x0f80) (:jno .       #x0f81) (:jb .        #x0f82) (:jnb .      #x0f83) (:jz .       #x0f84) (:jnz .      #x0f85) (:jbe .      #x0f86) (:jnbe .     #x0f87)
   (:seto .      #x0f90) (:setno .     #x0f91) (:setb .      #x0f92) (:setnb .    #x0f93) (:setz .     #x0f94) (:setnz .    #x0f95) (:setbe .    #x0f96) (:setnbe .   #x0f97)
   (:push .      #x0fa0) (:pop .       #x0fa1) (:cpuid .     #x0fa2) (:bt .       #x0fa3) (:shld .     #x0fa4) (:shld .     #x0fa5)  #|   invalid    |#   #|   invalid    |#
   (:cmpxchg .   #x0fb0) (:cmpxchg .   #x0fb1) (:lss .       #x0fb2) (:btr .      #x0fb3) (:lfs .      #x0fb4) (:lgs .      #x0fb5) (:movzx .    #x0fb6) (:movzx .    #x0fb7)
-  ;; c[0-7]: prefixed
-  ;; d[0-7]: prefixed
-  ;; e[0-7]: prefixed
-  ;; f[0-7]: prefixed
+  ;; c[0-7]: prefixable
+  ;; d[0-7]: prefixable
+  ;; e[0-7]: prefixable
+  ;; f[0-7]: prefixable
   (:invd .      #x0f08) (:wbinvd .    #x0f09)  #|    invalid    |#  (:ud2 .      #x0f0b)  #|   invalid    |#   #|    grp p     |#  (:femms .    #x0f0e)  #|    3dnow     |#
    #|  modrm group  |#  (:nop .       #x0f19) (:nop .       #x0f1a) (:nop .      #x0f1b) (:nop .      #x0f1c) (:nop .      #x0f1d) (:nop .      #x0f1e) (:nop .      #x0f1f)
-  ;; 2[8-f]: prefixed
+  ;; 2[8-f]: prefixable
   ;; 3[8-f]: invalid
   (:cmovs .     #x0f48) (:cmovns .    #x0f49) (:cmovp .     #x0f4a) (:cmovnp .   #x0f4b) (:cmovl .    #x0f4c) (:cmovnl .   #x40fd) (:cmovle .   #x40fe) (:cmovnle .  #x0f4f)
-  ;; 5[8-f]: prefixed
-  ;; 6[8-f]: prefixed
-  ;; 7[8-f]: prefixed
+  ;; 5[8-f]: prefixable
+  ;; 6[8-f]: prefixable
+  ;; 7[8-f]: prefixable
   (:js .        #x0f88) (:jns .       #x0f89) (:jp .        #x0f8a) (:jnp .      #x0f8b) (:jl .       #x0f8c) (:jnl .      #x0f8d) (:jle .      #x0f8e) (:jnle .     #x0f8f)
   (:sets .      #x0f98) (:setns .     #x0f99) (:setp .      #x0f9a) (:setnp .    #x0f9b) (:setl .     #x0f9c) (:setnl .    #x0f9d) (:setle   .  #x0f9e) (:setnle .   #x0f9f)
   (:push .      #x0fa8) (:pop .       #x0fa9) (:rsm .       #x0faa) (:bts .      #x0fab) (:shrd .     #x0fac) (:shrd .     #x0fad) (:grp15-ae . #x0fae) (:imul .     #x0faf)
-  ;; b[8-f]: prefixed
-  (:bswap .     #x0fc8) (:bswap .     #x0fc9) (:bswap .     #x0fca) (:bswap .    #x0fcb) (:bswap .    #x0fcc) (:bswap .    #x0fcd) (:bswap .    #x0fce) (:bswap .    #x0fcf)
-  ;; d[8-f]: prefixed
-  ;; e[8-f]: prefixed
-  ;; f[8-f]: prefixed
+  ;; b[8-f]: prefixable
+   #|    modrmless            modrmless             modrmless             modrmless           modrmless            modrmless             modrmless           modrmless   |#
+  ;; d[8-f]: prefixable
+  ;; e[8-f]: prefixable
+  ;; f[8-f]: prefixable
   )
 
-(define-attribute-set :opcode-ext-shortmode
+(define-attribute-set :xopcode-compatmode
   #|    .........             .........             .........             ........    |#  (:sysenter .  #x0f34) (:sysexit .  #x0f35)  #|    .......             ........    |#)
 
-(define-attribute-set :opcode-ext-unprefixed
+(define-attribute-set :xopcode-unprefixed
   (:movups .    #x0f10) (:movups .    #x0f11) (:movl/hlps . #x0f12) (:movlps .    #x0f13) (:unpcklps .  #x0f14) (:unpckhps . #x0f15) (:movh/lhps . #x0f16) (:movhps .   #x0f17)
   (:movmskps .  #x0f50) (:sqrtps .    #x0f51) (:rsqrtps .   #x0f52) (:rcpps .     #x0f53) (:andps .     #x0f54) (:andnps .   #x0f55) (:orps .      #x0f56) (:xorps .    #x0f57)
   (:punpcklbw . #x0f60) (:punpcklwd . #x0f61) (:punpckldq . #x0f62) (:packsswb .  #x0f63) (:pcmpgtb .   #x0f64) (:pcmpgtw .  #x0f65) (:pcmpgtd .   #x0f66) (:packuswb . #x0f67)
   (:pshufw .    #x0f70)  #|    grp12      |#   #|     grp13     |#   #|    grp14      |#  (:pcmpeqb .   #x0f74) (:pcmpeqw .  #x0f75) (:pcmpeqd .   #x0f76) (:emss .     #x0f77)
-  (:xadd .      #x0fc0) (:xadd .      #x0fc1) (:cmpps .     #x0fc2) (:movnti .    #x0fc3) (:pinsrw .    #x0fc4) (:pextsrw .  #x0fc5) (:shufps .    #x0fc6) (:grp9 .     #x0fc7)
+  (:xadd .      #x0fc0) (:xadd .      #x0fc1) (:cmpps .     #x0fc2) (:movnti .    #x0fc3) (:pinsrw .    #x0fc4) (:pextsrw .  #x0fc5) (:shufps .    #x0fc6)  #|    grp9      |#
    #|    invalid    |#  (:psrlw .     #x0fd1) (:psrld .     #x0fd2) (:psrlq .     #x0fd3) (:paddq .     #x0fd4) (:pmullw .   #x0fd5)  #|    invalid    |#  (:pmovmskb . #x0fd7)
   (:pavgb .     #x0fe0) (:psraw .     #x0fe1) (:psrad .     #x0fe2) (:pavgw .     #x0fe3) (:pmulhuw .   #x0fe4) (:pmulhw .   #x0fe5)  #|    invalid    |#  (:movntq .   #x0fe7)
    #|    invalid    |#  (:psllw .     #x0ff1) (:pslld .     #x0ff2) (:psllq .     #x0ff3) (:pmuludq .   #x0ff4) (:pmaddwd .  #x0ff5) (:psadbw .    #x0ff6) (:maskmovq . #x0ff7)
@@ -802,7 +852,7 @@ so as to resolve argument or address sizes, for example."))
   (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .    #x0fec) (:paddsw .   #x0fed) (:pmaxsw .    #x0fee) (:pxor .     #x0fef)
   (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .      #x0ffc) (:padw .     #x0ffd) (:padd .      #x0ffe)  #|   invalid    |#)
 
-(define-attribute-set :opcode-ext-rep
+(define-attribute-set :xopcode-rep
   (:movss .   #x0f10) (:movss .   #x0f11) (:movsldup . #x0f12)  #|   invalid     |#   #|   invalid     |#   #|  invalid     |#  (:movshdup . #x0f16)  #|   invalid  |#
    #|   invalid   |#  (:sqrtss .  #x0f51) (:rsqrtss .  #x0f52) (:rcpss .     #x0f53)  #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
    #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
@@ -821,7 +871,7 @@ so as to resolve argument or address sizes, for example."))
    #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
   )
 
-(define-attribute-set :opcode-ext-opersz
+(define-attribute-set :xopcode-opersz
   (:movupd .    #x0f10) (:movupd .    #x0f11) (:movlpd .    #x0f12) (:movlpd .    #x0f13) (:unpcklpd .   #x0f14) (:unpckhpd .   #x0f15) (:movhpd .   #x0f16) (:movhpd .   #x0f17)
   (:movmskpd .  #x0f50) (:sqrtpd .    #x0f51)  #|   invalid     |#   #|   invalid     |#  (:andpd .      #x0f54) (:andnpd .     #x0f55) (:orpd .     #x0f56) (:xorpd .    #x0f57)
   (:punpcklbw . #x0f60) (:punpcklwd . #x0f61) (:punpckldq . #x0f62) (:packsswb .  #x0f63) (:pcmpgtb .    #x0f64) (:pcmpgtw .    #x0f65) (:pcmpgtd .  #x0f66) (:packuswb . #x0f67)
@@ -833,13 +883,13 @@ so as to resolve argument or address sizes, for example."))
   (:movapd .    #x0f28) (:movapd .    #x0f29) (:cvtpi2pd .  #x0f2a) (:movntpd .   #x0f2b) (:cvttpd2pi .  #x0f2c) (:cvtpd2pi .   #x0f2d) (:ucomisd .  #x0f2e) (:comisd .   #x0f2f)
   (:addpd .     #x0f58) (:mulpd .     #x0f59) (:cvtpd2ps .  #x0f5a) (:cvtps2dq .  #x0f5b) (:subpd .      #x0f5c) (:minpd .      #x0f5d) (:divpd .    #x0f5e) (:maxpd .    #x0f5f)
   (:punpckhwb . #x0f68) (:punpckhwd . #x0f69) (:punpckhdq . #x0f6a) (:packssdw .  #x0f6b) (:punpcklqdq . #x0f6c) (:punpckhqdq . #x0f6d) (:movd .     #x0f6e) (:movdqa .   #x0f6f)
-   #|   grp17       |#  (:extrq .     #x0f79)  #|   invalid     |#   #|   invalid     |#  (:haddpd .     #x0f7c) (:hsubpd .     #x0f7d)  (:movd .    #x0f7e) (:movdqa .   #x0f7f)
+   #|   grp17       |#  (:extrq .     #x0f79)  #|   invalid     |#   #|   invalid     |#  (:haddpd .     #x0f7c) (:hsubpd .     #x0f7d) (:movd .     #x0f7e) (:movdqa .   #x0f7f)
   ;; b[8-f]: strange irregularity (heh) -- absence..
   (:psubusb .   #x0fd8) (:psubusw .   #x0fd9) (:pminub .    #x0fda) (:pand .      #x0fdb) (:paddusb .    #x0fdc) (:paddusw .    #x0fdd) (:pmaxub .   #x0fde) (:pandn .    #x0fdf)
   (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .     #x0fec) (:paddsw .     #x0fed) (:pmaxsw .   #x0fee) (:pxor .     #x0fef)
   (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .       #x0ffc) (:padw .       #x0ffd) (:padd .     #x0ffe)  #|   invalid    |#)
 
-(define-attribute-set :opcode-ext-repn
+(define-attribute-set :xopcode-repn
   (:movsd .     #x0f10) (:movsd .     #x0f11) (:movddup .   #x0f12)  #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
    #|    invalid    |#  (:sqrtsd .    #x0f51)  #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
    #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
@@ -861,7 +911,7 @@ so as to resolve argument or address sizes, for example."))
   (:add .    (#x80 0)) (:or .     (#x80 1)) (:adc .    (#x80 2)) (:sbb .   (#x80 3)) (:and .     (#x80 4)) (:sub .    (#x80 5)) (:xor .     (#x80 6)) (:cmp .  (#x80 7)))
 (define-attribute-set :grp1-81
   (:add .    (#x81 0)) (:or .     (#x81 1)) (:adc .    (#x81 2)) (:sbb .   (#x81 3)) (:and .     (#x81 4)) (:sub .    (#x81 5)) (:xor .     (#x81 6)) (:cmp .  (#x81 7)))
-(define-attribute-set :grp1-82-shortmode
+(define-attribute-set :grp1-82-compatmode
   (:add .    (#x82 0)) (:or .     (#x82 1)) (:adc .    (#x82 2)) (:sbb .   (#x82 3)) (:and .     (#x82 4)) (:sub .    (#x82 5)) (:xor .     (#x82 6)) (:cmp .  (#x82 7)))
 (define-attribute-set :grp1-83
   (:add .    (#x83 0)) (:or .     (#x83 1)) (:adc .    (#x83 2)) (:sbb .   (#x83 3)) (:and .     (#x83 4)) (:sub .    (#x83 5)) (:xor .     (#x83 6)) (:cmp .  (#x83 7)))
@@ -1052,27 +1102,32 @@ so as to resolve argument or address sizes, for example."))
 ;;  ! - does not source its first argument
 ;;  2! - does not source its second argument
 
-(defun make-addressing-subtree (sixty-four-p)
-  `(nil ((active-sets (0 1 2 3))
+(defun make-addressing-subtree-onethird (sixty-four-p)
+  `(nil ((active-set (0 1 2 3))
          (seek 08) ; last seek was before parsing the modrm microformat, let's prepare for displacement/SIB
          (dispatch :mod))
-        (#b00 ((active-sets (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+        (#b00 ((active-set (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
                (dispatch (:b :r/m)))
-              (#x4 #xc ((active-sets)
+              (#x4 #xc ((active-set (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
                         (microformat :uf-sib 08 00)
                         (seek 08)
                         (dispatch :base))
-                   )
-              ((#x5 #xd) ()
-               ,@(if sixty-four-p
-                     `("[RIP+disp32]" :rip :imm32)
-                     `("[disp32]"          :imm32))))
-        (#b01 ((active-sets (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+                   ((#x5 #x13) ((active-set (0 1 2))
+                                (dispatch :base :mod))
+                    ((#x5 0) () "")))
+              (#x5 #xd ()
+                   ,@(if sixty-four-p
+                         `("[RIP+disp32]" :rip :imm32)
+                         `("[disp32]"          :imm32))))
+        (#b01 ((active-set (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
                (dispatch (:b :r/m))))
-        (#b10 ((active-sets (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+        (#b10 ((active-set (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
                (dispatch (:b :r/m))))
-        (#b11 ((active-sets (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+        (#b11 ((active-set (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
                (dispatch (:b :r/m))))))
+
+(defun make-sibhalf-subtree-lastthird ()
+  `)
 
 (defiformat "<>AL"               () (rw :rflags rw :al)                                        (:aaa #x37     :aas #x3f     :daa #x27     :das #x2f))
 (defiformat "<AL, AH, imm8"      () ( w :rflags rw :al   r  :ah  r (:imm8))                    (:aad #xd5))

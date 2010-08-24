@@ -330,14 +330,93 @@ so as to resolve argument or address sizes, for example."))
 (defmacro define-format-argument/attribute-correspondence (name () &body corr-spec)
   `(ensure-argument/attribute-correspondence *isa* ,name ',corr-spec))
 
-(define-format-argument/attribute-correspondence :segreg-over ()
-  (:es . :es) (:cs . :cs) (:ss . :ss) (:ds . :ds) (:fs . :fs) (:gs . :gs))
+(define-format-argument/attribute-correspondence :immx ()
+  ((:opersz/p) .        :imm16)
+  (() .                 :imm32)
+  ((:rex-w :opersz/p) . :imm32)
+  ((:rex-w) .           :imm32))
+
+(define-format-argument/attribute-correspondence :immxf ()
+  ((:opersz/p) .        :imm16)
+  (() .                 :imm32)
+  ((:rex-w :opersz/p) . :imm64)
+  ((:rex-w) .           :imm64))
+
+(define-format-argument/attribute-correspondence :overseg ()
+  (:es .                :es)
+  (:cs .                :cs)
+  (:ss .                :ss)
+  (:ds .                :ds)
+  (:fs .                :fs)
+  (:gs .                :gs))
+
+(define-format-argument/attribute-correspondence :regxs ()
+  ((:opersz/p) .        :reg16)
+  (() .                 :reg32))
+
+(define-format-argument/attribute-correspondence :regxl ()
+  ((:opersz/p) .        :reg32)
+  ( .                   :reg64))
 
 (define-format-argument/attribute-correspondence :regx ()
   ((:opersz/p) .        :reg16)
   (() .                 :reg32)
   ((:rex-w :opersz/p) . :reg64)
   ((:rex-w) .           :reg64))
+
+(define-format-argument/attribute-correspondence :xaxs ()
+  ((:opersz/p) .        :ax)
+  (() .                 :eax))
+
+(define-format-argument/attribute-correspondence :xax-1 ()
+  ((:opersz/p) .        :al)
+  (() .                 :ax)
+  ((:rex-w :opersz/p) . :eax)
+  ((:rex-w) .           :eax))
+
+(define-format-argument/attribute-correspondence :xax ()
+  ((:opersz/p) .        :ax)
+  (() .                 :eax)
+  ((:rex-w :opersz/p) . :rax)
+  ((:rex-w) .           :rax))
+
+(define-format-argument/attribute-correspondence :adxcx32 ()
+  ((:opersz/p) .        :cx)
+  (() .                 :ecx))
+
+(define-format-argument/attribute-correspondence :adxcx64 ()
+  ((:opersz/p) .        :ecx)
+  (() .                 :rcx))
+
+(define-format-argument/attribute-correspondence :xdx ()
+  ((:opersz/p) .        :dx)
+  (() .                 :ed)
+  ((:rex-w :opersz/p) . :rdx)
+  ((:rex-w) .           :rdx))
+
+(define-format-argument/attribute-correspondence :xaxl ()
+  ((:opersz/p) .        :eax)
+  (() .                 :eax)
+  ((:rex-w :opersz/p) . :rax)
+  ((:rex-w) .           :rax))
+
+(define-format-argument/attribute-correspondence :xbxl ()
+  ((:opersz/p) .        :ebx)
+  (() .                 :ebx)
+  ((:rex-w :opersz/p) . :rbx)
+  ((:rex-w) .           :rbx))
+
+(define-format-argument/attribute-correspondence :xcxl ()
+  ((:opersz/p) .        :ecx)
+  (() .                 :ecx)
+  ((:rex-w :opersz/p) . :rcx)
+  ((:rex-w) .           :rcx))
+
+(define-format-argument/attribute-correspondence :xdxl ()
+  ((:opersz/p) .        :edx)
+  (() .                 :edx)
+  ((:rex-w :opersz/p) . :rdx)
+  ((:rex-w) .           :rdx))
 
 (define-format-argument/attribute-correspondence :basex ()
   ((:addrsz/p) .        :base32)
@@ -351,23 +430,14 @@ so as to resolve argument or address sizes, for example."))
   ((:addrsz/p) .        :base32+2)
   (() .                 :base64+2))
 
-(define-format-argument/attribute-correspondence :xax ()
-  ((:opersz/p) .        :ax)
-  (() .                 :eax)
-  ((:rex-w :opersz/p) . :rax)
-  ((:rex-w) .           :rax))
-
-(define-format-argument/attribute-correspondence :immx ()
-  ((:opersz/p) .        :imm16)
-  (() .                 :imm32)
-  ((:rex-w :opersz/p) . :imm32)
-  ((:rex-w) .           :imm32))
-
-(define-format-argument/attribute-correspondence :immxf ()
-  ((:opersz/p) .        :imm16)
-  (() .                 :imm32)
-  ((:rex-w :opersz/p) . :imm64)
-  ((:rex-w) .           :imm64))
+(define-format-argument/attribute-correspondence :segdds ()
+  ((:cs) .              :cs)
+  (() .                 :ds)
+  ((:ds) .              :ds)
+  ((:es) .              :es)
+  ((:fs) .              :fs)
+  ((:gs) .              :gs)
+  ((:ss) .              :ss))
 
 ;; (defun make-dispatch-alternate (sixty-four-p)
 ;;   `(((active-set :all-legacy :all-rex :xop
@@ -569,16 +639,16 @@ so as to resolve argument or address sizes, for example."))
                                                    (format :window)
                                                    (argument 0 (:b (03 00)))))
                      (:xopcode-unprefixed         ((mnemonic :window)
-                                                   (format :window))
+                                                   (format :window 0))
                                                   )
                      (:xopcode-opersz             ((mnemonic :window)
-                                                   (format :window))
+                                                   (format :window 1))
                                                   )
                      (:xopcode-rep                ((mnemonic :window)
-                                                   (format :window))
+                                                   (format :window 1))
                                                   )
                      (:xopcode-repn               ((mnemonic :window)
-                                                   (format :window))
+                                                   (format :window 1))
                                                   )
                      (#x0f00 ((active-set :grp6-0f-00)
                               (microformat :uf-modrm 08 00)
@@ -756,7 +826,7 @@ so as to resolve argument or address sizes, for example."))
    #|  modrmless          modrmless          modrmless          modrmless           modrmless           modrmless          modrmless          modrmless  |#
    #|   grp2      |#   #|   grp2    |#  (:ret-near . #xc2) (:ret-near .  #xc3)  #| 32bit mode  |#   #| 32bit mode  |#   #|   grp11   |#   #|   grp11     |#
    #|   grp2      |#   #|   grp2    |#   #|   grp2     |#   #|   grp2      |#   #| 32bit mode  |#   #| 32bit mode  |#   #| 32bit mode|#  (:xlat .      #xd7)
-  (:loopne/nz . #xe0) (:loope/z . #xe1) (:loop .     #xe2) (:jxcxz .     #xe3) (:in .        #xe4) (:in .        #xe5) (:out .     #xe6) (:out .       #xe7)
+  (:loopne/nz . #xe0) (:loope/z . #xe1) (:loop .     #xe2) (:je/rcxz .   #xe3) (:in .        #xe4) (:in .        #xe5) (:out .     #xe6) (:out .       #xe7)
    #|  lock       |#  (:int1 .    #xf1)  #|   repn     |#   #|   rep       |#  (:hlt .       #xf4) (:cmc .       #xf5)  #|   grp3    |#   #|   grp3      |#
   (:or .        #x08) (:or .      #x09) (:or .       #x0a) (:or .        #x0b) (:or .        #x0c) (:or .        #x0d)  #| 32bit mode|#   #| xop         |#
   (:sbb .       #x18) (:sbb .     #x19) (:sbb .      #x1a) (:sbb .       #x1b) (:sbb .       #x1c) (:sbb .       #x1d)  #| 32bit mode|#   #| 32bit mode  |# 
@@ -800,7 +870,7 @@ so as to resolve argument or address sizes, for example."))
    #|      grp6                grp7       |#  (:lar .       #x0f02) (:lsl .      #x0f03)  #|   invalid    |#  (:syscall .  #x0f05) (:clts .    #x0f06) (:sysret .   #x0f07)
   ;; 1[0-7]: prefixable
   (:mov .       #x0f20) (:mov .       #x0f21) (:mov .       #x0f22) (:mov .      #x0f23)  #|   invalid    |#   #|   invalid    |#   #|   invalid    |#   #|   invalid    |#
-  (:wrmsr .     #x0f30) (:rstsc .     #x0f31) (:rdmsr .     #x0f32) (:rdpmc .    #x0f33)  #|  32bit mode  |#   #|  32bit mode  |#   #|   invalid    |#   #|   invalid    |#
+  (:wrmsr .     #x0f30) (:rdtsc .     #x0f31) (:rdmsr .     #x0f32) (:rdpmc .    #x0f33)  #|  32bit mode  |#   #|  32bit mode  |#   #|   invalid    |#   #|   invalid    |#
   (:cmovo .     #x0f40) (:cmovno .    #x0f41) (:cmovb .     #x0f42) (:cmovnb .   #x0f43) (:cmovz .    #x0f44) (:cmovnz .   #x0f45) (:cmovbe .   #x0f46) (:cmovnbe .  #x0f47)
   ;; 5[0-7]: prefixable
   ;; 6[0-7]: prefixable
@@ -834,6 +904,7 @@ so as to resolve argument or address sizes, for example."))
 (define-attribute-set :xopcode-compatmode
   #|    .........             .........             .........             ........    |#  (:sysenter .  #x0f34) (:sysexit .  #x0f35)  #|    .......             ........    |#)
 
+;; vvol. 5,6 material, except: xadd, movnti, movd, btc, bsf, bsr and movsx
 (define-attribute-set :xopcode-unprefixed
   (:movups .    #x0f10) (:movups .    #x0f11) (:movl/hlps . #x0f12) (:movlps .    #x0f13) (:unpcklps .  #x0f14) (:unpckhps . #x0f15) (:movh/lhps . #x0f16) (:movhps .   #x0f17)
   (:movmskps .  #x0f50) (:sqrtps .    #x0f51) (:rsqrtps .   #x0f52) (:rcpps .     #x0f53) (:andps .     #x0f54) (:andnps .   #x0f55) (:orps .      #x0f56) (:xorps .    #x0f57)
@@ -852,6 +923,7 @@ so as to resolve argument or address sizes, for example."))
   (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .    #x0fec) (:paddsw .   #x0fed) (:pmaxsw .    #x0fee) (:pxor .     #x0fef)
   (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .      #x0ffc) (:padw .     #x0ffd) (:padd .      #x0ffe)  #|   invalid    |#)
 
+;; vvol. 5,6 material, except: xadd, popcnt and lzcnt
 (define-attribute-set :xopcode-rep
   (:movss .   #x0f10) (:movss .   #x0f11) (:movsldup . #x0f12)  #|   invalid     |#   #|   invalid     |#   #|  invalid     |#  (:movshdup . #x0f16)  #|   invalid  |#
    #|   invalid   |#  (:sqrtss .  #x0f51) (:rsqrtss .  #x0f52) (:rcpss .     #x0f53)  #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
@@ -871,6 +943,7 @@ so as to resolve argument or address sizes, for example."))
    #|   invalid   |#  #|    invalid   |#   #|   invalid    |#   #|   invalid     |#   #|   invalid     |#   #|  invalid     |#   #|   invalid    |#   #|   invalid  |#
   )
 
+;; vvol. 5,6 material, except: movmskpd, xadd, movd
 (define-attribute-set :xopcode-opersz
   (:movupd .    #x0f10) (:movupd .    #x0f11) (:movlpd .    #x0f12) (:movlpd .    #x0f13) (:unpcklpd .   #x0f14) (:unpckhpd .   #x0f15) (:movhpd .   #x0f16) (:movhpd .   #x0f17)
   (:movmskpd .  #x0f50) (:sqrtpd .    #x0f51)  #|   invalid     |#   #|   invalid     |#  (:andpd .      #x0f54) (:andnpd .     #x0f55) (:orpd .     #x0f56) (:xorpd .    #x0f57)
@@ -889,6 +962,7 @@ so as to resolve argument or address sizes, for example."))
   (:psubsb .    #x0fe8) (:psubsw .    #x0fe9) (:pminsw .    #x0fea) (:por .       #x0feb) (:paddsb .     #x0fec) (:paddsw .     #x0fed) (:pmaxsw .   #x0fee) (:pxor .     #x0fef)
   (:psubb .     #x0ff8) (:psubw .     #x0ff9) (:psubd .     #x0ffa) (:psubq .     #x0ffb) (:padb .       #x0ffc) (:padw .       #x0ffd) (:padd .     #x0ffe)  #|   invalid    |#)
 
+;; vvol. 5,6 material, except: xadd
 (define-attribute-set :xopcode-repn
   (:movsd .     #x0f10) (:movsd .     #x0f11) (:movddup .   #x0f12)  #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
    #|    invalid    |#  (:sqrtsd .    #x0f51)  #|    invalid    |#   #|    invalid    |#   #|    invalid     |#   #|    invalid     |#   #|   invalid    |#   #|   invalid    |#
@@ -994,11 +1068,13 @@ so as to resolve argument or address sizes, for example."))
   (:clflush . (#x0fae 7 0)) (:sfence .  (#x0fae 7 3)))
 
 (define-attribute-set :grp16-0f-18
-  (:prefetch . (#x0f18 0)) (:prefetch . (#x0f18 1)) (:prefetch . (#x0f18 2)) (:prefetch . (#x0f18 3)) (:nop . (#x0f18 4)) (:nop . (#x0f18 5)) (:nop . (#x0f18 6)) (:nop . (#x0f18 7)))
+  (:prefetchnta . (#x0f18 0)) (:prefetch0 .  (#x0f18 1)) (:prefetch1 . (#x0f18 2)) (:prefetch2 . (#x0f18 3))
+  (:nop .         (#x0f18 4)) (:nop .        (#x0f18 5)) (:nop .       (#x0f18 6)) (:nop .       (#x0f18 7)))
 (define-attribute-set :grp17-0f-78-op
   (:extrq .    (#x0f78 0))  #|     invalid      |#   #|     invalid      |#   #|      invalid     |#   #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#)
 (define-attribute-set :grpp-0f-0d
-  (:prefetch . (#x0f0d 0)) (:prefetch . (#x0f0d 1))  #|     reserved     |#  (:prefetch . (#x0f0d 3))  #|   invalid   |#   #|   invalid   |#   #|   invalid   |#   #|   invalid    |#)
+  (:prefetch .    (#x0f0d 0)) (:prefetchw .  (#x0f0d 1)) (:prefetch .  (#x0f0d 2)) (:prefetchw . (#x0f0d 3))
+  (:prefetch .    (#x0f0d 4)) (:prefetch .   (#x0f0d 5)) (:prefetch .  (#x0f0d 6)) (:prefetch .  (#x0f0d 7)))
 
 
 ;;; ModRM
@@ -1129,497 +1205,392 @@ so as to resolve argument or address sizes, for example."))
 (defun make-sibhalf-subtree-lastthird ()
   `)
 
-(defiformat "<>AL"               () (rw :rflags rw :al)                                        (:aaa #x37     :aas #x3f     :daa #x27     :das #x2f))
-(defiformat "<AL, AH, imm8"      () ( w :rflags rw :al   r  :ah  r (:imm8))                    (:aad #xd5))
-(defiformat "<2|2!AL, AH, imm8"  () ( w :rflags rw :al    w :ah  r (:imm8))                    (:aam #xd4))
-                                                                                       
-(defiformat "<AL,  imm8"         () ( w :rflags rw (:al)               r  (:imm8))             (:add #x04   :adc #x14   :sbb #x1c   :sub #x2c))
-(defiformat "<XAX, immXX"        () ( w :rflags rw (:xax)              r  (:immx))             (:add #x05   :adc #x15   :sbb #x1d   :sub #x2d))
-(defiformat "<~S,  imm8"         () ( w :rflags rw ((8 (tree :r/m)))   r  (:imm8))             (:add #x80 0 :adc #x80 2 :sbb #x80 3 :sub #x80 5))
-(defiformat "<~S, immXX"         () ( w :rflags rw ((x (tree :r/m)))   r  (:immx))             (:add #x81 0 :adc #x81 2 :sbb #x81 3 :sub #x81 5))
-(defiformat "<~S, imm8"          () ( w :rflags rw ((x (tree :r/m)))   r  (:imm8))             (:add #x83 0 :adc #x83 2 :sbb #x83 3 :sub #x83 5 :bts #xba 5 :btr #xba 6 :btc #xba 7))
-(defiformat "<~S,  reg8"         () ( w :rflags rw ((8 (tree :r/m)))   r  (:reg8))             (:add #x00   :adc #x10   :sbb #x18   :sub #x28  ))
-(defiformat "<~S, regXX"         () ( w :rflags rw ((x (tree :r/m)))   r  (:regx))             (:add #x01   :adc #x11   :sbb #x19   :sub #x29   :bts #xab   :btr #xb3   :btc #xbb  ))
-(defiformat "<reg8,  ~S"         () ( w :rflags rw (:reg8)             r  (8 ((tree :r/m))))   (:add #x02   :adc #x12   :sbb #x1a   :sub #x2a  ))
-(defiformat "<reg8,  ~S"         () ( w :rflags rw (:reg8)             r  (x ((tree :r/m))))   (:add #x03   :adc #x13   :sbb #x1b   :sub #x2b  ))
-                                                                                                                  
-(defiformat "AL, imm8"           () (           rw (:al)               r  (:imm8))             (:or #x0c     :and #x24    :xor #x34))
-(defiformat "XAX, immXX"         () (           rw (:xax)              r  (:immx))             (:or #x0d     :and #x25    :xor #x35))
-(defiformat "~S, imm8"           () (           rw ((8 (tree :r/m)))   r  (:imm8))             (:or #x80 1   :and #x80 4  :xor #x80 6))
-(defiformat "~S, immXX"          () (           rw ((x (tree :r/m)))   r  (:immx))             (:or #x81 1   :and #x81 4  :xor #x81 6))
-(defiformat "~S, imm8"           () (           rw ((x (tree :r/m)))   r  (:imm8))             (:or #x83 1   :and #x83 4  :xor #x83 6))
-(defiformat "~S, reg8"           () (           rw ((8 (tree :r/m)))   r  (:reg8))             (:or #x08     :and #x20    :xor #x30))
-(defiformat "~S, regXX"          () (           rw ((x (tree :r/m)))   r  (:regx))             (:or #x09     :and #x21    :xor #x31))
-(defiformat "reg8, ~S"           () (           rw (:reg8)             r  ((8 (tree :r/m))))   (:or #x0a     :and #x22    :xor #x32))
-(defiformat "regXX, ~S"          () (           rw (:regx)             r  ((x (tree :r/m))))   (:or #x0b     :and #x23    :xor #x33))
-                                                                                                            
-(defiformat ">!~S"               () (           rw ((x (tree :r/m)))   r  :rflags)             (:seto  #x90 0 :setno  #x91 0 :setc   #x92 0 :setnc  #x93 0)
-                                                                                               (:setz  #x94 0 :setnz  #x95 0 :setna  #x96 0 :seta   #x97 0)
-                                                                                               (:sets  #x98 0 :setns  #x99 0 :setp   #x9a 0 :setnp  #x9b 0)
-                                                                                               (:setl  #x9c 0 :setnl  #x9d 0 :setng  #x9e 0 :setg   #x9f 0))
-
-(defiformat ">regXX, ~S"         () (rw (:regx) r  ((x (tree :r/m)))   r  :rflags)             (:cmovo #x40 0 :cmovno #x41 0 :cmovc  #x42 0 :cmovnc #x43 0)
-                                                                                               (:cmovz #x44 0 :cmovnz #x45 0 :cmovna #x46 0 :cmova  #x47 0)
-                                                                                               (:cmovs #x48 0 :cmovns #x49 0 :cmovp  #x4a 0 :cmovnp #x4b 0)
-                                                                                               (:cmovl #x4c 0 :cmovnl #x4d 0 :cmovng #x4e 0 :cmovg  #x4f 0))
-
-;; (defiformat "<|AL, imm8"          (:rflags)                        (:al :imm8))                                   ;; CMP, TEST
-;; (defiformat "<|AX, imm16"            (:rflags)                        (:ax :imm16))                                  ;; CMP, TEST
-;; (defiformat "<|EAX, imm32"           (:rflags)                        (:eax :imm32))                                 ;; CMP, TEST
-;; (defiformat "<|RAX, imm32"           (:rflags)                        (:rax :imm32))                                 ;; CMP, TEST
-;; (defiformat "<|reg/mem8, imm8"       (:rflags)                        (:reg/mem8 :imm8))                             ;; CMP, TEST
-;; (defiformat "<|reg/mem16, imm16"     (:rflags)                        (:reg/mem16 :imm16))                           ;; CMP, TEST
-;; (defiformat "<|reg/mem32, imm32"     (:rflags)                        (:reg/mem32 :imm32))                           ;; CMP, TEST
-;; (defiformat "<|reg/mem64, imm32"     (:rflags)                        (:reg/mem64 :imm32))                           ;; CMP, TEST
-;; (defiformat "<|reg/mem16, imm8"      (:rflags)                        (:reg/mem16 :imm8))                            ;; CMP, BT
-;; (defiformat "<|reg/mem32, imm8"      (:rflags)                        (:reg/mem32 :imm8))                            ;; CMP, BT
-;; (defiformat "<|reg/mem64, imm8"      (:rflags)                        (:reg/mem64 :imm8))                            ;; CMP, BT
-;; (defiformat "<|reg/mem8, reg8"       (:rflags)                        (:reg/mem8 :reg8))                             ;; CMP, TEST
-;; (defiformat "<|reg/mem16, reg16"     (:rflags)                        (:reg/mem16 :reg16))                           ;; CMP, TEST, BT
-;; (defiformat "<|reg/mem32, reg32"     (:rflags)                        (:reg/mem32 :reg32))                           ;; CMP, TEST, BT
-;; (defiformat "<|reg/mem64, reg64"     (:rflags)                        (:reg/mem64 :reg64))                           ;; CMP, TEST, BT
-;; (defiformat "<|reg8, reg/mem8"       (:rflags)                        (:reg8 :reg/mem8))                             ;; CMP
-;; (defiformat "<|reg16, reg/mem16"     (:rflags)                        (:reg16 :reg/mem16))                           ;; CMP
-;; (defiformat "<|reg32, reg/mem32"     (:rflags)                        (:reg32 :reg/mem32))                           ;; CMP
-;; (defiformat "<|reg64, reg/mem64"     (:rflags)                        (:reg64 :reg/mem64))                           ;; CMP
-
-;; (defiformat "reg/mem8"               (:reg/mem8)                      (:reg/mem8))                                   ;; NOT
-;; (defiformat "reg/mem16"              (:reg/mem16)                     (:reg/mem16))                                  ;; NOT
-;; (defiformat "reg/mem32"              (:reg/mem32)                     (:reg/mem32))                                  ;; NOT
-;; (defiformat "reg/mem64"              (:reg/mem64)                     (:reg/mem64))                                  ;; NOT
-
-;; (defiformat "<reg/mem8"              (:rflags :reg/mem8)              (:reg/mem8))                                   ;; NEG, DEC, INC
-;; (defiformat "<reg/mem16"             (:rflags :reg/mem16)             (:reg/mem16))                                  ;; NEG, DEC, INC
-;; (defiformat "<reg/mem32"             (:rflags :reg/mem32)             (:reg/mem32))                                  ;; NEG, DEC, INC
-;; (defiformat "<reg/mem64"             (:rflags :reg/mem64)             (:reg/mem64))                                  ;; NEG, DEC, INC
-
-;; (defiformat "|reg16, mem32"          ()                               (:reg16 :mem32))                               ;; BOUND
-;; (defiformat "|reg32, mem64"          ()                               (:reg32 :mem64))                               ;; BOUND
-
-;; (defiformat "<reg16"                 (:rflags :reg16)                 (:reg16))                                      ;; DEC, INC
-;; (defiformat "<reg32"                 (:rflags :reg32)                 (:reg32))                                      ;; DEC, INC
-
-;; (defiformat "reg32"                  (:reg32)                         (:reg32))                                      ;; BSWAP
-;; (defiformat "reg64"                  (:reg64)                         (:reg64))                                      ;; BSWAP
-
-;; ;;;;
-;; ;;;; Interrupts
-;; ;;;;
-;; (defiformat "$@<>imm8"               (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:rflags :imm8 :rip :rsp :cs :ss :mem)) ;; INT, actually potentially it touches a lot more...
-;; (defiformat "$@>"                    (:rip :cpl :cs :tss)                       (:rflags))                              ;; INTO, actually potentially it touches a lot more...
-;; (defiformat "$@<"                    (:rip :rflags)                   ())                                               ;; INT3, actually potentially it touches a lot more...
-;; (defiformat "$@@<"                   (:rflags :rip :rsp :cpl :cs :ss :mem :tss) (:cpl :cs :tss))                        ;; IRET, IRETD, IRETQ
-
-;; ;;;;
-;; ;;;; Jumps, calls, returns and branches
-;; ;;;;
-;; (defiformat "@immoff8"               (:rip)                           (:immoff8))                                    ;; JMP
-;; (defiformat "@immoff16"              (:rip)                           (:immoff16))                                   ;; JMP
-;; (defiformat "@immoff32"              (:rip)                           (:immoff32))                                   ;; JMP
-;; (defiformat "@reg/mem16"             (:rip)                           (:reg/mem16))                                  ;; JMP
-;; (defiformat "@reg/mem32"             (:rip)                           (:reg/mem32))                                  ;; JMP
-;; (defiformat "@reg/mem64"             (:rip)                           (:reg/mem64))                                  ;; JMP
-
-;; (defiformat "@ptr16:16"              (:rip :cs :tss)                  (:ptr16/16))                                   ;; JMP FAR
-;; (defiformat "@ptr16:32"              (:rip :cs :tss)                  (:ptr16/32))                                   ;; JMP FAR
-;; (defiformat "@mem32"                 (:rip :cs :tss)                  (:mem32))                                      ;; JMP FAR
-;; (defiformat "@mem48"                 (:rip :cs :tss)                  (:mem48))                                      ;; JMP FAR
-
-;; (defiformat "@@immoff16"             (:rip :rsp :mem16)               (:rip :rbp :rsp :immoff16))                    ;; CALL
-;; (defiformat "@@immoff32"             (:rip :rsp :mem32)               (:rip :rsp :immoff32))                         ;; CALL
-;; (defiformat "@@reg/mem16"            (:rip :rsp :mem16)               (:rip :rsp :reg/mem16))                        ;; CALL
-;; (defiformat "@@reg/mem32"            (:rip :rsp :mem32)               (:rip :rsp :reg/mem32))                        ;; CALL
-;; (defiformat "@@reg/mem64"            (:rip :rsp :mem64)               (:rip :rsp :reg/mem64))                        ;; CALL
-
-;; (defiformat "@@"                     (:rip :rsp)                      (:rip :rsp :mem16))                            ;; RET
-;; (defiformat "@@imm8"                 (:rip :rsp)                      (:rip :rsp :mem16 :imm8))                      ;; RET
-
-;; (defiformat "@>immoff8"              (:rip)                           (:rflags :immoff8))                            ;; Jxx
-;; (defiformat "@>immoff16"             (:rip)                           (:rflags :immoff16))                           ;; Jxx
-;; (defiformat "@>immoff32"             (:rip)                           (:rflags :immoff32))                           ;; Jxx
-
-;; (defiformat "@CX, immoff8"           (:rip)                           (:cx :immoff8))                                ;; JCXZ
-;; (defiformat "@ECX, immoff8"          (:rip)                           (:ecx :immoff8))                               ;; JECXZ
-;; (defiformat "@RCX, immoff8"          (:rip)                           (:rcx :immoff8))                               ;; JRCXZ
-
-;; (defiformat "@@@ptr16:16"            (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :ptr16/16))       ;; CALL FAR
-;; (defiformat "@@@ptr16:32"            (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :ptr16/32))       ;; CALL FAR
-;; (defiformat "@@@mem32"               (:rip :rsp :cpl :cs :ss :mem16)  (:rip :rsp :cpl :cs :tss :ss :mem32))          ;; CALL FAR
-;; (defiformat "@@@mem48"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :tss :ss :mem48))          ;; CALL FAR
-;; (defiformat "@@@"                    (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16))               ;; RETF
-;; (defiformat "@@@imm16"               (:rip :rsp :cpl :cs :ss :mem32)  (:rip :rsp :cpl :cs :ss :mem16 :imm16))        ;; RETF
-
-;; (defiformat "!AX, AL"                (:ax)                            (:al))                                         ;; CBW
-;; (defiformat "!EAX, AX"               (:eax)                           (:ax))                                         ;; CWDE
-;; (defiformat "!RAX, EAX"              (:rax)                           (:eax))                                        ;; CDQE
-
-;; (defiformat "2|AX, DX"               (:ax :dx)                        (:ax))                                         ;; CWD
-;; (defiformat "2|EAX, EDX"             (:eax :edx)                      (:eax))                                        ;; CDQ
-;; (defiformat "2|RAX, RDX"             (:rax :rdx)                      (:rax))                                        ;; CQO
-
-;; (defiformat "<"                      (:rflags)                        ())                                            ;; CLC, CLD, STC, STD
-;; (defiformat "$<IF"                   (:rflags)                        (:cpl :cs))                                    ;; CLI, STI
-;; (defiformat "<>"                     (:rflags)                        (:rflags))                                     ;; CMC
-
-;; (defiformat "|mem8"                  ()                               (:mem8))                                       ;; CLFLUSH, INVLPG
-;; (defiformat "|RAX, ECX"              ()                               (:rax :ecx))                                   ;; INVLPGA
-
-;; (defiformat ""                       ()                               ())                                            ;; LFENCE, SFENCE, MFENCE, NOP, PAUSE
-;; (defiformat "|CPL"                   ()                               (:cpl :cs))                                    ;; INVD, WBINVD, HLT
-;; (defiformat "|!mem16/32/64"          ()                               ())                                            ;; NOP
-;; (defiformat "|!mem8"                 ()                               ())                                            ;; PREFETCH{,W,NTA,0,1,2}
-
-;; ;;;;
-;; ;;;; String formats
-;; ;;;;                                                                    
-;; (defiformat "<>|mem8, mem8"          (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem8 :mem8))   ;; CMPS, CMPSB
-;; (defiformat "<>|mem16, mem16"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem16 :mem16)) ;; CMPS, CMPSW
-;; (defiformat "<>|mem32, mem32"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem32 :mem32)) ;; CMPS, CMPSD
-;; (defiformat "<>|mem64, mem64"        (:rflags :rsi :rdi)              (:rflags :segreg :rsi :es :rdi :mem64 :mem64)) ;; CMPS, CMPSQ
-
-;; (defiformat "!AL, mem8"              (:al  :rsi)                      (:ds :rsi :mem8))                              ;; LODS, LODSB
-;; (defiformat "!AX, mem16"             (:ax  :rsi)                      (:ds :rsi :mem16))                             ;; LODS, LODSW
-;; (defiformat "!EAX, mem32"            (:eax :rsi)                      (:ds :rsi :mem32))                             ;; LODS, LODSD
-;; (defiformat "!RAX, mem64"            (:rax :rsi)                      (:ds :rsi :mem64))                             ;; LODS, LODSQ
-
-;; (defiformat "!mem8, mem8"            (:rsi :rdi :mem8)                (:segreg :rsi :es :rdi :mem8))                 ;; MOVS, MOVSB
-;; (defiformat "!mem16, mem16"          (:rsi :rdi :mem16)               (:segreg :rsi :es :rdi :mem16))                ;; MOVS, MOVSW
-;; (defiformat "!mem32, mem32"          (:rsi :rdi :mem32)               (:segreg :rsi :es :rdi :mem32))                ;; MOVS, MOVSD
-;; (defiformat "!mem64, mem64"          (:rsi :rdi :mem64)               (:segreg :rsi :es :rdi :mem64))                ;; MOVS, MOVSQ
-
-;; (defiformat "<>|AL, mem8"            (:rflags :rdi)                   (:rflags :es :rdi :al :mem8))                  ;; SCAS, SCASB
-;; (defiformat "<>|AX, mem16"           (:rflags :rdi)                   (:rflags :es :rdi :ax :mem16))                 ;; SCAS, SCASW
-;; (defiformat "<>|EAX, mem32"          (:rflags :rdi)                   (:rflags :es :rdi :eax :mem32))                ;; SCAS, SCASD
-;; (defiformat "<>|RAX, mem64"          (:rflags :rdi)                   (:rflags :es :rdi :rax :mem64))                ;; SCAS, SCASQ
-
-;; (defiformat "!mem8, AL"              (:mem8  :rdi)                    (:es :rdi :al))                                ;; STOS, STOSB
-;; (defiformat "!mem16, AX"             (:mem16 :rdi)                    (:es :rdi :ax))                                ;; STOS, STOSW
-;; (defiformat "!mem32, EAX"            (:mem32 :rdi)                    (:es :rdi :eax))                               ;; STOS, STOSD
-;; (defiformat "!mem64, RAX"            (:mem64 :rdi)                    (:es :rdi :rax))                               ;; STOS, STOSQ
-;; ;;;;
-
-;; (defiformat "<AL, reg/mem8, reg8"    (:rflags :al :reg/mem8)          (:al :reg/mem8 :reg8))                         ;; CMPXCHG
-;; (defiformat "<AX, reg/mem16, reg16"  (:rflags :al :reg/mem16)         (:al :reg/mem16 :reg16))                       ;; CMPXCHG
-;; (defiformat "<EAX, reg/mem32, reg32" (:rflags :al :reg/mem32)         (:al :reg/mem32 :reg32))                       ;; CMPXCHG
-;; (defiformat "<RAX, reg/mem64, reg64" (:rflags :al :reg/mem64)         (:al :reg/mem64 :reg64))                       ;; CMPXCHG
-
-;; (defiformat "<EDX:EAX, reg/mem64, ECX:EBX"  (:rflags :edx :eax :reg/mem64)  (:edx :eax :reg/mem64 :ecx :edx))        ;; CMPXCHG8B
-;; (defiformat "<RDX:RAX, reg/mem128, RCX:RBX" (:rflags :rdx :rax :reg/mem128) (:rdx :rax :reg/mem128 :rcx :rdx))       ;; CMPXCHG16B
-
-;; (defiformat "EAX, EBX, ECX, EDX"            (:eax :ebx :ecx :edx)     (:eax))                                        ;; CPUID
-                                                                                                                         
-;; (defiformat "<AL, AH, reg/mem8"             (:rflags :ah :al)         (:ax :reg/mem8))                               ;; DIV, IDIV
-;; (defiformat "<DX, AX, reg/mem16"            (:rflags :dx :ax)         (:dx :ax :reg/mem16))                          ;; DIV, IDIV
-;; (defiformat "<EDX, EAX, reg/mem32"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
-;; (defiformat "<RDX, RAX, reg/mem64"          (:rflags :edx :eax)       (:edx :eax :reg/mem32))                        ;; DIV, IDIV
-;; (defiformat "<!AX, AL, reg/mem8"            (:rflags :ax)             (:al :reg/mem8))                               ;; MUL, IMUL
-;; (defiformat "<!DX, AX, AX, reg/mem16"       (:rflags :dx :ax)         (:ax :reg/mem16))                              ;; MUL, IMUL
-;; (defiformat "<!EDX, EAX, EAX, reg/mem32"    (:rflags :edx :eax)       (:eax :reg/mem32))                             ;; MUL, IMUL
-;; (defiformat "<!RDX, RAX, RAX, reg/mem64"    (:rflags :rdx :rax)       (:rax :reg/mem64))                             ;; MUL, IMUL
-                                                                                                                         
-;; (defiformat "imm16, 0"                      (:rsp :rbp)               (:imm16 0 :rsp :rbp :ss))                      ;; ENTER
-;; (defiformat "imm16, 1"                      (:rsp :rbp)               (:imm16 1 :rsp :rbp :ss))                      ;; ENTER
-;; (defiformat "imm16, imm8"                   (:rsp :rbp)               (:imm16 :imm8 :rsp :rbp :ss))                  ;; ENTER
-                                                                                                                         
-;; (defiformat "BP, SP"                        (:bp :sp)                 (:bp :mem16))                                  ;; LEAVE 
-;; (defiformat "EBP, ESP"                      (:ebp :esp)               (:ebp :mem32))                                 ;; LEAVE 
-;; (defiformat "RBP, RSP"                      (:rbp :rsp)               (:rbp :mem64))                                 ;; LEAVE 
-                                                                                                                         
-;; (defiformat "<!reg16, reg/mem16, imm8"      (:rflags :reg16)          (:reg/mem16 :imm8))                            ;; IMUL
-;; (defiformat "<!reg32, reg/mem32, imm8"      (:rflags :reg32)          (:reg/mem32 :imm8))                            ;; IMUL
-;; (defiformat "<!reg64, reg/mem64, imm8"      (:rflags :reg64)          (:reg/mem64 :imm8))                            ;; IMUL
-;; (defiformat "<!reg16, reg/mem16, imm16"     (:rflags :reg16)          (:reg/mem16 :imm16))                           ;; IMUL
-;; (defiformat "<!reg32, reg/mem32, imm32"     (:rflags :reg32)          (:reg/mem32 :imm32))                           ;; IMUL
-;; (defiformat "<!reg64, reg/mem64, imm32"     (:rflags :reg64)          (:reg/mem64 :imm32))                           ;; IMUL
-                                                                                                                         
-;; (defiformat "#!AL, DX"                      (:al)                     (:dx :tss))                                    ;; IN
-;; (defiformat "#!AX, DX"                      (:ax)                     (:dx :tss))                                    ;; IN
-;; (defiformat "#!EAX, DX"                     (:eax)                    (:dx :tss))                                    ;; IN
-;; (defiformat "#!AL, imm8"                    (:al)                     (:imm8 :tss))                                  ;; IN
-;; (defiformat "#!AX, imm8"                    (:ax)                     (:imm8 :tss))                                  ;; IN
-;; (defiformat "#!EAX, imm8"                   (:eax)                    (:imm8 :tss))                                  ;; IN
-                                                                                                                               
-;; (defiformat "#|DX, AL"                      ()                        (:dx :al  :tss))                               ;; OUT
-;; (defiformat "#|DX, AX"                      ()                        (:dx :ax  :tss))                               ;; OUT
-;; (defiformat "#|DX, EAX"                     ()                        (:dx :eax :tss))                               ;; OUT
-;; (defiformat "#imm8, AL"                     ()                        (:imm8 :al  :tss))                             ;; OUT
-;; (defiformat "#imm8, AX"                     ()                        (:imm8 :ax  :tss))                             ;; OUT
-;; (defiformat "#imm8, EAX"                    ()                        (:imm8 :eax :tss))                             ;; OUT
-                                                                                                                               
-;; (defiformat "#!>mem8, DX"                   (:mem8 :rdi)              (:rflags :es :rdi :dx :tss))                   ;; INS, INSB
-;; (defiformat "#!>mem16, DX"                  (:mem16 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSW
-;; (defiformat "#!>mem32, DX"                  (:mem32 :rdi)             (:rflags :es :rdi :dx :tss))                   ;; INS, INSD
-;; (defiformat "#|>DX, mem8"                   (:rsi)                    (:rflags :ds :rsi :dx :mem8  :tss))            ;; OUTS, OUTSB
-;; (defiformat "#|>DX, mem16"                  (:rsi)                    (:rflags :ds :rsi :dx :mem16 :tss))            ;; OUTS, OUTSW
-;; (defiformat "#|>DX, mem32"                  (:rsi)                    (:rflags :ds :rsi :dx :mem32 :tss))            ;; OUTS, OUTSD
-                                                                                                                         
-;; (defiformat ">!AH"                          (:ah)                     (:rflags))                                     ;; LAHF
-;; (defiformat "<|!AH"                         (:rflags)                 (:ah))                                         ;; SAHF
-                                                                                                                         
-;; (defiformat "!DS, reg16, mem32"             (:ds :reg16)              (:mem32))                                      ;; LDS
-;; (defiformat "!DS, reg32, mem48"             (:ds :reg32)              (:mem48))                                      ;; LDS
-;; (defiformat "!ES, reg16, mem32"             (:es :reg16)              (:mem32))                                      ;; LES
-;; (defiformat "!ES, reg32, mem48"             (:es :reg32)              (:mem48))                                      ;; LES
-;; (defiformat "!FS, reg16, mem32"             (:fs :reg16)              (:mem32))                                      ;; LFS
-;; (defiformat "!FS, reg32, mem48"             (:fs :reg32)              (:mem48))                                      ;; LFS
-;; (defiformat "!GS, reg16, mem32"             (:gs :reg16)              (:mem32))                                      ;; LGS
-;; (defiformat "!GS, reg32, mem48"             (:gs :reg32)              (:mem48))                                      ;; LGS
-;; (defiformat "!SS, reg16, mem32"             (:ss :reg16)              (:mem32))                                      ;; LSS
-;; (defiformat "!SS, reg32, mem48"             (:ss :reg32)              (:mem48))                                      ;; LSS
-                                                                                                                         
-;; (defiformat "!reg16, mem"                   (:reg16)                  (:mem))                                        ;; LEA
-;; (defiformat "!reg32, mem"                   (:reg32)                  (:mem))                                        ;; LEA
-;; (defiformat "!reg64, mem"                   (:reg64)                  (:mem))                                        ;; LEA
-                                                                                                                         
-;; (defiformat "@RCX, immoff8"                 (:rip :rcx)               (:rcx :immoff8))                               ;; LOOP
-;; (defiformat "@>RCX, immoff8"                (:rip :rcx)               (:rflags :rcx :immoff8))                       ;; LOOPxx
-                                                                                                                         
-;; (defiformat "<!reg16, reg/mem16"            (:rflags :reg16)          (:reg/mem16))                                  ;; LZCNT, POPCNT
-;; (defiformat "<!reg32, reg/mem32"            (:rflags :reg32)          (:reg/mem32))                                  ;; LZCNT, POPCNT
-;; (defiformat "<!reg64, reg/mem64"            (:rflags :reg64)          (:reg/mem64))                                  ;; LZCNT, POPCNT
-                                                                                                                         
-;; ;;;;                                                                                                                     
-;; ;;;; load/stores                                                                                                         
-;; ;;;;                                                                                                                     
-;; (defiformat "!reg/mem8, reg8"               (:reg/mem8)               (:reg8))                                       ;; MOV
-;; (defiformat "!reg/mem16, reg16"             (:reg/mem16)              (:reg16))                                      ;; MOV
-;; (defiformat "!reg/mem32, reg32"             (:reg/mem32)              (:reg32))                                      ;; MOV
-;; (defiformat "!reg/mem64, reg64"             (:reg/mem64)              (:reg64))                                      ;; MOV
-;; (defiformat "!reg8, reg/mem8"               (:reg8)                   (:reg/mem8))                                   ;; MOV
-;; (defiformat "!reg16, reg/mem16"             (:reg16)                  (:reg/mem16))                                  ;; MOV
-;; (defiformat "!reg32, reg/mem32"             (:reg32)                  (:reg/mem32))                                  ;; MOV
-;; (defiformat "!reg64, reg/mem64"             (:reg64)                  (:reg/mem64))                                  ;; MOV
-
-;; (defiformat "!reg16, reg/mem8"              (:reg16)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (defiformat "!reg32, reg/mem8"              (:reg32)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (defiformat "!reg64, reg/mem8"              (:reg64)                  (:reg/mem8))                                   ;; MOVSX, MOVZX
-;; (defiformat "!reg32, reg/mem16"             (:reg32)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
-;; (defiformat "!reg64, reg/mem16"             (:reg64)                  (:reg/mem16))                                  ;; MOVSX, MOVZX
-;; (defiformat "!reg64, reg/mem32"             (:reg64)                  (:reg/mem32))                                  ;; MOVSXD (weird for 16bit op; separate format?)                     
-                                                                                                    
-;; (defiformat "!mem32, reg32"                 (:mem32)                  (:reg32))                                      ;; MOVNTI
-;; (defiformat "!mem64, reg64"                 (:mem64)                  (:reg64))                                      ;; MOVNTI
-                                                                                                                         
-;; ;;;;                                                                                                                     
-;; ;;;; RIP-relative load/stores                                                                                            
-;; ;;;;                                                                                                                     
-;; (defiformat "!AL, immoff8"                  (:al)                     (:immoff8 :mem8))                              ;; MOV
-;; (defiformat "!AX, immoff16"                 (:ax)                     (:immoff16 :mem16))                            ;; MOV
-;; (defiformat "!EAX, immoff32"                (:eax)                    (:immoff32 :mem32))                            ;; MOV
-;; (defiformat "!RAX, immoff64"                (:rax)                    (:immoff64 :mem64))                            ;; MOV
-;; (defiformat "immoff8, AL"                   (:mem8)                   (:immoff8 :al))                                ;; MOV
-;; (defiformat "immoff16, AX"                  (:mem16)                  (:immoff16 :ax))                               ;; MOV
-;; (defiformat "immoff32, EAX"                 (:mem32)                  (:immoff32 :eax))                              ;; MOV
-;; (defiformat "immoff64, RAX"                 (:mem64)                  (:immoff64 :rax))                              ;; MOV
-                                                                                                                         
-;; ;;;;                                                                                                                     
-;; ;;;; constant                                                                                                            
-;; ;;;;                                                                                                                     
-;; (defiformat "!reg8, imm8"                   (:reg8)                   (:imm8))                                       ;; MOV
-;; (defiformat "!reg16, imm16"                 (:reg16)                  (:imm16))                                      ;; MOV
-;; (defiformat "!reg32, imm32"                 (:reg32)                  (:imm32))                                      ;; MOV
-;; (defiformat "!reg64, imm64"                 (:reg64)                  (:imm64))                                      ;; MOV
-;; (defiformat "!reg/mem8, imm8"               (:reg/mem8)               (:imm8))                                       ;; MOV
-;; (defiformat "!reg/mem16, imm16"             (:reg/mem16)              (:imm16))                                      ;; MOV
-;; (defiformat "!reg/mem32, imm32"             (:reg/mem32)              (:imm32))                                      ;; MOV
-;; (defiformat "!reg/mem64, imm32"             (:reg/mem64)              (:imm32))                                      ;; MOV
-                                                                                                                         
-;; ;;;;                                                                                                                     
-;; ;;;; segment register                                                                                                    
-;; ;;;;                                                                                                                     
-;; (defiformat "!reg16/32/64/mem16, segreg"    (:reg16/32/64/mem16)      (:segreg))                                     ;; MOV
-;; (defiformat "!segreg, reg/mem16"            (:segreg)                 (:reg/mem16))                                  ;; MOV
-
-;; ;;;;                                                                                                                     
-;; ;;;; MMX/XMM                                                                                                             
-;; ;;;;                                                                                                                     
-;; (defiformat "!mmx, reg/mem32"               (:mmx)                    (:reg/mem32))                                  ;; MOVD
-;; (defiformat "!mmx, reg/mem64"               (:mmx)                    (:reg/mem64))                                  ;; MOVD
-;; (defiformat "!reg/mem32, mmx"               (:reg/mem32)              (:mmx))                                        ;; MOVD
-;; (defiformat "!reg/mem64, mmx"               (:reg/mem64)              (:mmx))                                        ;; MOVD
-;; (defiformat "!xmm, reg/mem32"               (:xmm)                    (:reg/mem32))                                  ;; MOVD
-;; (defiformat "!xmm, reg/mem64"               (:xmm)                    (:reg/mem64))                                  ;; MOVD
-;; (defiformat "!reg/mem32, xmm"               (:reg/mem32)              (:xmm))                                        ;; MOVD
-;; (defiformat "!reg/mem64, xmm"               (:reg/mem64)              (:xmm))                                        ;; MOVD
-                                                                                                                         
-;; (defiformat "!reg32, xmm"                   (:reg32)                  (:xmm))                                        ;; MOVMSKPS, MOVMSKPD
-
-;; ;;;;
-;; ;;;; system
-;; ;;;;                                                                                                                         
-;; (defiformat "$!cr, reg32"                   (:cr)                     (:reg32 :cpl :cs))                             ;; MOV
-;; (defiformat "$!cr, reg64"                   (:cr)                     (:reg64 :cpl :cs))                             ;; MOV
-;; (defiformat "!reg32, cr"                    (:reg32)                  (:cr :cpl :cs))                                ;; MOV
-;; (defiformat "!reg64, cr"                    (:reg64)                  (:cr :cpl :cs))                                ;; MOV
-
-;; (defiformat "$!CR8, reg32"                  (:cr8)                    (:reg32 :cpl :cs))                             ;; MOV
-;; (defiformat "$!CR8, reg64"                  (:cr8)                    (:reg64 :cpl :cs))                             ;; MOV
-;; (defiformat "!reg32, CR8"                   (:reg32)                  (:cr8 :cpl :cs))                               ;; MOV
-;; (defiformat "!reg64, CR8"                   (:reg64)                  (:cr8 :cpl :cs))                               ;; MOV
-
-;; (defiformat "$!dr, reg32"                   (:dr)                     (:reg32 :cpl :cs))                             ;; MOV
-;; (defiformat "$!dr, reg64"                   (:dr)                     (:reg64 :cpl :cs))                             ;; MOV
-;; (defiformat "!reg32, dr"                    (:reg32)                  (:dr :cpl :cs))                                ;; MOV
-;; (defiformat "!reg64, dr"                    (:reg64)                  (:dr :cpl :cs))                                ;; MOV
-
-;; ;;;;
-;; ;;;; Stack
-;; ;;;;
-;; (defiformat "!reg/mem16, [SS:RSP]"          (:reg/mem16 :rsp)         (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!reg/mem32, [SS:RSP]"          (:reg/mem32 :rsp)         (:ss :rsp :mem32))                             ;; POP
-;; (defiformat "!reg/mem64, [SS:RSP]"          (:reg/mem64 :rsp)         (:ss :rsp :mem64))                             ;; POP
-;; (defiformat "!reg16, [SS:RSP]"              (:reg16 :rsp)             (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!reg32, [SS:RSP]"              (:reg32 :rsp)             (:ss :rsp :mem32))                             ;; POP
-;; (defiformat "!reg64, [SS:RSP]"              (:reg64 :rsp)             (:ss :rsp :mem64))                             ;; POP
-;; (defiformat "!DS, [SS:RSP]"                 (:ds :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!ES, [SS:RSP]"                 (:es :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!SS, [SS:RSP]"                 (:ss :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!FS, [SS:RSP]"                 (:fs :rsp)                (:ss :rsp :mem16))                             ;; POP
-;; (defiformat "!GS, [SS:RSP]"                 (:gs :rsp)                (:ss :rsp :mem16))                             ;; POP
-
-;; (defiformat "![SS:RSP], reg/mem16"          (:mem16 :rsp)             (:ss :rsp :reg/mem16))                         ;; PUSH
-;; (defiformat "![SS:RSP], reg/mem32"          (:mem32 :rsp)             (:ss :rsp :reg/mem32))                         ;; PUSH
-;; (defiformat "![SS:RSP], reg/mem64"          (:mem64 :rsp)             (:ss :rsp :reg/mem64))                         ;; PUSH
-;; (defiformat "![SS:RSP], reg16"              (:mem16 :rsp)             (:ss :rsp :reg16))                             ;; PUSH
-;; (defiformat "![SS:RSP], reg32"              (:mem32 :rsp)             (:ss :rsp :reg32))                             ;; PUSH
-;; (defiformat "![SS:RSP], reg64"              (:mem64 :rsp)             (:ss :rsp :reg64))                             ;; PUSH
-;; (defiformat "![SS:RSP], imm8"               (:mem8  :rsp)             (:ss :rsp :imm8))                              ;; PUSH
-;; (defiformat "![SS:RSP], imm16"              (:mem16 :rsp)             (:ss :rsp :imm16))                             ;; PUSH
-;; (defiformat "![SS:RSP], imm32"              (:mem32 :rsp)             (:ss :rsp :imm32))                             ;; PUSH
-;; (defiformat "![SS:RSP], imm64"              (:mem64 :rsp)             (:ss :rsp :imm64))                             ;; PUSH
-;; (defiformat "![SS:RSP], CS"                 (:mem16 :rsp)             (:ss :rsp :cs))                                ;; PUSH
-;; (defiformat "![SS:RSP], DS"                 (:mem16 :rsp)             (:ss :rsp :ds))                                ;; PUSH
-;; (defiformat "![SS:RSP], ES"                 (:mem16 :rsp)             (:ss :rsp :es))                                ;; PUSH
-;; (defiformat "![SS:RSP], SS"                 (:mem16 :rsp)             (:ss :rsp :ss))                                ;; PUSH
-;; (defiformat "![SS:RSP], FS"                 (:mem16 :rsp)             (:ss :rsp :fs))                                ;; PUSH
-;; (defiformat "![SS:RSP], GS"                 (:mem16 :rsp)             (:ss :rsp :gs))                                ;; PUSH
-
-;; (defiformat "!DI, SI, BP, SP, BX, DX, CX, AX, [SS:SP]"          (:di :si :bp :sp :bx :dx :cx :ax)         (:ss :rsp :mem128)) ;; POPA
-;; (defiformat "!EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, [SS:ESP]" (:edi :esi :ebp :esp :ebx :edx :ecx :eax) (:ss :rsp :mem256)) ;; POPAD
-
-;; (defiformat "![SS:SP], AX, CX, DX, BX, SP, BP, SI, DI"          (:ss :rsp :mem128)         (:di :si :bp :sp :bx :dx :cx :ax)) ;; PUSHA
-;; (defiformat "![SS:ESP], EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI" (:ss :rsp :mem256) (:edi :esi :ebp :esp :ebx :edx :ecx :eax)) ;; PUSHAD
-
-;; (defiformat "<>![SS:SP]"                    (:flags  :rsp)            (:flags  :cpl :cs :ss :rsp :mem16))            ;; POPF
-;; (defiformat "<>![SS:ESP]"                   (:eflags :rsp)            (:eflags :cpl :cs :ss :rsp :mem32))            ;; POPFD
-;; (defiformat "<>![SS:RSP]"                   (:rflags :rsp)            (:rflags :cpl :cs :ss :rsp :mem64))            ;; POPFQ
-
-;; (defiformat ">![SS:SP]"                     (:mem16 :rsp)             (:flags  :ss :rsp))                            ;; PUSHF
-;; (defiformat ">![SS:ESP]"                    (:mem32 :rsp)             (:eflags :ss :rsp))                            ;; PUSHFD
-;; (defiformat ">![SS:RSP]"                    (:mem64 :rsp)             (:rflags :ss :rsp))                            ;; PUSHFQ
-
-;; (defiformat "<>reg/mem8, 1"                 (:rflags :reg/mem8)       (:rflags :reg/mem8  1))                        ;; RCL, RCR
-;; (defiformat "<>reg/mem16, 1"                (:rflags :reg/mem16)      (:rflags :reg/mem16 1))                        ;; RCL, RCR
-;; (defiformat "<>reg/mem32, 1"                (:rflags :reg/mem32)      (:rflags :reg/mem32 1))                        ;; RCL, RCR
-;; (defiformat "<>reg/mem64, 1"                (:rflags :reg/mem64)      (:rflags :reg/mem64 1))                        ;; RCL, RCR
-;; (defiformat "<>reg/mem8, CL"                (:rflags :reg/mem8)       (:rflags :reg/mem8  :cl))                      ;; RCL, RCR
-;; (defiformat "<>reg/mem16, CL"               (:rflags :reg/mem16)      (:rflags :reg/mem16 :cl))                      ;; RCL, RCR
-;; (defiformat "<>reg/mem32, CL"               (:rflags :reg/mem32)      (:rflags :reg/mem32 :cl))                      ;; RCL, RCR
-;; (defiformat "<>reg/mem64, CL"               (:rflags :reg/mem64)      (:rflags :reg/mem64 :cl))                      ;; RCL, RCR
-;; (defiformat "<>reg/mem8, imm8"              (:rflags :reg/mem8)       (:rflags :reg/mem8  :imm8))                    ;; RCL, RCR
-;; (defiformat "<>reg/mem16, imm8"             (:rflags :reg/mem16)      (:rflags :reg/mem16 :imm8))                    ;; RCL, RCR
-;; (defiformat "<>reg/mem32, imm8"             (:rflags :reg/mem32)      (:rflags :reg/mem32 :imm8))                    ;; RCL, RCR
-;; (defiformat "<>reg/mem64, imm8"             (:rflags :reg/mem64)      (:rflags :reg/mem64 :imm8))                    ;; RCL, RCR
-
-;; (defiformat "<reg/mem8, 1"                  (:rflags :reg/mem8)       (:reg/mem8 1))                                 ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem16, 1"                 (:rflags :reg/mem16)      (:reg/mem16 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem32, 1"                 (:rflags :reg/mem32)      (:reg/mem32 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem64, 1"                 (:rflags :reg/mem64)      (:reg/mem64 1))                                ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem8, CL"                 (:rflags :reg/mem8)       (:reg/mem8 :cl))                               ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem16, CL"                (:rflags :reg/mem16)      (:reg/mem16 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem32, CL"                (:rflags :reg/mem32)      (:reg/mem32 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem64, CL"                (:rflags :reg/mem64)      (:reg/mem64 :cl))                              ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem8, imm8"               (:rflags :reg/mem8)       (:reg/mem8 :imm8))                             ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem16, imm8"              (:rflags :reg/mem16)      (:reg/mem16 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem32, imm8"              (:rflags :reg/mem32)      (:reg/mem32 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
-;; (defiformat "<reg/mem64, imm8"              (:rflags :reg/mem64)      (:reg/mem64 :imm8))                            ;; ROL, ROR, SHL, SAL, SHR, SAR
-
-;; (defiformat "<reg/mem16, reg16, CL"         (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :cl))                     ;; SHLD, SHRD
-;; (defiformat "<reg/mem32, reg32, CL"         (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :cl))                     ;; SHLD, SHRD
-;; (defiformat "<reg/mem64, reg64, CL"         (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :cl))                     ;; SHLD, SHRD
-;; (defiformat "<reg/mem16, reg16, imm8"       (:rflags :reg/mem16 :reg16) (:reg/mem16 :reg16 :imm8))                   ;; SHLD, SHRD
-;; (defiformat "<reg/mem32, reg32, imm8"       (:rflags :reg/mem32 :reg32) (:reg/mem32 :reg32 :imm8))                   ;; SHLD, SHRD
-;; (defiformat "<reg/mem64, reg64, imm8"       (:rflags :reg/mem64 :reg64) (:reg/mem64 :reg64 :imm8))                   ;; SHLD, SHRD
-
-;; (defiformat "2|reg/mem8,  reg8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XADD, XCHG
-;; (defiformat "2|reg/mem16, reg16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XADD, XCHG
-;; (defiformat "2|reg/mem32, reg32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XADD, XCHG
-;; (defiformat "2|reg/mem64, reg64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XADD, XCHG
-
-;; (defiformat "2|AX,  reg16"                  (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
-;; (defiformat "2|EAX, reg32"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
-;; (defiformat "2|RAX, reg64"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
-
-;; ;;;;
-;; ;;;; XCHG's identicalities
-;; ;;;;
-;; (defiformat "2|reg8,  reg/mem8"             (:reg/mem8  :reg8)        (:reg/mem8  :reg8))                            ;; XCHG
-;; (defiformat "2|reg16, reg/mem16"            (:reg/mem16 :reg16)       (:reg/mem16 :reg16))                           ;; XCHG
-;; (defiformat "2|reg32, reg/mem32"            (:reg/mem32 :reg32)       (:reg/mem32 :reg32))                           ;; XCHG
-;; (defiformat "2|reg64, reg/mem64"            (:reg/mem64 :reg64)       (:reg/mem64 :reg64))                           ;; XCHG
-;; (defiformat "2|reg16, AX"                   (:ax  :reg16)             (:ax  :reg16))                                 ;; XCHG
-;; (defiformat "2|reg32, EAX"                  (:eax :reg32)             (:eax :reg32))                                 ;; XCHG
-;; (defiformat "2|reg64, RAX"                  (:rax :reg64)             (:rax :reg64))                                 ;; XCHG
-
-;; ;;;;
-;; ;;;; assorted system stuff
-;; ;;;;
-;; (defiformat "AL, seg:[RBX + AL]"            (:al)                     (:segreg :rbx :al))                            ;; XLAT, XLATB
-
-;; (defiformat "<$reg/mem16, reg16"            (:segreg)                 (:segreg :reg16))                              ;; ARPL
-;; (defiformat "$!GIF"                         (:gif)                    ())                                            ;; CLGI, STGI
-
-;; (defiformat "$CR0"                          (:cr0)                    ())                                            ;; CLTS
-
-;; (defiformat "<!$reg16, reg/mem16"           (:rflags :reg16)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
-;; (defiformat "<!$reg32, reg/mem16"           (:rflags :reg32)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
-;; (defiformat "<!$reg64, reg/mem16"           (:rflags :reg64)          (:reg/mem16 :cpl :cs :dpl))                    ;; LAR, LSL
-
-;; (defiformat "|$mem48"                       ()                        (:mem48 :cpl :cs))                             ;; LGDT, LIDT
-;; (defiformat "|$mem80"                       ()                        (:mem80 :cpl :cs))                             ;; LGDT, LIDT
-
-;; (defiformat "!mem48"                        (:mem48)                  ())                                            ;; SGDT, SIDT
-;; (defiformat "!mem80"                        (:mem80)                  ())                                            ;; SGDT, SIDT
-
-;; (defiformat "!$sysreg16, reg/mem16"         (:sysreg16)               (:reg/mem16 :cpl :cs))                         ;; LIDT, LMSW, LTR
-
-;; (defiformat "$segreg:[EAX], ECX, EDX"       ()                        (:segreg :eax :ecx :edx :cpl :cs))             ;; MONITOR
-;; (defiformat "$EAX, ECX"                     ()                        (:eax :ecx :cpl :cs))                          ;; MWAIT
-
-;; (defiformat "2!2|EDX:EAX, ECX, sysreg64"    (:eax :edx)               (:ecx :sysreg64 :cpl :cs))                     ;; RDMSR, RDPMC
-;; (defiformat "2!2|EDX:EAX, sysreg64"         (:eax :edx)               (:sysreg64 :cpl :cs :cr4))                     ;; RDTSC
-;; (defiformat "2!2|3!3|EDX:EAX:ECX, sysreg64, sysreg32" (:eax :edx :ecx)(:sysreg64 :sysreg32 :cpl :cs :cr4))           ;; RDTSCP
-
-;; (defiformat "$!sysreg64, EDX:EAX, ECX"      (:sysreg64)               (:eax :edx :ecx :cpl :cs))                     ;; RDMSR, RDPMC
-
-;; (defiformat "!reg16, sysreg16"              (:reg16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (defiformat "!reg32, sysreg16"              (:reg32)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (defiformat "!reg64, sysreg16"              (:reg64)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (defiformat "!mem16, sysreg16"              (:mem16)                  (:sysreg16))                                   ;; SLDT, SMSW, STR
-;; (defiformat "2|sysreg16, GS"                (:gs :sysreg16)           (:gs :sysreg16 :cpl :cs))                      ;; SWAPGS
-
-;; (defiformat "$@<!CX"                        (:eflags :eip :cpl :cs :ss :cx)       (:star))                           ;; SYSCALL (short mode)
-;; (defiformat "$@<!2|RCX, R11"                (:rflags :rip :cpl :cs :ss :rcx :r11) (:cstar))                          ;; SYSCALL (long mode)
-;; (defiformat "$@<|CX"                        (:eflags :eip :cpl :cs :ss)           (:efer :cpl :cs :star :ecx))       ;; SYSRET (short mode)
-;; (defiformat "$@<|RCX, R11"                  (:rflags :rip :cpl :cs :ss)           (:efer :cpl :cs :cstar :rcx :r11)) ;; SYSRET (long mode)
-
-;; (defiformat "$@<SS:ESP"                     (:eflags :eip :cpl :cs :ss :esp)      ())                                ;; SYSENTER
-;; (defiformat "$@<SS:ESP, CX, DX"             (:eflags :eip :cpl :cs :ss :esp)      (:cx :dx))                         ;; SYSEXIT
-
-;; (defiformat "$@"                            (:rip)                                ())                                ;; UD2, VMMCALL
-
-;; (defiformat "<$reg/mem16"                   (:rflags)                             (:reg/mem16 :cpl :cs))             ;; VERR, VERW
-
-;; (defiformat "$<"                            (:rflags :cr0 :cr3 :cr4 :cr6 :cr7 :efer) (:cr0 :cr3 :cr4 :cr6 :cr7 :efer))                          ;; RSM
-;; (defiformat "<|$[EAX]"                      (:rflags :cr0 :cs :ss :eax :edx :esp :ebx :ecx :edx :esi :edi :rgpr :efer :gif) (:eax :efer :cppl)) ;; SKINIT
-
-;; (defiformat "$!2|FS, GS, CS, [RAX]"         (:fs :gs :tr :star :lstar :cstar :sfmask) (:rax :mem :cpl :cs :efer))                               ;; VMLOAD
-;; (defiformat "$![RAX], CS, FS, GS"           (:mem)                                    (:rax :cpl :cs :efer :fs :gs :tr :star :lstar :cstar))    ;; VMSAVE
-;; (defiformat "$<>@![RAX]"                    (:rflags :es :cs :ss :ds :efer :cr0 :cr4 :cr3 :cr2 :rip :rsp :rax :dr6 :dr7 :cpl :mem :gif) 
-;;                                                            (:rflags :rip :rsp :rax :mem :cpl :cs :efer :sysreg64 :es :cs :ss :ds :cr0 :cr4 :cr3))              ;; VMRUN
+;;;;
+;;;; Odd-ball
+;;;;
+(defiformat "|regXX, memXX"          (r  (:regx) r  ((x (tree :r/monly))))                     (:bound #x62))
+(defiformat "AL, seg:[RBX + AL]"     (rw :al     r  (:segdds) r  :rbx)                         (:xlat  #xd7)) ;; how do we designate optionals?
+;;; end-of-odd-ball
 
 ;;;;
-;;;; Total of 483 instruction formats
+;;;; Arithmetics
+;;;;
+(defiformat "<>AL"                   (rw :rflags rw :al)                                       (:aaa #x37   :aas #x3f   :daa #x27   :das #x2f))
+(defiformat "<AL, AH, imm8"          ( w :rflags rw :al   r  :ah  r (:imm8))                   (:aad #xd5))
+(defiformat "<2|2!AL, AH, imm8"      ( w :rflags rw :al    w :ah  r (:imm8))                   (:aam #xd4))
+                                                                                    
+(defiformat "<AL,  imm8"             ( w :rflags rw (:al)               r  (:imm8))            (:add #x04   :adc #x14   :sbb #x1c   :sub #x2c))
+(defiformat "<XAX, immXX"            ( w :rflags rw (:xax)              r  (:immx))            (:add #x05   :adc #x15   :sbb #x1d   :sub #x2d))
+(defiformat "<~S,  imm8"             ( w :rflags rw (8 (tree :r/m))     r  (:imm8))            (:add #x80 0 :adc #x80 2 :sbb #x80 3 :sub #x80 5))
+(defiformat "<~S, immXX"             ( w :rflags rw (x (tree :r/m))     r  (:immx))            (:add #x81 0 :adc #x81 2 :sbb #x81 3 :sub #x81 5))
+(defiformat "<~S, imm8"              ( w :rflags rw (x (tree :r/m))     r  (:imm8))            (:add #x83 0 :adc #x83 2 :sbb #x83 3 :sub #x83 5 :bts #xba 5 :btr #xba 6 :btc #xba 7))
+(defiformat "<~S, reg8"              ( w :rflags rw (8 (tree :r/m))     r  (:reg8))            (:add #x00   :adc #x10   :sbb #x18   :sub #x28  ))
+(defiformat "<~S, regXX"             ( w :rflags rw (x (tree :r/m))     r  (:regx))            (:add #x01   :adc #x11   :sbb #x19   :sub #x29   :bts #xab   :btr #xb3   :btc #xbb  ))
+(defiformat "<reg8,  ~S"             ( w :rflags rw (:reg8)             r  (8 (tree :r/m)))    (:add #x02   :adc #x12   :sbb #x1a   :sub #x2a  ))
+(defiformat "<reg8,  ~S"             ( w :rflags rw (:reg8)             r  (x (tree :r/m)))    (:add #x03   :adc #x13   :sbb #x1b   :sub #x2b  ))
+                                                                                                              
+(defiformat "AL,  imm8"              (           rw (:al)               r  (:imm8))            (:or #x0c    :and #x24   :xor #x34))
+(defiformat "XAX, immXX"             (           rw (:xax)              r  (:immx))            (:or #x0d    :and #x25   :xor #x35))
+(defiformat "~S,  imm8"              (           rw (8 (tree :r/m))     r  (:imm8))            (:or #x80 1  :and #x80 4 :xor #x80 6))
+(defiformat "~S, immXX"              (           rw (x (tree :r/m))     r  (:immx))            (:or #x81 1  :and #x81 4 :xor #x81 6))
+(defiformat "~S, imm8"               (           rw (x (tree :r/m))     r  (:imm8))            (:or #x83 1  :and #x83 4 :xor #x83 6))
+(defiformat "~S, reg8"               (           rw (8 (tree :r/m))     r  (:reg8))            (:or #x08    :and #x20   :xor #x30))
+(defiformat "~S, regXX"              (           rw (x (tree :r/m))     r  (:regx))            (:or #x09    :and #x21   :xor #x31))
+(defiformat "reg8, ~S"               (           rw (:reg8)             r  (8 (tree :r/m)))    (:or #x0a    :and #x22   :xor #x32))
+(defiformat "regXX, ~S"              (           rw (:regx)             r  (x (tree :r/m)))    (:or #x0b    :and #x23   :xor #x33))
+
+(defiformat "regXXl"                 (rw (:regxl))                                             (:bswap #x0fc8 :bswap #x0fc9 :bswap #x0fca :bswap #x0fcb
+                                                                                                :bswap #x0fcc :bswap #x0fcd :bswap #x0fce :bswap #x0fcf))
+
+(defiformat "<>~S, 1"                (rw :rflags rw (8 (tree :r/m)) r  (1))                    (:rcl #xd0 2 :rcr #xd0 3))
+(defiformat "<>~S, 1"                (rw :rflags rw (x (tree :r/m)) r  (1))                    (:rcl #xd1 2 :rcr #xd1 3))
+(defiformat "<>~S, CL"               (rw :rflags rw (8 (tree :r/m)) r  (:cl))                  (:rcl #xd2 2 :rcr #xd2 3))
+(defiformat "<>~S, CL"               (rw :rflags rw (x (tree :r/m)) r  (:cl))                  (:rcl #xd3 2 :rcr #xd3 3))
+(defiformat "<>~S, imm8"             (rw :rflags rw (8 (tree :r/m)) r  (:imm8))                (:rcl #xc0 2 :rcr #xc0 3))
+(defiformat "<>~S, imm8"             (rw :rflags rw (x (tree :r/m)) r  (:imm8))                (:rcl #xc1 2 :rcr #xc1 3))
+
+(defiformat "<~S, 1"                 (r  :rflags rw (8 (tree :r/m)) r  (1))                    (:rol #xd0 0 :ror #xd0 1 :shl #xd0 4 :sal #xd0 4 :shr #xd0 5 :sar #xd0 7))
+(defiformat "<~S, 1"                 (r  :rflags rw (x (tree :r/m)) r  (1))                    (:rol #xd1 0 :ror #xd1 1 :shl #xd1 4 :sal #xd1 4 :shr #xd1 5 :sar #xd1 7))
+(defiformat "<~S, CL"                (r  :rflags rw (8 (tree :r/m)) r  (:cl))                  (:rol #xd2 0 :ror #xd2 1 :shl #xd2 4 :sal #xd2 4 :shr #xd2 5 :sar #xd2 7))
+(defiformat "<~S, CL"                (r  :rflags rw (x (tree :r/m)) r  (:cl))                  (:rol #xd3 0 :ror #xd3 1 :shl #xd3 4 :sal #xd3 4 :shr #xd3 5 :sar #xd3 7))
+(defiformat "<~S, imm8"              (r  :rflags rw (8 (tree :r/m)) r  (:imm8))                (:rol #xc0 0 :ror #xc0 1 :shl #xc0 4 :sal #xc0 4 :shr #xc0 5 :sar #xc0 7))
+(defiformat "<~S, imm8"              (r  :rflags rw (x (tree :r/m)) r  (:imm8))                (:rol #xc1 0 :ror #xc1 1 :shl #xc1 4 :sal #xc1 4 :shr #xc1 5 :sar #xc1 7))
+
+(defiformat "<~S, regXX, imm8"       (r  :rflags rw (x (tree :r/m)) rw (:regx) r  (:imm8))     (:shld #x0fa4 :shrd #x0fac))
+(defiformat "<~S, regXX, CL"         (r  :rflags rw (x (tree :r/m)) rw (:regx) r  (:cl))       (:shld #x0fa5 :shrd #x0fad))
+
+(defiformat "~S"                     (rw (8 (tree :r/m)))                                      (:not #xf6 2))
+(defiformat "~S"                     (rw (x (tree :r/m)))                                      (:not #xf7 2))
+
+(defiformat "<~S"                    ( w :rflags rw (8 (tree :r/m)))                           (:neg #xf6 3 :dec #xfe 1 :inc #xfe 0))
+(defiformat "<~S"                    ( w :rflags rw (x (tree :r/m)))                           (:neg #xf7 3 :dec #xff 1 :inc #xff 0))
+
+(defiformat "<!AX, AL, ~S"           ( w :rflags  w :ax     r  :al  r  (8 (tree :r/m)))        (:mul #xf6 4 :imul #xf6 5))
+(defiformat "<!xDX, xAX, xAX, ~S"    ( w :rflags  w :xdx    rw :xax r  (x (tree :r/m)))        (:mul #xf7 4 :imul #xf7 5))
+(defiformat "<AL, AH, ~S"            ( w :rflags rw :ax             r  (8 (tree :r/m)))        (:div #xf6 6 :idiv #xf6 7))
+(defiformat "<xDX, xAX, ~S"          ( w :rflags rw :xdx    rw :xax r  (x (tree :r/m)))        (:div #xf7 6 :idiv #xf7 7))
+
+(defiformat "<!regXX, ~S, imm8"      ( w :rflags  w (:regx) r  (x (tree :r/m)) r  (:imm8))     (:imul #x6b))
+(defiformat "<!regXX, ~S, immx"      ( w :rflags  w (:regx) r  (x (tree :r/m)) r  (:immx))     (:imul #x69))
+
+                                        ; XXX: LZ/POPCNT/others: the prefix flagging scheme allows decoding, but what about encoding?
+(defiformat "<!regXX, ~S"            ( w :rflags  w (:regx) r  (x (tree :r/m)))                (:imul #x0faf :lzcnt #x0fbd 1 :popcnt #x0fb8 1 :bsf #x0fbc :bsr #x0fbd))
+
+(defiformat "<regXXs"                ( w :rflags rw (:regxs))                                  (:inc #x40 :inc #x41 :inc #x42 :inc #x43 :inc #x44 :inc #x45 :inc #x46 :inc #x47
+                                                                                                :dec #x48 :dec #x49 :dec #x4a :dec #x4b :dec #x4c :dec #x4d :dec #x4e :dec #x4f))
+
+(defiformat "2|~S,  reg8"            (rw (8 (tree :r/m))    rw (:reg8))                        (:xchg #x86 :xadd #x0fc0))
+(defiformat "2|~S, regXX"            (rw (x (tree :r/m))    rw (:regx))                        (:xchg #x87 :xadd #x0fc1))
+(defiformat "2|xAX,  regXX"          (rw (:xax)             rw (:regx))                        (:xchg #x90 :xchg #x91 :xchg #x92 :xchg #x93 :xchg #x94 :xchg #x95 :xchg #x96 :xchg #x97))
+(defiformat "2|reg8,  ~S"            (rw (:reg8)            rw (8 (tree :r/m)))                (:xchg #x86))
+(defiformat "2|regXX, ~S"            (rw (:regx)            rw (x (tree :r/m)))                (:xchg #x87))
+(defiformat "2|regXX, xAX"           (rw (:xax)             rw (:regx))                        (:xchg #x90 :xchg #x91 :xchg #x92 :xchg #x93 :xchg #x94 :xchg #x95 :xchg #x96 :xchg #x97))
+
+(defiformat "<AL, ~S, reg8"          ( w :rflags rw (:al)   rw (8 (tree :r/m)) r  (:reg8))     (:cmpxchg #x0fb0))
+(defiformat "<xAX, ~S, regXX"        ( w :rflags rw (:xax)  rw (x (tree :r/m)) r  (:regx))     (:cmpxchg #x0fb1))
+
+(defiformat "<xD:xA, r/m64/128, xC:xB" ( w :rflags rw :xdxl rw :xaxl rw :reg/mem64  r :xcxl r :xbxl) (:cmpxchg8/16b #x0fc7 1))
+
+(defiformat "!xAX, xAX-1"            ( w :xax    r  :xax-1)                                    (:cbw/d/qe #x98))
+(defiformat "2|xAX, xDX"             ( w :xdx    rw :xax)                                      (:cwd/q/o  #x99))
+;;; end-of-arith
+
+;;;;
+;;;; Flag manipulations
+;;;;
+(defiformat ">regXX, ~S"             (rw (:regx) r  (x (tree :r/m))   r  :rflags)              (:cmovo #x40 0 :cmovno #x41 0 :cmovc  #x42 0 :cmovnc #x43 0
+                                                                                                :cmovz #x44 0 :cmovnz #x45 0 :cmovna #x46 0 :cmova  #x47 0
+                                                                                                :cmovs #x48 0 :cmovns #x49 0 :cmovp  #x4a 0 :cmovnp #x4b 0
+                                                                                                :cmovl #x4c 0 :cmovnl #x4d 0 :cmovng #x4e 0 :cmovg  #x4f 0))
+
+(defiformat ">!~S"                              (rw (x (tree :r/m))   r  :rflags)              (:seto  #x90 0 :setno  #x91 0 :setc   #x92 0 :setnc  #x93 0
+                                                                                                :setz  #x94 0 :setnz  #x95 0 :setna  #x96 0 :seta   #x97 0
+                                                                                                :sets  #x98 0 :setns  #x99 0 :setp   #x9a 0 :setnp  #x9b 0
+                                                                                                :setl  #x9c 0 :setnl  #x9d 0 :setng  #x9e 0 :setg   #x9f 0))
+
+(defiformat "<|AL, imm8"             ( w :rflags r  (:al)           r  (:imm8))                (:cmp #x3c   :test #xa8))
+(defiformat "<|RAX, imm32"           ( w :rflags r  (:xax)          r  (:immx))                (:cmp #x3d   :test #xa9))
+(defiformat "<|reg/mem8, imm8"       ( w :rflags r  (8 (tree :r/m)) r  (:imm8))                (:cmp #x80 7 :test #xf6 0   :test #xf6 1)) ;; duplicate?
+(defiformat "<|reg/memXX, immXX"     ( w :rflags r  (x (tree :r/m)) r  (:immx))                (:cmp #x81 7 :test #xf7 0   :test #xf6 1)) ;; ...manual is unclear...
+(defiformat "<|reg/memXX, imm8"      ( w :rflags r  (x (tree :r/m)) r  (:imm8))                (:cmp #x83 7 :bt   #x0fba 4))
+(defiformat "<|reg/mem8, reg8"       ( w :rflags r  (8 (tree :r/m)) r  (:reg8))                (:cmp #x38   :test #x84))
+(defiformat "<|reg/memXX, regXX"     ( w :rflags r  (x (tree :r/m)) r  (:regx))                (:cmp #x39   :test #x85     :bt #x0fa3))
+(defiformat "<|reg8, reg/mem8"       ( w :rflags r  (:reg8)         r  (8 (tree :r/m)))        (:cmp #x3a))
+(defiformat "<|regXX, reg/memXX"     ( w :rflags r  (:regx)         r  (x (tree :r/m)))        (:cmp #x3b))
+
+(defiformat "<>"                     (rw :rflags)                                              (:cmc #xf5))
+(defiformat "<"                      ( w :rflags)                                              (:clc #xf8 :cld #xfc :stc #xf9 :std #xfd))
+(defiformat "$<IF"                   ( w :rflags r  :cpl  r  :cs)                              (:cli #xfa :sti #xfb))
+                                                                                               
+(defiformat "<|!AH"                  ( w :rflags r  :ah)                                       (:sahf #x9e))
+(defiformat ">!AH"                   ( w :ah     r  :rflags)                                   (:lahf #x9f))
+;;; end-of-flag-manip
+
+;;;;
+;;;; Jumps, calls, returns, branches and loops
+;;;;
+(defiformat "@immoff8"               ( w :rip   r  (:imm8))                                    (:jmp #xeb))
+(defiformat "@immoff16"              ( w :rip   r  (:immxs))                                   (:jmp #xe9))
+(defiformat "@reg/memXX"             ( w :rip   r  (x (tree :r/m)))                            (:jmp #xff 4)) ;; no prefix for 32bit in long mode
+
+#|
+ (defiformat "@ptr16:16"             ( w :rip    w :cs   w :tss   r  :imm32/48)                (:jmpf #xea)) ;; compat mode |#
+
+(defiformat "@mem32/48"              ( w :rip    w :cs   w :tss   r  (fpx (tree :/m)))         (:jmpf #xff 5))
+
+(defiformat "@@immoff32"             (rw :rip   rw :rsp r  :mem32 r  (:immxs))                 (:call #xe8))
+(defiformat "@@reg/memXX"            (rw :rip   rw :rsp r  :memx  r  (x (tree :r/m)))          (:call #xff 2))
+
+(defiformat "@@imm8"                 (rw :rip   rw :rsp r  :mem16 r  (:imm8))                  (:ret #xc2))
+(defiformat "@@"                     (rw :rip   rw :rsp r  :mem16)                             (:ret #xc3))
+
+(defiformat "@>immoff8"              ( w :rip   r  :rflags  r  (:imm8))                        (:jo #x70   :jno #x71   :jc #x72   :jnc #x73   :jz #x74   :jnz #x75   :jbe #x76   :jnbe #x77
+                                                                                                :js #x78   :jns #x79   :jp #x7a   :jnp #x7b   :jl #x7c   :jnl #x7d   :jle #x7e   :jnle #x7f))
+(defiformat "@>immoffXX"             ( w :rip   r  :rflags  r  (:immx))                        (:jo #x0f80 :jno #x0f81 :jc #x0f82 :jnc #x0f83 :jz #x0f84 :jnz #x0f85 :jbe #x0f86 :jnbe #x0f87
+                                                                                                :js #x0f88 :jns #x0f89 :jp #x0f8a :jnp #x0f8b :jl #x0f8c :jnl #x0f8d :jle #x0f8e :jnle #x0f8f))
+
+#|
+ (defiformat "@adXCX, immoff8"       ( w :rip   r  :adxcx32 r  (:imm8))                        (:jxcxz #xe3)) ;; compat mode |#
+(defiformat "@adXCX, immoff8"        ( w :rip   r  :adxcx64 r  (:imm8))                        (:je/rcxz #xe3)) ;; XXX: how do we dispatch on assembly?
+
+(defiformat "@>RCX, immoff8"         ( w :rip   rw :xcx     r  (:imm8) r  :rflags)             (:loopnz #xe0 :loopz #xe1))
+(defiformat "@RCX, immoff8"          ( w :rip   rw :xcx     r  (:imm8))                        (:loop   #xe2))
+
+#|
+ (defiformat "@@@ptr16:16/32"        (rw :rip   rw :rsp rw :cpl rw :cs rw :ss  w :mfpx
+                                      r  :tss   r  :ptr16/16)                                  (:callf #x9a)) ;; compat mode |#
+(defiformat "@@@mem32/48"            (rw :rip   rw :xsp rw :cpl rw :cs rw :ss  w :mfpx
+                                      r  (fpx (tree :/m))   r  :tss)                           (:callf #xff 3))
+(defiformat "@@@imm16"               (rw :rip   rw :xsp rw :cpl rw :cs rw :ss r  :mfpx
+                                      r  (:imm16))                                             (:retf  #xca))
+(defiformat "@@@"                    (rw :rip   rw :xsp rw :cpl rw :cs rw :ss r  :mfpx)        (:retf  #xcb))             
+                                      
+;;; end-of-jump-branch-call-rets
+
+;;;;
+;;;; String memory: XXX
+;;;;                                                                    
+(defiformat "<>|mem8, mem8"          (rw :rflags rw :si  rw :di  r (8 (:segdds  :si)) r (8 (:es  :di)))   (:cmps #xa6))
+(defiformat "<>|memXX, memXX"        (rw :rflags rw :xsi rw :xdi r (x (:segdds :xsi)) r (x (:es :xdi)))   (:cmps #xa7))
+
+(defiformat "!AL, mem8"              ( w (:al)   rw :si  r  (8 (:segdds  :si)))                (:lods #xac))
+(defiformat "!xAX, memXX"            ( w (:xax)  rw :xsi r  (x (:segdds  :xsi)))               (:lods #xad))
+
+(defiformat "!mem8, mem8"            (rw :si  rw :di   w (8 (:segdds  :si)) r  (8 (:es :di)))  (:movs #xa4))
+(defiformat "!memXX, memXX"          (rw :xsi rw :xdi  w (x (:segdds :xsi)) r  (x (:es :xdi))) (:movs #xa5))
+
+(defiformat "<>|AL, mem8"            (rw :rflags rw :di  r  (:al)   r  (8 (:es :di)))          (:scas #xae))
+(defiformat "<>|xAX, memXX"          (rw :rflags rw :xdi r  (:xax)  r  (x (:es :xdi)))         (:scas #xaf))
+
+(defiformat "!mem8, AL"              (rw :di      w  (8 (:es  :di)) r  (:al))                  (:stos #xaa))
+(defiformat "!memXX, xAX"            (rw :xdi     w  (x (:es :xdi)) r  (:xax))                 (:stos #xab))
+;;;; end-of-string-memorys
+
+;;;;
+;;;; Addressing
+;;;;
+(defiformat "!DS, regXX, mem32/48"   ( w :ds  w (:regxs)    r  (32 (tree :/m)))                (:lds #xc5))
+(defiformat "!ES, regXX, mem32/48"   ( w :es  w (:regxs)    r  (32 (tree :/m)))                (:les #xc4))
+(defiformat "!FS, regXX, mem32/48"   ( w :fs  w (:regxs)    r  (32 (tree :/m)))                (:lfs #x0fb4))
+(defiformat "!GS, regXX, mem32/48"   ( w :gs  w (:regxs)    r  (32 (tree :/m)))                (:lgs #x0fb5))
+(defiformat "!SS, regXX, mem32/48"   ( w :ss  w (:regxs)    r  (32 (tree :/m)))                (:lss #x0fb2))
+                                                                             
+(defiformat "!regXX, mem"            ( w (:regx)            r  (32 (tree :/m)))                (:lea #x8d))
+;;; end-of-addressings
+                                                                                                                         
+;;;;                                                                                                                     
+;;;; Moves
+;;;;                                                                                                                     
+(defiformat "!reg/mem8, reg8"        ( w (8 (tree :r/m))    r  (:reg8))                        (:mov #x88))
+(defiformat "!reg/memXX, regXX"      ( w (x (tree :r/m))    r  (:regx))                        (:mov #x89))
+(defiformat "!reg8, reg/mem8"        ( w (:reg8)            r  (8 (tree :r/m)))                (:mov #x8a))
+(defiformat "!regXX, reg/memXX"      ( w (:regx)            r  (x (tree :r/m)))                (:mov #x8b))
+                                                           
+(defiformat "!regXX, reg/mem8"       ( w (:regx)            r  (8 (tree :r/m)))                (:movsx #x0fbe :movzx #x0fb6))
+(defiformat "!regXXl, reg/mem16"     ( w (:regxl)           r  (16 (tree :r/m)))               (:movsx #x0fbf :movzx #x0fb7))
+                                                           
+(defiformat "!reg64, reg/mem32"      ( w (:reg64)           r  (32 (tree :r/m)))               (:movsxd #x63)) ;; (weird for 16bit op; separate format?)                     
+                                                                             
+(defiformat "!memXXl, regXXl"        ( w (xl (tree :/m))    r  (:regxl))                       (:movnti #x0fc3 0))
+                                                                                                
+(defiformat "!AL, immoff8"           ( w (:al)              r  (8 (:imm8)))                    (:mov #xa0))
+(defiformat "!xAX, immoffXX"         ( w (:xax)             r  (x (:immxf)))                   (:mov #xa1))
+(defiformat "immoff8, AL"            ( w (8 (:imm8))        r  (:al))                          (:mov #xa2))
+(defiformat "immoffXX, xAX"          ( w (x (:immxf))       r  (:xax))                         (:mov #xa3))
+                                                                                               
+(defiformat "!reg8, imm8"            ( w (:reg8)            r  (:imm8))                        (:mov #xb0 :mov #xb1 :mov #xb2 :mov #xb3 :mov #xb4 :mov #xb5 :mov #xb6 :mov #xb7))
+(defiformat "!regXX, immXXf"         ( w (:regx)            r  (:immxf))                       (:mov #xb8 :mov #xb9 :mov #xba :mov #xbb :mov #xbc :mov #xbd :mov #xbe :mov #xbf))
+(defiformat "!reg/mem8, imm8"        ( w (:reg/mem8)        r  (:imm8))                        (:mov #xc6 0))
+(defiformat "!reg/memXX, immXX"      ( w (x (tree :r/m))    r  (:immx))                        (:mov #xc7 0))
+                                                                                                                     
+(defiformat "!regXX/mem16, segreg"   ( w (x/16 (tree :r/m)) r  (:segreg))                      (:mov #x8c))
+(defiformat "!segreg, reg/mem16"     ( w (:segreg)          r  (16 (tree :r/m)))               (:mov #x8e))
+
+(defiformat "!mmx, reg/memXXl"       ( w (:mmx)             r  (xl (tree :r/m)))               (:movd #x0f6e 0))
+(defiformat "!reg/memXXl, mmx"       ( w (xl (tree :r/m))   r  (:mmx))                         (:movd #x0f7e 0))
+(defiformat "!xmm, reg/memXXl"       ( w (:xmm)             r  (xl (tree :r/m)))               (:movd #x0f6e 1))
+(defiformat "!reg/memXXl, xmm"       ( w (xl (tree :r/m))   r  (:xmm))                         (:movd #x0f7e 1))
+
+(defiformat "!reg32, xmm"            ( w (32 (tree :r/))    r  (:xmm))                         (:movmskps #x0f50 0 :movmskpd #x0f50 1))
+
+;; NOTE: mod is ignored in this group
+(defiformat "$!cr, regXXl"           ( w (:cr)     r :cpl   r  :cs     r  (xl (tree :r/)))     (:mov #x0f22 0))
+(defiformat "!regXXl, cr"            ( w (xl (tree :r/))    r  (:cr)   r  :cpl r  :cs)         (:mov #x0f20 0))
+(defiformat "$!cr8, regXXl"          ( w (:cr8)    r :cpl   r  :cs     r  (xl (tree :r/)))     (:mov #x0f22 1))
+(defiformat "!regXXl, cr8"           ( w (xl (tree :r/))    r  (:cr8)  r  :cpl r  :cs)         (:mov #x0f20 1))
+(defiformat "$!dr, regXXl"           ( w (:dr)     r :cpl   r  :cs     r  (xl (tree :r/)))     (:mov #x0f21))
+(defiformat "!regXXl, dr"            ( w (xl (tree :r/))    r  (:dr)   r  :cpl r  :cs)         (:mov #x0f23))
+;;; end-of-moves
+
+;;;;
+;;;; Stack
+;;;;
+(defiformat "![SS:RSP], reg/memXX"   ( w :memx     rw :rsp r  :ss r  (x (tree :r/m)))          (:push #xff 6))
+(defiformat "![SS:RSP], regXX"       ( w :memx     rw :rsp r  :ss r  (:regx))                  (:push #x50)) ;; modrmless regspec
+(defiformat "![SS:RSP], imm8"        ( w :mem8     rw :rsp r  :ss r  (:imm8))                  (:push #x6a))
+(defiformat "![SS:RSP], immXX"       ( w :memx     rw :rsp r  :ss r  (:immxf))                 (:push #x68))
+(defiformat "![SS:RSP], CS"          ( w :mem16    rw :rsp r  :ss r  (:cs))                    (:push #x0e))
+(defiformat "![SS:RSP], DS"          ( w :mem16    rw :rsp r  :ss r  (:ds))                    (:push #x1e))
+(defiformat "![SS:RSP], ES"          ( w :mem16    rw :rsp r  :ss r  (:es))                    (:push #x06))
+(defiformat "![SS:RSP], SS"          ( w :mem16    rw :rsp r  :ss r  (:ss))                    (:push #x16))
+(defiformat "![SS:RSP], FS"          ( w :mem16    rw :rsp r  :ss r  (:fs))                    (:push #x0fa0))
+(defiformat "![SS:RSP], GS"          ( w :mem16    rw :rsp r  :ss r  (:gs))                    (:push #x0fa8))
+
+(defiformat "!reg/memXX, [SS:RSP]"   ( w (x (tree :r/m)) rw :rsp r  :ss r  :memx)              (:pop #x8f 0))
+(defiformat "!regXX, [SS:RSP]"       ( w (:regx)         rw :rsp r  :ss r  :memx)              (:pop #x58)) ;; modrmless regspec
+(defiformat "!DS, [SS:RSP]"          ( w (:ds)           rw :rsp r  :ss r  :mem16)             (:pop #x1f))
+(defiformat "!ES, [SS:RSP]"          ( w (:es)           rw :rsp r  :ss r  :mem16)             (:pop #x07))
+(defiformat "!SS, [SS:RSP]"          ( w (:ss)           rw :rsp r  :ss r  :mem16)             (:pop #x17))
+(defiformat "!FS, [SS:RSP]"          ( w (:fs)           rw :rsp r  :ss r  :mem16)             (:pop #x0fa1))
+(defiformat "!GS, [SS:RSP]"          ( w (:gs)           rw :rsp r  :ss r  :mem16)             (:pop #x0fa9))
+
+#|
+ (defiformat "![SS:ESP], EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI"
+                                     (rw :rsp  w :mem128/256  r  :ss  r  :rdi r  :rsi r  :rbp r  :rbx r  :rdx r  :rcx r  :rax) (:pusha/d #x60)) ;; compat
+ (defiformat "!EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, [SS:ESP]"
+                                     (rw :rsp  w :rdi  w :rsi  w :rbp  w :rbx  w :rdx  w :rcx  w :rax r  :ss  r  :mem128/256)  (:popa/d  #x61)) ;; compat |#
+
+(defiformat ">![SS:xSP]"             ( w :memx   rw :rsp r  :flags r  :ss)                     (:pushf/d/q #x9c))
+(defiformat "<>![SS:RSP]"            (rw :rflags rw :rsp r  :ss    r  :memx    r  :cpl r  :cs) (:popf/d/q  #x9d))
+
+(defiformat "imm16, imm8"            (rw :rsp    rw :rbp r  :ss    r  (:imm16) r  (:imm8))     (:enter #xc8))
+
+(defiformat "xBP, xSP"               (rw  :xbp   rw :xsp r  :memx)                             (:leave #xc9))
+;;; end-of-stacks
+
+;;;;
+;;;; Port I/O
+;;;;
+(defiformat "#!AL, imm8"             ( w (:al)    r  (:imm8)   r  :tss)                        (:inb  #xe4))
+(defiformat "#!xAXs, imm8"           ( w (:xaxs)  r  (:imm8)   r  :tss)                        (:inb  #xe5))
+(defiformat "#!AL, DX"               ( w (:al)    r  (:dx)     r  :tss)                        (:inb  #xec))
+(defiformat "#!xAXs, DX"             ( w (:xaxs)  r  (:dx)     r  :tss)                        (:inb  #xed))
+                                                                                                                        
+(defiformat "#imm8, AL"              (r  (:imm8)  r  (:al)     r  :tss)                        (:outb #xe6))
+(defiformat "#imm8, xAXs"            (r  (:imm8)  r  (:xaxs)   r  :tss)                        (:outb #xe7))
+(defiformat "#|DX, AL"               (r  (:dx)    r  (:al)     r  :tss)                        (:outb #xee))
+(defiformat "#|DX, xAXs"             (r  (:dx)    r  (:xaxs)   r  :tss)                        (:outb #xef))
+                                                                                                                        
+(defiformat "#!>mem8, DX"            ( w (8  (tree :/m)) rw :rdi  r  :es   r  (:dx)   r  :rflags r  :tss)   (:insb    #x6c))
+(defiformat "#!>memXXl, DX"          ( w (xs (tree :/m)) rw :rdi  r  :es   r  (:dx)   r  :rflags r  :tss)   (:insw/d  #x6d))
+(defiformat "#|>DX, mem8"            (rw :rsi     r  :ds r  (:dx) r  (8   (tree :/m)) r  :rflags r  :tss)   (:outsb   #x6e))
+(defiformat "#|>DX, memXXs"          (rw :rsi     r  :ds r  (:dx) r  (xs  (tree :/m)) r  :rflags r  :tss)   (:outsw/d #x6f))
+;;;; end-of-ios
+
+;;;;
+;;;; Interrupts
+;;;;
+(defiformat "$@<"                    ( w :rip     w :rflags    r  (3))                         (:int3     #xcc)) ;; how do we deal on the encode side wrt. INT?
+(defiformat "$@<>imm8"               (rw :rflags rw :rip rw :rsp rw :cs     rw :ss  rw :mem 
+                                       w :cpl w :tss           r  (:imm8))                     (:int      #xcd)) ;; how do we deal on the encode side wrt. INT 3?
+(defiformat "$@>"                    ( w :rip     w :cpl  w :cs   w :tss    r  :rflags)        (:into     #xce))
+(defiformat "$@@<"                   (rw :cpl    rw :cs  rw :tss  w :rflags
+                                       w :rip  w :rsp  w :ss  w :mem)                          (:iret/d/q #xcf))
+;;; end-of-interrupts
+
+;;;;
+;;;; System stuff
+;;;;
+(defiformat "EAX, EBX, ECX, EDX"     (rw :eax    w :ebx  w :ecx  w :edx)                       (:cpuid       #x0fa2))
+(defiformat "|mem8"                  (r  (8 (tree :/m)))                                       (:clflush     #x0fae))
+(defiformat "|!mem8"                 (r  (8 (tree :/m)))                                       (:prefetch    #x0f0d 0 :prefetchw #x0f0d 1 :prefetch  #x0f0d 2 :prefetchw #x0f0d 3
+                                                                                                :prefetch    #x0f0d 4 :prefetch  #x0f0d 5 :prefetch  #x0f0d 6 :prefetch  #x0f0d 7
+                                                                                                :prefetchnta #x0f18 0 :prefetch0 #x0f18 1 :prefetch1 #x0f18 2 :prefetch2 #x0f18 3
+                                                                                                :nop         #x0f18 4 :nop       #x0f18 5 :nop       #x0f18 6 :nop       #x0f18 7
+                                                                                                :invlpg      #x0f01 7 0))
+(defiformat "|RAX, ECX"              (r  (:rax) r  (:ecx))                                     (:invlpga     #x0f01 3 3 7))
+(defiformat ""                       ()                                                        (:mfence      #x0fae 5 3 :lfence #x0fae 6 3 :sfence #x0fae 7 3
+                                                                                                :nop         #x90     ;; ..and watch the world going down in flames.. XXX!
+                                                                                                :pause       #xf390)) ;; ..and wtf is that? rep nop? XXX!
+(defiformat "|!mem16/32/64"          ((8 (tree :r/m)))                                         (:nop  #x0f19 :nop    #x0f1a :nop #x0f1b :nop #x0f1c :nop #x0f1d :nop #x0f1e :nop #x0f1f))
+(defiformat "|CPL"                   (r  :cpl   r  :cs)                                        (:invd #x0f08 :wbinvd #x0f09 :hlt #xf4))
+
+#|
+ (defiformat "<$reg/mem16, reg16"    ( w :rflags rw (16 (tree :r/m))          r  (:reg16))     (:arpl #x63)) ;; compat |#
+(defiformat "$!GIF"                  ( w :gif)                                                 (:stgi #x0f01 3 3 4 :clgi #x0f01 3 3 5))
+
+(defiformat "$CR0"                   ( w :cr0)                                                 (:clts #x0f06))
+
+(defiformat "<!$regXX, reg/mem16"    ( w :rflags  w (:regx) r  (16 (tree :r/m))
+                                      r  :cpl    r  :cs     r  :dpl)                           (:lar #x0f02 :lsl #x0f03))
+
+#|
+ (defiformat "|$mem48"               (r  :mem48 r  :cpl r  :cs)                                (:lgdt    #x0f01 2 :lidt #x0f01 3 0)) ;; compat
+ (defiformat "!mem48"                ( w :mem48)                                               (:sgdt    #x0f01 0 :sidt #x0f01 1 0)) ;; compat |#
+(defiformat "|$mem80"                (r  (80 (tree :/m)) r  :cpl   r  :cs)                     (:lgdt    #x0f01 2 :lidt #x0f01 3 0)) ;; long
+(defiformat "!mem80"                 ( w (80 (tree :/m)))                                      (:sgdt    #x0f01 0 :sidt #x0f01 1 0)) ;; long
+
+(defiformat "!$sys16, ~S"            ( w :sys16  r  (16 (tree :r/m))         r  :cpl  r  :cs)  (:lldt    #x0f00 2 :lmsw #x0f01 6 :ltr #x0f00 3))
+
+(defiformat "$seg:[EAX], ECX, EDX"   (r  :segdds r  :eax r  :ecx   r  :edx   r  :cpl  r  :cs)  (:monitor #x0f01 7 3 0))
+(defiformat "$EAX, ECX"              (r  :eax    r  :ecx r  :cpl   r  :cs)                     (:mwait   #x0f01 7 3 1))
+
+(defiformat "2!2|EDX:EAX, sys64"     ( w :eax     w :edx r  :sys64 r  :cpl   r  :cs   r  :cr4) (:rdtsc   #x0f31))
+(defiformat "2!2|EDX:EAX, ECX,sys64" ( w :eax     w :edx r  :ecx   r  :sys64 r  :cpl  r  :cs)  (:rdmsr   #x0f32 :rdpmc #x0f33))
+(defiformat "2!2|3!3|EDX:EAX:ECX, sys64, sys32" 
+                                     ( w :eax     w :edx    w :ecx
+                                      r  :sys64  r  :sys32 r  :cpl   r  :cs r  :cr4)           (:rdtscp  #x0f01 1 3 1))
+
+(defiformat "$!sys64, EDX:EAX, ECX"  ( w :sys64  r  :eax r  :edx   r  :ecx   r  :cpl  r  :cs)  (:wrmsr   #x0f30))
+
+(defiformat "!regXX/mem16, sys16"    ( w (x (tree :r/m))           r  :sys16)                  (:sldt    #x0f00 0 :smsw #x0f01 4 :str #x0f00 1)) ;; lying about affected memory size here
+(defiformat "2|sys16, GS"            (rw :gs     rw :sys16         r  :cpl   r  :cs)           (:swapgs  #x0f01 1 3 0))
+
+#|
+ (defiformat "$@<!CX"                ( w :eflags  w :eip  w :cpl    w :cs     w :ss    w :cx
+                                      r  :star)                                                (:syscall #x0f05)) ;; compat
+ (defiformat "$@<|CX"                ( w :eflags  w :eip rw :cpl   rw :cs     w :ss
+                                      r  :star   r  :efer r :ecx)                              (:sysret  #x0f07))  ;; compat |#
+(defiformat "$@<!2|RCX, R11"         ( w :rflags  w :rip    w :cpl  w :cs     w :ss    w :rcx   
+                                       w :r11    r  :cstar)                                    (:syscall #x0f05)) ;; long
+(defiformat "$@<|RCX, R11"           ( w :rflags  w :rip   rw :cpl rw :cs     w :ss
+                                      r  :efer   r  :cstar r  :rcx r  :r11)                    (:sysret  #x0f07)) ;; long
+
+#|
+ (defiformat "$@<SS:ESP"             ( w :eflags  w :eip  w :cpl    w :cs     w :ss    w :esp) (:sysenter #x0f34)) ;; compat
+ (defiformat "$@<SS:ESP, CX, DX"     ( w :eflags  w :eip  w :cpl    w :cs     w :ss    w :esp
+                                      r  :cx    r  :dx)                                        (:sysexit  #x0f35)) ;; compat |#
+
+(defiformat "$@"                     ( w :rip)                                                 (:ud2 #x0f0b :vmmcall #x0f01 3 3 1))
+
+(defiformat "<$reg/mem16"            ( w :rflags r  (16 (tree :r/m)) r  :cpl r  :cs)           (:verr #x0f00 4 :verw #x0f00 5))
+
+(defiformat "$<"                     ( w :rflags rw :cr0 rw :cr3 rw :cr4 rw :cr6 rw :cr7
+                                      rw :efer)                                                (:rsm    #x0faa))
+(defiformat "<|$[EAX]"               ( w :rflags  w :cr0  w :cs   w :ss  w :edx w :esp rw :eax
+                                       w :ebx  w :ecx  w :edx  w :esi  w :edi  w :rgpr  w :gif
+                                      rw :efer r  :cppl)                                       (:skinit #x0f01 3 3 6))
+
+(defiformat "$!2|FS, GS, CS, [RAX]"  ( w :fs      w :gs   w :tr   w :star  w :lstar  w :cstar
+                                       w :sfmask r  :rax r  :mem r  :cpl  r  :cs    r  :efer)  (:vmload #x0f01 3 3 2))
+(defiformat "$![RAX], CS, FS, GS"    ( w :mem    r  :rax r  :cpl r  :cs   r  :efer
+                                      r  :fs     r  :gs  r  :tr  r  :star r  :lstar r :cstar)  (:vmsave #x0f01 3 3 3))
+(defiformat "$<>@![RAX]"             (rw :rflags rw :es  rw :cs  rw :ss   rw :ds    rw :efer
+                                      rw :cr0 rw :cr4 rw :cr3 rw :rip rw :rsp rw :rax rw :cpl
+                                      rw :mem     w  :cr2    w  :dr6  w  :dr7  w  :gif
+                                      r  :cs     r  :sys64)                                    (:vmrun  #x0f01 3 3 0))
+;;;;
+;;;; Total of some instruction formats
 ;;;;
 
 ;;;;

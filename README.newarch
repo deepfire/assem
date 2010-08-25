@@ -1,0 +1,101 @@
+The grand scheme of two-way assembly/disassembly dispatch.
+=====================================
+Samium Gromoff <_deepfire@feelingofgreen.ru>
+Август 25, 2010
+
+Following terms bear universal significance:
+
+- Instruction format, a final authoritative answer to the following questions,
+  with regard to an instruction:
+     - how many arguments does the instruction take,
+     - what type is each argument,
+     - which resources are referenced and/or modified.
+
+- Instruction format scheme, a partially specified instruction format requiring
+   further discrimination for finalisation.
+
+- Attribute (of an instruction); represents a semantic interpretation of a set
+   of bits within the instruction.  Attributes are named and carry a value.
+   Attributes cannot be specified more than one time during instruction decoding.
+
+- Primary attributes, :MNEMONIC, :FORMAT and (:ARGUMENT n).
+
+- Microformat, a substructure common to a set of instructions, which represents
+   a mapping of a fixed-size bitfield to a set of attributes.
+
+- Window specification (window spec):
+     - a keyword, which is one of:
+          - :WINDOW, which refers to the value in the current window,
+          - an attribute name, which is interpreted as a reference
+            to the value of the named attribute, which defaults
+            to zero if the attribute was not set so far.
+            NOTE: obviously, the downstream declarations of the attribute
+            will have no retroactive effect on the interpretation.
+     - a list, in which case it is one of:
+         - a width/offset pair, directly specifying a window,
+         - a set of window specs interpreted separately, then fused
+           into a single integer value.
+
+The root tree has the following semantics:
+
+- Each node carries following properties, some of which can be implicitly inherited
+  from the parent, then explicitly modified:
+
+       - The base offset, relative to which all node-local window specifications are interpreted.
+         This value is inherited from the parent node, can be modified using the SEEK directive,
+         and is zero at the root of the tree.
+
+       - The "current" window, a width/offset pair defining the bitfield of the instruction
+         subject to examination.  This value is either wholly inherited from the parent node,
+         when there are no local window-modifying directives specified, shifted, when there
+         is a node-local SEEK directive, or modified altogether by the WINDOW directive or
+         both WINDOW and SEEK directives.
+
+       - Accumulated attribute set, a set of valued attributes representing properties
+         of the decoded instruction.  The values of these attributes can be referred to
+         from within window specifications, whenever they occur.
+
+       - An active intepretation set (active set), a set of value/attribute interpretations
+         for the value specified by the part of the instruction within the current window,
+         which is declared to be valid.
+
+       - Effective interpretation set (effective set), a union of the set extensions
+         declared upstream and the difference between the active set and set reductions,
+         also declared upstream.
+
+Node-level semantic operations:
+
+   ACTIVE-SET &rest sets                  - Define the base accumulated attribute set.
+
+   WINDOW width shift                     - Declare the current window.
+
+   DISPATCH &rest window-specs            - Use the specified window specs to obtain a set of values to 
+                                            form a dispatch set, which is then used as a key for matching
+                                            an attribute from the effective set, then recurse into a
+                                            downstream node with that attribute.
+
+   SEEK offset                            - Modify base by adding offset, which is allowed to be negative.
+
+   RECURSE/INSERT-SUBTREE                 - Jump at the root of the tree, keeping base shift and attributes.
+
+   BAN-SETS &rest sets                    - Trim effective sets of downstream trees, spanning across
+                                            tree recursion points.
+
+   ALLOW-SETS-AT-SUBTREE tree &rest sets  - Extend effective set at a named downstream subtree with specified sets.
+
+   MICROFORMAT format-name window-spec    - Use the specified microformat to interpret the specified window to
+                                            extend the accumulated attribute set with attributes defined by that
+                                            microformat.
+
+   MNEMONIC window-spec                   - Use the window spec to obtain the numeric value which is then used
+                                            to look up an association within the effective set, and use the
+                                            symbolic value as the final symbolic value of the mnemonic
+                                            primary attribute.
+
+   ARGUMENT n window-spec                 - Use the window spec to obtain the intermediate numeric value of the
+                                            N-th instruction argument.  This intermediate value is due for
+                                            interpretation within the context of an instruction format.
+        
+                      
+   
+   

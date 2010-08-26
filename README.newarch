@@ -31,6 +31,10 @@ Following terms bear universal significance:
             to zero if the attribute was not set so far.
             NOTE: obviously, the downstream declarations of the attribute
             will have no retroactive effect on the interpretation.
+          - a microformat name, which is intepreted as a synthetic compound
+            of corresponding microformat's bitfields set to either all-ones, or
+            all-zeroes, depending on the presence/absence of the corresponding
+            attributes.
      - a list, in which case it is one of:
          - a width/offset pair, directly specifying a window,
          - a set of window specs interpreted separately, then fused
@@ -79,9 +83,10 @@ Node-level semantic operations:
    RECURSE/INSERT-SUBTREE                 - Jump at the root of the tree, keeping base shift and attributes.
 
    BAN-SETS &rest sets                    - Trim effective sets of downstream trees, spanning across
-                                            tree recursion points.
+                                            tree recursion points.  BAN-SETS takes precedence over ALLOW-SETS-AT-SUBTREE.
 
    ALLOW-SETS-AT-SUBTREE tree &rest sets  - Extend effective set at a named downstream subtree with specified sets.
+                                            BAN-SETS takes precedence over ALLOW-SETS-AT-SUBTREE.
 
    MICROFORMAT format-name window-spec    - Use the specified microformat to interpret the specified window to
                                             extend the accumulated attribute set with attributes defined by that

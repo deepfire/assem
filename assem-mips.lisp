@@ -86,8 +86,8 @@ is :VALUE."
 ;;; Extend ASSEM...
 ;;;
 (defmacro define-emitter (name lambda-list binding-set &body body)
-  (multiple-value-bind (docstring decls body) (destructure-def-body body)
-    (multiple-value-bind (special-decls nonspecial-decls) (unzip (feq 'special) decls :key #'car)
+  (multiple-value-bind (body decls docstring) (parse-body body)
+    (multiple-value-bind (special-decls nonspecial-decls) (unzip (eq-to 'special) (rest decls) :key #'car)
       (emit-defun
        name (mapcar (compose #'car #'ensure-cons) lambda-list)
        `((with-mips-gpr-environment

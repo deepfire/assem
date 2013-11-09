@@ -231,11 +231,11 @@ Will lead to hard-to-diagnose, strange bugs."
 (defvar *segment*)
 
 (defmacro with-segment-emission ((isa &optional (segment '(make-instance 'segment))) &body body)
-  (multiple-value-bind (decls body) (destructure-binding-form-body body)
+  (multiple-value-bind (body decls) (parse-body body)
     `(let ((*segment* ,segment))
        (declare (special *segment*))
        (with-ensured-assem ,isa
-         ,@(when decls `((declare ,@decls)))
+         ,@decls
          (multiple-value-call #'values *segment* (progn ,@body))))))
 
 (defun current-insn-count ()

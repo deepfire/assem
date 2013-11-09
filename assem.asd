@@ -8,6 +8,7 @@
    (:file "isa" :depends-on ("package"))
    ;;;
    (:file "isa-mips" :depends-on ("isa"))
+   #+nil
    (:file "isa-amd64" :depends-on ("isa"))
    (:file "assem" :depends-on ("isa"))
    ;;;
